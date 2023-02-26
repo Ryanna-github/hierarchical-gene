@@ -354,7 +354,7 @@ coef_dist(c(beta_est, alpha_est), coef$coef_full[,k])
 tau <- 2.5
 aa <- 1.2
 lambda_1 <- 0.11
-rho_init <- c(1, 1, 1, 1)/1
+rho_init <- c(1, 1, 1, 1)/0.0001
 # lambda_2 <- 0.0
 # lambda_3 <- 0.0
 kj <- function(dim) {return((k-1)*dim+j)}
@@ -367,8 +367,8 @@ set.seed(999)
 # 真值附近
 # q_c_matrix <- abs(get_q_c_matrix(n, K_up, ci_sim) + rnorm(n*K_up, mean = 1, sd = .1))
 # 全随机
-q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
-q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+# q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
+# q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
 
 # coef full
 # flexmix 包结果
@@ -433,8 +433,8 @@ for(iter in 2:100){
         as.vector(coef_beta_est)[-kj(p)]%*%((t(H_p)%*%H_p)[kj(p),-kj(p)])
       # upper_2 <- 0
       Upper <- upper_1/n + tau*upper_2
-      coef_beta_kj <- Upper/Lower
-      # coef_beta_kj <- mcp_solution(Lower, Upper/Lower, aa, lambda_1)
+      # coef_beta_kj <- Upper/Lower
+      coef_beta_kj <- mcp_solution(Lower, Upper/Lower, aa, lambda_1)
       coef_beta_est[j,k] <- coef_beta_kj
     }
     for(s in 1:q){
@@ -448,8 +448,8 @@ for(iter in 2:100){
       # upper_2 <- 0
       Upper <- upper_1/n + tau*upper_2
       coef_alpha_ks <- Upper/Lower
-      # coef_alpha_ks <- mcp_solution(Lower, Upper/Lower, aa, lambda_1)
-      coef_alpha_est[s,k] <- coef_alpha_ks
+      coef_alpha_ks <- mcp_solution(Lower, Upper/Lower, aa, lambda_1)
+      # coef_alpha_est[s,k] <- coef_alpha_ks
     }
   }
   coef_full_est <- rbind(coef_beta_est, coef_alpha_est)
@@ -483,11 +483,11 @@ for(iter in 2:100){
   
   # update q_c matrix
   # 用没有重参数化的形式
-  # q_c_matrix <- dnorm(y,
-  #                     mean = data%*%coef_full_ori_list[[iter]],
-  #                     sd = 1/extend_x_to_row(rho_est, n)) *
-  #   extend_x_to_row(pi_list[[iter-1]], n)
-  # q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+  q_c_matrix <- dnorm(y,
+                      mean = data%*%coef_full_ori_list[[iter]],
+                      sd = 1/extend_x_to_row(rho_est, n)) *
+    extend_x_to_row(pi_list[[iter-1]], n)
+  q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
   
   # coef_diff_std <- (sum(coef_full_list[[iter]]-coef_full_list[[iter-1]])**2)/
   #    (sum(coef_full_list[[iter]])**2 + 1e-4)
@@ -500,9 +500,6 @@ coef_full_ori_list[[iter]]
 plot(unlist(lapply(coef_full_ori_list, coef_dist, coef$coef_full)), ylab = "")
 coef_dist(coef_full_ori_list[[iter]], coef$coef_full)
 ```
-
-
-
 
 
 
