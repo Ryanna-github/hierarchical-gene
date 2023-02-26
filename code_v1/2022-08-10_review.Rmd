@@ -1,0 +1,382 @@
+---
+title: "2022-08-11_review"
+author: "renyan"
+date: '2022-08-11'
+output: 
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+- simple set 1：$y = x\beta$
+
+```{r, echo = FALSE}
+rm(list = ls(all = TRUE))
+setwd("D:/Ryanna/RUC_courses/Y1_2/Group/code")
+library(Matrix)
+library(MASS)
+library(fmrs)
+library(flexmix)
+library(ggplot2)
+library(corrplot)
+library(dplyr)
+library(reshape2)
+source("sim.r")
+source("func.r")
+source("estimate.r")
+```
+
+# 准备
+
+## 所有真实数据生成
+
+```{r}
+n <- 200                         # The sample size
+p <- 4                           # The dimension of x
+q <- 3                         # The dimension of z
+pq <- q*p                        # The dimension of each sample
+dim_nonzero_beta <- 2                         # The dimension of non-zero coefficients of x
+dim_nonzero_alpha <- 2                        # The dimension of non-zero coefficients of z
+dim_nonzero_gamma <- 4
+balance <- T                     # Balanced/Imbalanced subgroup
+gr_num_main <- 2                     # The number of rough subgroup 
+gr_num_sub <- 4                       # The number of refined subgroup 
+hier_struc <- list(c(1,2),c(3,4))  # Hierarchical subgroup structure
+# sd.epsi<-0.5                     # The residual error
+# corZX <- F                       # Correlated/Uncorrelated X and Z
+intercorr0<-"AR1"                # The correlation structure of Z
+signal_its <- 2 # signal intensity
+K <- gr_num_sub
+iter_max <- 10
+eps <- 0.001
+incl_inter <- FALSE               # 模拟实验数据生成时候是否要包含交互项
+tol <- 1e-5
+
+lambda_1 <- 0
+lambda_2 <- 0
+lambda_3 <- 0
+a <- 3
+iter_max <- 20
+K_up <- 4
+tau <- 1 
+
+# ------------ Necessary parameters to support algorithm implementation --------
+comb_pair <- combn(K,2)
+H_3 <- kronecker(Matrix(t(apply(comb_pair,2,dMatrixFun)),sparse = T),bdiag(diag(pq)))
+H_1 <- kronecker(Matrix(t(apply(comb_pair,2,dMatrixFun)),sparse = T),bdiag(diag(p)))
+H_2 <- kronecker(Matrix(t(apply(comb_pair,2,dMatrixFun)),sparse = T),bdiag(diag(q)))
+
+# ------------ Generate the regression coefficients -----------
+coef_main_value <- c(signal_its, -signal_its)
+# coef_main_value <- c(signal_its, 2signal_its)
+coef_sub_value <- c(1.5*signal_its, 0.5*signal_its, -0.5*signal_its, -1.5*signal_its)
+# coef_sub_value <- c(1*signal_its, 2*signal_its, 3*signal_its, 4*signal_its)
+if(balance){pr_sub<-rep(1/gr_num_sub,gr_num_sub)}else{pr_sub<-c(1/6,1/6,1/3,1/3)}
+
+# true main groups & subgroups
+set.seed(999)
+ci <- ci_generate(n, pr_sub, hier_struc)
+ci_sim <- rep(0, n) # true label
+for(i in 1:K){
+  ci_sim[ci$ci_sub[[i]]] <- i
+}
+
+# true coefficients
+set.seed(999)
+coef_true <- generate_coef_true(n, p, q, ci$ci_main, ci$ci_sub, 
+                                coef_main_value,  coef_sub_value, incl_inter,
+                                dim_nonzero_beta, dim_nonzero_alpha, dim_nonzero_gamma)
+# Generate data
+whole.data <- generate_sim_data(n, p, q, coef_true, cotype_x="AR_E", cotype_z="AR_E")
+```
+
+## 参数更新初始化
+
+```{r}
+coef_init <- whole.data$coef_true
+
+# 按列索引
+idx_X <- c(1:(p))
+idx_Z <- c((p+1):((p+q)))
+idx_W <- c(((p+q)+1):((p+q+pq)))
+idx_X_full <- sort(rep((0:(K-1))*(p+q+pq), p)) + idx_X
+idx_Z_full <- sort(rep((0:(K-1))*(p+q+pq), q)) + idx_Z
+idx_W_full <- sort(rep((0:(K-1))*(p+q+pq), pq)) + idx_W
+coef_init_beta <- coef_init[idx_X_full]
+coef_init_alpha <- coef_init[idx_Z_full]
+coef_init_gamma <- coef_init[idx_W_full]
+coef_init_eta <- 0
+coef_init_eta <- beta_reform(coef_init_beta, p, q) * coef_init_gamma
+
+####################### Initialize coef ######################
+# iteration
+# weight/res 相关选择在这里修改
+# 根据分析暂时选择使用 res 相关
+iter <- 1
+coef_beta_est_list <- vector(mode="list", length=iter_max)
+coef_alpha_est_list <- vector(mode="list", length=iter_max)
+coef_eta_est_list <- vector(mode="list", length=iter_max)
+coef_gamma_est_list <- vector(mode="list", length=iter_max)
+coef_beta_est_list[[iter]] <- coef_init_beta
+coef_alpha_est_list[[iter]] <- coef_init_alpha
+coef_eta_est_list[[iter]] <- coef_init_eta
+coef_gamma_est_list[[iter]] <- coef_init_gamma
+
+mu_est_list <- vector(mode="list", length=iter_max)
+mu_est_list[[iter]] <- matrix(0, nrow=n, ncol=K_up) # 暂时
+
+rho_est_list <- vector(mode="list", length=iter_max)
+mean_rho <- 1/sd(whole.data$data_y-apply(mu_est_list[[iter]], 1, mean))
+rho_est_list[[iter]] <- rep(mean_rho, 4)
+
+pi_est_list <- vector(mode="list", length=iter_max)
+pi_est_list[[iter]] <- pr_sub
+```
+
+## 工具函数
+
+```{r}
+# 结果 t(res) %*% beta_k 计算所有 beta_k 相关项
+# 返回结果 n*1 矩阵
+get_beta_relt_var <- function(wi, p, q, gamma_k_old){
+  beta_var <- apply(matrix(wi,nrow=p,ncol=q)*matrix(gamma_k_old,nrow=p,ncol=q), 1, sum)
+  return(beta_var)
+}
+# res <- apply(whole.data$W, 1, get_beta_relt_var, p, q, gamma_k_old)
+# t(res) %*% beta_k_old
+```
+
+```{r}
+get_gamma_relt_var <- function(wi, p, q, beta_k_old){
+  gamma_var <- as.numeric(wi * kronecker(matrix(1,nrow=q,ncol=1), beta_k_old))
+  return(gamma_var)
+}
+# res <- apply(whole.data$W, 1, get_gamma_relt_var, p, q, beta_k_old)
+# t(res) %*% gamma_k_old
+```
+
+```{r}
+# 参数扰动
+disturb <- function(x, sd = 0.1, seed = 999){
+  set.seed(999)
+  return(x + rnorm(length(x), mean=0, sd = sd))
+}
+```
+
+# 计算
+
+## Simple Set 1
+
+$y = X^T\beta$ 没有误差项，三种方法都得到正确结果，直接计算法中也不需要迭代，加权最小二乘解为其精确解
+
+```{r}
+ytmp_K_set1 <- as.numeric(whole.data$data_y) - whole.data$Z %*% coef_true$alpha_true_K
+# 经检验 ytmp_K 在真实分类的取值等价于 whole.data$X %*% coef_true$beta_true_K
+# ytmp_K 200*4
+ytmp_set1 <- NULL
+for(i in 1:length(ci_sim)){ ytmp_set1[i] <- ytmp_K_set1[i,ci_sim[i]] }
+# ytmp 长度为 200 的数组
+# ytmp 充当 y 但注意 whole.data$data_y 是 200*1 矩阵
+```
+
+```{r}
+# beta_true <- t(matrix(rep(c(-2,-1,1,2),4), 4))
+# y2 <- whole.data$X %*% beta_true
+# y <- NULL
+# for(i in 1:length(ci_sim)){ y[i] <- y2[i,ci_sim[i]] }
+```
+
+
+
+### 包 fmrs
+
+初值敏感
+
+```{r}
+K_up <- 4
+x <- whole.data$X
+y <- ytmp_set1
+xdim <- p
+int_rm <- TRUE
+as <- matrix(1, nrow = xdim+1, ncol = K_up) # activeset parameter in fmrs package
+if (int_rm) { as[1, ] <- 0 }
+# init of init
+coef_rough_init <- rbind(matrix(0, nrow=1, ncol=K_up), coef_true$beta_true_K)
+# coef_rough_init <- disturb(coef_rough_init, sd = 1)
+res.mle <- fmrs.mle(y = y,
+                  x = x,
+                  delta = rep(1, n),
+                  nComp = K_up,
+                  disFamily = "norm",
+                  initCoeff = coef_rough_init,
+                  # initDispersion = rep(1, K_up),
+                  initmixProp = rep(1 / K_up, K_up),
+                  # nIterNR = 1000,
+                  activeset = as)
+coefficients(res.mle)
+print("dispersion")
+dispersion(res.mle)
+print("mixprop")
+mixProp(res.mle)
+```
+
+### 包 flexmix
+
+```{r}
+x <- whole.data$X
+colnames(x) <- paste0("X", 1:(xdim))
+df_tmp <- cbind(data.frame(y=y), x)
+model <- flexmix(y~0+., data = df_tmp, k = K_up) # 0 去除常数项
+parameters(model)
+```
+
+### 直接计算1-正确$q_c$
+
+迭代计算时候从参数初始化开始，这个步骤不存在，只是为了验证分类正确情况下加权最小二乘方法的正确性
+
+```{r}
+q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
+# q_c_matrix <- get_q_c_matrix_r(q_c_matrix) # 直接单轮结果会不稳定
+iter <- 2
+
+beta_old <- coef_beta_est_list[[iter-1]]
+beta_est <- matrix(0, nrow=p, ncol=K_up)
+y2_beta <- ytmp_K_set1
+y2_beta <- apply(y2_beta * q_c_matrix, 1, sum)
+
+for(k in 1:K_up){
+  W <- diag(q_c_matrix[,k])
+  beta_k_old <- beta_old[((k-1)*p+1):(k*p)]
+  
+  # beta_k
+  X <- x
+  beta_k <- solve(t(X)%*%W%*%X)%*%t(X)%*%W%*%y
+  beta_est[,k] <- beta_k
+}
+print(beta_est)
+```
+
+### 直接计算2-稍有偏差$q_c$
+
+对应密度函数取值与 $\sigma$ 选取有关，$\sigma$ 不会影响最大可能性类别，但是会影响不同类别之间的差异，取值过大则各类别差异小，取值过小则对初始值的依赖会很大，难以跳出第一轮迭代的结果。
+
+注意EM算法中更新参数为M，更新后验分布概率值为E，要先E再M。在该最简单设定下，M步骤不是最大化似然函数，因为存在解析解，但是该解析解带入似然函数即为最大值点。
+
+```{r}
+sd(whole.data$data_y[ci_sim == 1])
+sd(whole.data$data_y[ci_sim == 2])
+sd(whole.data$data_y[ci_sim == 3])
+sd(whole.data$data_y[ci_sim == 4])
+```
+
+```{r}
+# tt <- data.frame(cbind(X %*% beta_est-y, ci_sim))
+```
+
+```{r}
+iter <- 2
+disturb <- matrix(rnorm(16, 0, 3), length(beta_old)/4, 4)
+# disturb <- 0
+beta_old <- coef_beta_est_list[[iter-1]]
+set.seed(999)
+beta_est <- matrix(beta_old, ncol=4) + disturb
+# y2_beta <- ytmp_K_set1
+# y2_beta <- apply(y2_beta * q_c_matrix, 1, sum)
+X <- x
+rho_est <- 1/c(sd(whole.data$data_y[ci_sim == 1]),sd(whole.data$data_y[ci_sim == 2]),sd(whole.data$data_y[ci_sim == 3]),sd(whole.data$data_y[ci_sim == 4]))
+rho_record <- list(rho_est)
+
+for(i in 2:100){
+  print(i)
+  print(beta_est)
+  q_c_matrix <- dnorm(y, mean = X%*%beta_est, sd = 1/mean(rho_record[[i-1]]))
+  q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+  for(k in 1:K_up){
+    W <- diag(q_c_matrix[,k])
+    beta_k <- ginv(t(X)%*%W%*%X)%*%t(X)%*%W%*%y2_beta # 替换 solve
+    beta_est[,k] <- beta_k
+    # print(sum((y - X %*% beta_est[,k])**2 * q_c_matrix[,k]))
+    rho_est[k] <- sqrt(n/sum((y - X %*% beta_est[,k])**2 * q_c_matrix[,k]))
+  }
+  if(sum((y - X %*% beta_est)**2 * q_c_matrix) < 1e-8){
+      print('converge')
+      return()
+  }
+  rho_record[[i]] <- rho_est
+  # print(rho_est)
+  # ci_est <- apply(q_c_matrix, 1, which.max)
+  # ci_sim_tmp <- ifelse(ci_sim %in% c(1, 2), 1, 3)
+  # print(right_class_ratio(ci_sim, ci_est))
+}
+# ci_est <- apply(q_c_matrix, 1, which.max)
+# ci_sim_tmp <- ifelse(ci_sim %in% c(1, 2), 1, 3)
+# right_class_ratio(ci_sim_tmp, ci_est)
+# ci_sim_tmp
+# ci_est
+```
+
+每个类比均不相同时下面代码才有效，否则因为无法到达收敛条件会循环最大次数
+
+```{r}
+y_copy <- y
+y <- y_copy + rnorm(length(y), 0, 0.1)
+
+iter <- 2
+disturb <- matrix(rnorm(16, 0, 3), 4, 4)
+# disturb <- 0
+beta_old <- coef_beta_est_list[[iter-1]]
+set.seed(999)
+beta_est <- matrix(beta_old, ncol=4) + disturb
+# y2_beta <- ytmp_K_set1
+# y2_beta <- apply(y2_beta * q_c_matrix, 1, sum)
+X <- x
+rho_est <- 1/c(sd(whole.data$data_y[ci_sim == 1]),sd(whole.data$data_y[ci_sim == 2]),sd(whole.data$data_y[ci_sim == 3]),sd(whole.data$data_y[ci_sim == 4]))
+rho_record <- list(rho_est)
+
+for(i in 2:100){
+  print(i)
+  print(beta_est)
+  q_c_matrix <- dnorm(y, mean = X%*%beta_est, sd = 1/mean(rho_record[[i-1]]))
+  q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+  for(k in 1:K_up){
+    W <- diag(q_c_matrix[,k])
+    beta_k <- ginv(t(X)%*%W%*%X)%*%t(X)%*%W%*%y2_beta # 替换 solve
+    beta_est[,k] <- beta_k
+    # print(sum((y - X %*% beta_est[,k])**2 * q_c_matrix[,k]))
+    rho_est[k] <- sqrt(n/sum((y - X %*% beta_est[,k])**2 * q_c_matrix[,k]))
+  }
+  if(sum((y - X %*% beta_est)**2 * q_c_matrix) < 1e-8){
+      print('converge')
+      return()
+  }
+  rho_record[[i]] <- rho_est
+  # print(rho_est)
+  # ci_est <- apply(q_c_matrix, 1, which.max)
+  # ci_sim_tmp <- ifelse(ci_sim %in% c(1, 2), 1, 3)
+  # print(right_class_ratio(ci_sim, ci_est))
+}
+```
+
+
+
+```{r}
+beta_old <- coef_beta_est_list[[iter-1]]
+beta_est <- matrix(beta_old, ncol=4)
+y2_beta <- ytmp_K_set1
+y2_beta <- apply(y2_beta * q_c_matrix, 1, sum)
+X <- x
+rho_est <- 1/c(sd(whole.data$data_y[ci_sim == 1]),sd(whole.data$data_y[ci_sim == 2]),sd(whole.data$data_y[ci_sim == 3]),sd(whole.data$data_y[ci_sim == 4]))
+rho_record <- list(rho_est)
+q_c_matrix <- dnorm(y, mean = X%*%beta_est, sd = 1/rho_est)
+q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+
+ci_est <- apply(q_c_matrix, 1, which.max)
+ci_sim_tmp <- ifelse(ci_sim %in% c(1, 2), 1, 3)
+right_class_ratio(ci_sim_tmp, ci_est)
+```
+
+

@@ -1,0 +1,620 @@
+---
+title: "simple_set3"
+author: "renyan"
+date: "2022/6/21"
+output: 
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r, echo = FALSE}
+rm(list = ls(all = TRUE))
+setwd("D:/Ryanna/RUC_courses/Y1_2/Group/code")
+library(Matrix)
+library(MASS)
+library(fmrs)
+library(flexmix)
+library(ggplot2)
+library(corrplot)
+library(dplyr)
+library(reshape2)
+source("sim.r")
+source("func.r")
+```
+
+```{r}
+n <- 200                         # The sample size
+p <- 2                           # The dimension of x
+q <- 2                         # The dimension of z
+pq <- q*p                        # The dimension of each sample
+dim_nonzero_beta <- 2                         # The dimension of non-zero coefficients of x
+dim_nonzero_alpha <- 2                        # The dimension of non-zero coefficients of z
+dim_nonzero_gamma <- 4
+balance <- T                     # Balanced/Imbalanced subgroup
+gr_num_main <- 2                     # The number of rough subgroup 
+gr_num_sub <- 4                       # The number of refined subgroup 
+hier_struc <- list(c(1,2),c(3,4))  # Hierarchical subgroup structure
+# sd.epsi<-0.5                     # The residual error
+# corZX <- F                       # Correlated/Uncorrelated X and Z
+intercorr0<-"AR1"                # The correlation structure of Z
+signal_its <- 2 # signal intensity
+K <- gr_num_sub
+iter_max <- 10
+eps <- 0.001
+incl_inter <- TRUE               # 模拟实验数据生成时候是否要包含交互项
+tol <- 1e-5
+
+lambda_1 <- 0
+lambda_2 <- 0
+lambda_3 <- 0
+a <- 3
+iter_max <- 20
+K_up <- 4
+tau <- 1 
+
+# ------------ Necessary parameters to support algorithm implementation --------
+comb_pair <- combn(K,2)
+H_3 <- kronecker(Matrix(t(apply(comb_pair,2,dMatrixFun)),sparse = T),bdiag(diag(pq)))
+H_1 <- kronecker(Matrix(t(apply(comb_pair,2,dMatrixFun)),sparse = T),bdiag(diag(p)))
+H_2 <- kronecker(Matrix(t(apply(comb_pair,2,dMatrixFun)),sparse = T),bdiag(diag(q)))
+
+# ------------ Generate the regression coefficients -----------
+coef_main_value <- c(signal_its, -signal_its)
+# coef_main_value <- c(signal_its, 2signal_its)
+coef_sub_value <- c(1.5*signal_its, 0.5*signal_its, -0.5*signal_its, -1.5*signal_its)
+# coef_sub_value <- c(1*signal_its, 2*signal_its, 3*signal_its, 4*signal_its)
+if(balance){pr_sub<-rep(1/gr_num_sub,gr_num_sub)}else{pr_sub<-c(1/6,1/6,1/3,1/3)}
+
+# true main groups & subgroups
+set.seed(999)
+ci <- ci_generate(n, pr_sub, hier_struc)
+ci_sim <- rep(0, n) # true label
+for(i in 1:K){
+  ci_sim[ci$ci_sub[[i]]] <- i
+}
+
+# true coefficients
+set.seed(999)
+coef_true <- generate_coef_true(n, p, q, ci$ci_main, ci$ci_sub, 
+                                coef_main_value,  coef_sub_value, incl_inter,
+                                dim_nonzero_beta, dim_nonzero_alpha, dim_nonzero_gamma)
+# Generate data
+whole.data <- generate_sim_data(n, p, q, coef_true, cotype_x="AR_E", cotype_z="AR_E")
+```
+
+```{r}
+coef_init <- whole.data$coef_true
+```
+```{r}
+# 按列索引
+idx_X <- c(1:(p))
+idx_Z <- c((p+1):((p+q)))
+idx_W <- c(((p+q)+1):((p+q+pq)))
+idx_X_full <- sort(rep((0:(K-1))*(p+q+pq), p)) + idx_X
+idx_Z_full <- sort(rep((0:(K-1))*(p+q+pq), q)) + idx_Z
+idx_W_full <- sort(rep((0:(K-1))*(p+q+pq), pq)) + idx_W
+coef_init_beta <- coef_init[idx_X_full]
+coef_init_alpha <- coef_init[idx_Z_full]
+coef_init_gamma <- coef_init[idx_W_full]
+coef_init_eta <- 0
+coef_init_eta <- beta_reform(coef_init_beta, p, q) * coef_init_gamma
+
+iter <- 1
+coef_beta_est_list <- vector(mode="list", length=iter_max)
+coef_alpha_est_list <- vector(mode="list", length=iter_max)
+coef_eta_est_list <- vector(mode="list", length=iter_max)
+coef_gamma_est_list <- vector(mode="list", length=iter_max)
+coef_beta_est_list[[iter]] <- coef_init_beta
+coef_alpha_est_list[[iter]] <- coef_init_alpha
+coef_eta_est_list[[iter]] <- coef_init_eta
+coef_gamma_est_list[[iter]] <- coef_init_gamma
+
+mu_est_list <- vector(mode="list", length=iter_max)
+mu_est_list[[iter]] <- matrix(0, nrow=n, ncol=K_up) # 暂时
+
+rho_est_list <- vector(mode="list", length=iter_max)
+mean_rho <- 1/sd(whole.data$data_y-apply(mu_est_list[[iter]], 1, mean))
+rho_est_list[[iter]] <- rep(mean_rho, 4)
+
+pi_est_list <- vector(mode="list", length=iter_max)
+pi_est_list[[iter]] <- pr_sub
+```
+
+```{r}
+# 结果 t(res) %*% beta_k 计算所有 beta_k 相关项
+# 返回结果 n*1 矩阵
+get_beta_relt_var <- function(wi, p, q, gamma_k_old){
+  beta_var <- apply(matrix(wi,nrow=p,ncol=q)*matrix(gamma_k_old,nrow=p,ncol=q), 1, sum)
+  return(beta_var)
+}
+# res <- apply(whole.data$W, 1, get_beta_relt_var, p, q, gamma_k_old)
+# t(res) %*% beta_k_old
+```
+
+```{r}
+get_gamma_relt_var <- function(wi, p, q, beta_k_old){
+  gamma_var <- as.numeric(wi * kronecker(matrix(1,nrow=q,ncol=1), beta_k_old))
+  return(gamma_var)
+}
+# res <- apply(whole.data$W, 1, get_gamma_relt_var, p, q, beta_k_old)
+# t(res) %*% gamma_k_old
+```
+
+```{r}
+# whole.data$W %*% (kronecker(matrix(1,nrow=q,ncol=1),beta_k_old) * gamma_k_old)
+```
+
+
+```{r}
+# k <- 1
+# i <- 2
+# beta_k_old <- beta_old[((k-1)*p+1):(k*p)]
+# gamma_k_old <- gamma_old[((k-1)*pq+1):(k*pq)]
+# w_beta <- get_beta_relt_var(whole.data$W[i,], p, q, gamma_k_old)
+# w_betas <- apply(whole.data$W, 1, get_beta_relt_var, p, q, gamma_k_old)
+# w_gamma <- get_gamma_relt_var(whole.data$W[i,], p, q, beta_k_old)
+# w_gammas <- apply(whole.data$W, 1, get_gamma_relt_var, p, q, beta_k_old)
+```
+
+```{r}
+# 再次确认等价形式
+# data.frame(b = t(w_betas) %*% beta_k_old, g = t(w_gammas) %*% gamma_k_old)
+```
+
+# Package
+
+## fmrs
+
+- 计算完全错误
+
+```{r}
+K_up <- 4
+int_rm <- TRUE
+as <- matrix(1, nrow = p+q+pq+1, ncol = K_up) # activeset parameter in fmrs package
+if (int_rm) { as[1, ] <- 0 }
+# init of init
+coef_rough_init <- rbind(matrix(0, nrow=1, ncol=K_up), coef_true$coef_true_K)
+# coef_rough_init <- disturb(coef_rough_init, sd = 1)
+res.mle <- fmrs.mle(y = whole.data$data_y,
+                  x = whole.data$X_all,
+                  delta = rep(1, n),
+                  nComp = K_up,
+                  disFamily = "norm",
+                  initCoeff = coef_rough_init,
+                  # initDispersion = rep(1, K_up),
+                  initmixProp = rep(1 / K_up, K_up),
+                  # nIterNR = 1000,
+                  activeset = as)
+coefficients(res.mle)
+dispersion(res.mle)
+mixProp(res.mle)
+```
+
+## flexmix
+
+- $\alpha, \beta$ 计算正确，$\eta$ 计算错位
+
+```{r}
+X <- whole.data$X_all
+colnames(X) <- paste0("X", 1:(p+q+pq))
+df_tmp <- cbind(data.frame(y=whole.data$data_y), X)
+model <- flexmix(y~0+., data = df_tmp, k = K_up) # 0 去除常数项
+parameters(model)
+```
+
+
+# 直接计算组
+
+## 真实分布+真实参数
+
+- 计算正确
+
+```{r}
+q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
+# q_c_matrix <- get_q_c_matrix_r(q_c_matrix) # 直接单轮结果会不稳定
+iter <- 2
+
+alpha_old <- coef_alpha_est_list[[iter-1]]
+beta_old <- coef_beta_est_list[[iter-1]]
+gamma_old <- coef_gamma_est_list[[iter-1]]
+eta_old <- coef_eta_est_list[[iter-1]]
+
+
+alpha_est <- matrix(0, nrow=q, ncol=K_up)
+beta_est <- matrix(0, nrow=p, ncol=K_up)
+gamma_est <- matrix(0, nrow=pq, ncol=K_up)
+
+y2_alpha <- as.numeric(whole.data$data_y) - whole.data$X %*% matrix(beta_old, ncol=K_up) - whole.data$W %*% matrix(eta_old, ncol=K_up)
+y2_alpha <- apply(y2_alpha * q_c_matrix, 1, sum)
+y2_beta <- as.numeric(whole.data$data_y) - whole.data$Z %*% matrix(alpha_old, ncol=K_up) 
+y2_beta <- apply(y2_beta * q_c_matrix, 1, sum)
+y2_gamma <- as.numeric(whole.data$data_y) - whole.data$X %*% matrix(beta_old, ncol=K_up) - whole.data$Z %*% matrix(alpha_old, ncol=K_up) 
+y2_gamma <- apply(y2_gamma * q_c_matrix, 1, sum)
+
+for(k in 1:K_up){
+  W <- diag(q_c_matrix[,k])
+  beta_k_old <- beta_old[((k-1)*p+1):(k*p)]
+  gamma_k_old <- gamma_old[((k-1)*pq+1):(k*pq)]
+  
+  # alpha_k
+  X <- whole.data$Z
+  alpha_k <- solve(t(X)%*%W%*%X)%*%t(X)%*%W%*%y2_alpha
+  alpha_est[,k] <- alpha_k
+  
+  # beta_k
+  X <- whole.data$X + t(apply(whole.data$W, 1, get_beta_relt_var, p, q, gamma_k_old))
+  beta_k <- solve(t(X)%*%W%*%X)%*%t(X)%*%W%*%y2_beta
+  beta_est[,k] <- beta_k
+  
+  # gamma_k
+  X <- t(apply(whole.data$W, 1, get_gamma_relt_var, p, q, beta_k_old))
+  gamma_k <- ginv(t(X)%*%W%*%X)%*%t(X)%*%W%*%y2_gamma
+  gamma_est[,k] <- gamma_k
+}
+eta_est <- beta_reform(beta_est, p, q) * gamma_est
+
+print(alpha_est)
+print(beta_est)
+print(gamma_est)
+print(eta_est)
+```
+
+```{r}
+# 真实参数
+coef_true$alpha_true_K
+coef_true$beta_true_K
+coef_true$gamma_true_K
+coef_true$eta_true_K
+```
+
+# 迭代组
+
+```{r}
+get_diff <- function(x1, x2){
+  dif <- sqrt(sum((as.vector(x1) - as.vector(x2))**2)) / length(x1)
+  return(dif)
+}
+```
+
+
+### 微小扰动分布+真实参数
+
+```{r}
+q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
+q_c_matrix <- get_q_c_matrix_r(q_c_matrix, mean = 0.05, sd = 0.05) # 直接单轮结果会不稳定
+for(iter in 2:iter_max){
+  alpha_old <- coef_alpha_est_list[[iter-1]]
+  beta_old <- coef_beta_est_list[[iter-1]]
+  gamma_old <- coef_gamma_est_list[[iter-1]]
+  eta_old <- coef_eta_est_list[[iter-1]]
+  
+  alpha_est <- matrix(0, nrow=q, ncol=K_up)
+  beta_est <- matrix(0, nrow=p, ncol=K_up)
+  gamma_est <- matrix(0, nrow=pq, ncol=K_up)
+  
+  y2_alpha <- as.numeric(whole.data$data_y) - 
+    whole.data$X %*% matrix(beta_old, ncol=K_up) - 
+    whole.data$W %*% matrix(eta_old, ncol=K_up)
+  y2_alpha <- apply(y2_alpha * q_c_matrix, 1, sum)
+  y2_beta <- as.numeric(whole.data$data_y) - 
+    whole.data$Z %*% matrix(alpha_old, ncol=K_up) 
+  y2_beta <- apply(y2_beta * q_c_matrix, 1, sum)
+  y2_gamma <- as.numeric(whole.data$data_y) - 
+    whole.data$X %*% matrix(beta_old, ncol=K_up) - 
+    whole.data$Z %*% matrix(alpha_old, ncol=K_up) 
+  y2_gamma <- apply(y2_gamma * q_c_matrix, 1, sum)
+  
+  # alpha, beta, gamma (eta)
+  for(k in 1:K_up){
+    W <- diag(q_c_matrix[,k])
+    beta_k_old <- beta_old[((k-1)*p+1):(k*p)]
+    gamma_k_old <- gamma_old[((k-1)*pq+1):(k*pq)]
+    
+    # alpha_k
+    X <- whole.data$Z
+    alpha_k <- solve(t(X)%*%W%*%X)%*%t(X)%*%W%*%y2_alpha
+    alpha_est[,k] <- alpha_k
+    
+    # beta_k
+    X <- whole.data$X + t(apply(whole.data$W, 1, get_beta_relt_var, p, q, gamma_k_old))
+    beta_k <- solve(t(X)%*%W%*%X)%*%t(X)%*%W%*%y2_beta
+    beta_est[,k] <- beta_k
+    
+    # gamma_k
+    X <- t(apply(whole.data$W, 1, get_gamma_relt_var, p, q, beta_k_old))
+    gamma_k <- ginv(t(X)%*%W%*%X)%*%t(X)%*%W%*%y2_gamma
+    gamma_est[,k] <- gamma_k
+  }
+  coef_alpha_est_list[[iter]] <- as.vector(alpha_est)
+  coef_beta_est_list[[iter]] <- as.vector(beta_est)
+  coef_gamma_est_list[[iter]] <- as.vector(gamma_est)
+  coef_eta_est_list[[iter]] <- beta_reform(as.vector(beta_est), p, q) * as.vector(gamma_est)
+  
+  # q_c_matrix
+  q_c_matrix <- matrix(0, nrow = n, ncol = K_up)
+  for(k in 1:K_up){
+    q_c_matrix[,k] <- dnorm(whole.data$data_y, 
+                            mean = (whole.data$X%*%beta_est +
+                              whole.data$Z%*%alpha_est +
+                              whole.data$W%*%matrix(coef_eta_est_list[[iter]],ncol=K_up))[,k], 
+                            sd = 1) # 待修正
+  }
+  q_c_matrix <- q_c_matrix * kronecker(matrix(1, nrow = n, ncol = 1), matrix(pi_est_list[[iter-1]], nrow = 1))
+  q_c_matrix <- q_c_matrix/apply(q_c_matrix, 1, sum)
+  pi_est_list[[iter]] <- apply(q_c_matrix, 2, mean)
+  
+  dif_beta <- get_diff(coef_beta_est_list[[iter]], coef_beta_est_list[[iter-1]])
+  dif_alpha <- get_diff(coef_alpha_est_list[[iter]], coef_alpha_est_list[[iter-1]])
+  dif_gamma <- get_diff(coef_gamma_est_list[[iter]], coef_gamma_est_list[[iter-1]])
+  dif_eta <- get_diff(coef_eta_est_list[[iter]], coef_eta_est_list[[iter-1]])
+  if(min(c(dif_beta, dif_alpha, dif_gamma, dif_eta)) < tol){
+    print("Early End")
+    break
+  }
+}
+```
+
+```{r}
+coef_df <- data.frame(idx = 1:iter_max,
+                      beta = lapply(coef_beta_est_list, get_diff, 
+                                    coef_true$beta_true_K) %>% unlist(),
+                      alpha = lapply(coef_alpha_est_list, get_diff, 
+                                     coef_true$alpha_true_K) %>% unlist(),
+                      # gamma = lapply(coef_gamma_est_list, get_diff,
+                      #                coef_true$gamma_true_K) %>% unlist(),
+                      eta = lapply(coef_eta_est_list, get_diff, 
+                                   coef_true$eta_true_K) %>% unlist())
+coef_df <- melt(coef_df, id.vars = "idx")
+ggplot(coef_df, aes(x = idx, y = value, color = variable)) +
+  geom_line() +
+  theme_minimal() +
+  labs(y = "Difference from true coefficients")
+
+i <- 10
+matrix(coef_beta_est_list[[i]], ncol=K_up)
+matrix(coef_alpha_est_list[[i]], ncol=K_up)
+matrix(coef_gamma_est_list[[i]], ncol=K_up)
+matrix(coef_eta_est_list[[i]], ncol=K_up)
+```
+
+### 真实分布+微小扰动参数
+
+```{r}
+# 参数扰动
+disturb <- function(x, sd = 0.1, seed = 999){
+  set.seed(999)
+  return(x + rnorm(length(x), mean=0, sd = sd))
+}
+```
+
+```{r}
+coef_init <- whole.data$coef_true
+```
+```{r}
+# 按列索引
+idx_X <- c(1:(p))
+idx_Z <- c((p+1):((p+q)))
+idx_W <- c(((p+q)+1):((p+q+pq)))
+idx_X_full <- sort(rep((0:(K-1))*(p+q+pq), p)) + idx_X
+idx_Z_full <- sort(rep((0:(K-1))*(p+q+pq), q)) + idx_Z
+idx_W_full <- sort(rep((0:(K-1))*(p+q+pq), pq)) + idx_W
+coef_init_beta <- coef_init[idx_X_full]
+coef_init_alpha <- coef_init[idx_Z_full]
+coef_init_gamma <- coef_init[idx_W_full]
+coef_init_eta <- 0
+coef_init_eta <- beta_reform(coef_init_beta, p, q) * coef_init_gamma
+
+iter <- 1
+coef_beta_est_list <- vector(mode="list", length=iter_max)
+coef_alpha_est_list <- vector(mode="list", length=iter_max)
+coef_eta_est_list <- vector(mode="list", length=iter_max)
+coef_gamma_est_list <- vector(mode="list", length=iter_max)
+coef_beta_est_list[[iter]] <- coef_init_beta
+coef_alpha_est_list[[iter]] <- coef_init_alpha
+coef_eta_est_list[[iter]] <- coef_init_eta
+coef_gamma_est_list[[iter]] <- coef_init_gamma
+
+mu_est_list <- vector(mode="list", length=iter_max)
+mu_est_list[[iter]] <- matrix(0, nrow=n, ncol=K_up) # 暂时
+
+rho_est_list <- vector(mode="list", length=iter_max)
+mean_rho <- 1/sd(whole.data$data_y-apply(mu_est_list[[iter]], 1, mean))
+rho_est_list[[iter]] <- rep(mean_rho, 4)
+
+pi_est_list <- vector(mode="list", length=iter_max)
+pi_est_list[[iter]] <- pr_sub
+
+# 扰动参数
+coef_beta_est_list[[1]] <- disturb(coef_beta_est_list[[1]], sd = 0.1)
+coef_alpha_est_list[[1]] <- disturb(coef_alpha_est_list[[1]], sd = 0.1)
+coef_gamma_est_list[[1]] <- disturb(coef_gamma_est_list[[1]], sd = 0.1)
+```
+
+### `q_c_matrix` 计算验证
+
+```{r}
+ci_sim
+```
+
+```{r}
+# 按照和真实值的绝对距离最小判断归类
+yy <- whole.data$X%*%beta_est + whole.data$Z%*%alpha_est +  whole.data$W%*%matrix(coef_eta_est_list[[iter]],ncol=K_up)
+apply(abs(yy - as.numeric(whole.data$data_y)), 1, which.min)
+# yy - as.numeric(whole.data$data_y)
+```
+
+```{r}
+# 按照密度函数取值最大判断归类
+yd <- dnorm(whole.data$data_y,
+      mean = yy,
+      sd = 1)
+apply(yd, 1, which.max)
+```
+
+
+
+```{r}
+ci_sim
+q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
+
+iter <- 2
+alpha_old <- coef_alpha_est_list[[iter-1]]
+beta_old <- coef_beta_est_list[[iter-1]]
+gamma_old <- coef_gamma_est_list[[iter-1]]
+eta_old <- coef_eta_est_list[[iter-1]]
+
+alpha_est <- matrix(0, nrow=q, ncol=K_up)
+beta_est <- matrix(0, nrow=p, ncol=K_up)
+gamma_est <- matrix(0, nrow=pq, ncol=K_up)
+
+y2_alpha <- as.numeric(whole.data$data_y) - 
+  whole.data$X %*% matrix(beta_old, ncol=K_up) - 
+  whole.data$W %*% matrix(eta_old, ncol=K_up)
+y2_alpha <- apply(y2_alpha * q_c_matrix, 1, sum)
+y2_beta <- as.numeric(whole.data$data_y) - 
+  whole.data$Z %*% matrix(alpha_old, ncol=K_up) 
+y2_beta <- apply(y2_beta * q_c_matrix, 1, sum)
+y2_gamma <- as.numeric(whole.data$data_y) - 
+  whole.data$X %*% matrix(beta_old, ncol=K_up) - 
+  whole.data$Z %*% matrix(alpha_old, ncol=K_up) 
+y2_gamma <- apply(y2_gamma * q_c_matrix, 1, sum)
+
+# alpha, beta, gamma (eta)
+for(k in 1:K_up){
+  W <- diag(q_c_matrix[,k])
+  beta_k_old <- beta_old[((k-1)*p+1):(k*p)]
+  gamma_k_old <- gamma_old[((k-1)*pq+1):(k*pq)]
+  
+  # alpha_k
+  X <- whole.data$Z
+  alpha_k <- solve(t(X)%*%W%*%X)%*%t(X)%*%W%*%y2_alpha
+  alpha_est[,k] <- alpha_k
+  
+  # beta_k
+  X <- whole.data$X + t(apply(whole.data$W, 1, get_beta_relt_var, p, q, gamma_k_old))
+  beta_k <- solve(t(X)%*%W%*%X)%*%t(X)%*%W%*%y2_beta
+  beta_est[,k] <- beta_k
+  
+  # gamma_k
+  X <- t(apply(whole.data$W, 1, get_gamma_relt_var, p, q, beta_k_old))
+  gamma_k <- ginv(t(X)%*%W%*%X)%*%t(X)%*%W%*%y2_gamma
+  gamma_est[,k] <- gamma_k
+}
+eta_est <- matrix(beta_reform(as.vector(beta_est), p, q) * as.vector(gamma_est), ncol=K_up)
+
+# q_c_matrix
+q_c_matrix <- dnorm(whole.data$data_y, 
+                    mean = (whole.data$X%*%beta_est +
+                            whole.data$Z%*%alpha_est +
+                            whole.data$W%*%eta_est),
+                    sd = 1)
+q_c_matrix <- q_c_matrix * kronecker(matrix(1, nrow = n, ncol = 1), matrix(pi_est_list[[iter-1]], nrow = 1))
+q_c_matrix <- q_c_matrix/apply(q_c_matrix, 1, sum)
+
+
+ci_est <- apply(q_c_matrix, 1, which.max)
+ci_est
+sum(as.numeric(ci_sim == ci_est))/n
+```
+
+### 循环体
+
+```{r}
+q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
+for(iter in 2:iter_max){
+# for(iter in 2:2){
+  alpha_old <- coef_alpha_est_list[[iter-1]]
+  beta_old <- coef_beta_est_list[[iter-1]]
+  gamma_old <- coef_gamma_est_list[[iter-1]]
+  eta_old <- coef_eta_est_list[[iter-1]]
+  
+  alpha_est <- matrix(0, nrow=q, ncol=K_up)
+  beta_est <- matrix(0, nrow=p, ncol=K_up)
+  gamma_est <- matrix(0, nrow=pq, ncol=K_up)
+  
+  y2_alpha <- as.numeric(whole.data$data_y) - 
+    whole.data$X %*% matrix(beta_old, ncol=K_up) - 
+    whole.data$W %*% matrix(eta_old, ncol=K_up)
+  y2_alpha <- apply(y2_alpha * q_c_matrix, 1, sum)
+  y2_beta <- as.numeric(whole.data$data_y) - 
+    whole.data$Z %*% matrix(alpha_old, ncol=K_up) 
+  y2_beta <- apply(y2_beta * q_c_matrix, 1, sum)
+  y2_gamma <- as.numeric(whole.data$data_y) - 
+    whole.data$X %*% matrix(beta_old, ncol=K_up) - 
+    whole.data$Z %*% matrix(alpha_old, ncol=K_up) 
+  y2_gamma <- apply(y2_gamma * q_c_matrix, 1, sum)
+  
+  # alpha, beta, gamma (eta)
+  for(k in 1:K_up){
+    W <- diag(q_c_matrix[,k])
+    beta_k_old <- beta_old[((k-1)*p+1):(k*p)]
+    gamma_k_old <- gamma_old[((k-1)*pq+1):(k*pq)]
+    
+    # alpha_k
+    X <- whole.data$Z
+    alpha_k <- solve(t(X)%*%W%*%X)%*%t(X)%*%W%*%y2_alpha
+    alpha_est[,k] <- alpha_k
+    
+    # beta_k
+    X <- whole.data$X + t(apply(whole.data$W, 1, get_beta_relt_var, p, q, gamma_k_old))
+    beta_k <- solve(t(X)%*%W%*%X)%*%t(X)%*%W%*%y2_beta
+    beta_est[,k] <- beta_k
+    
+    # gamma_k
+    X <- t(apply(whole.data$W, 1, get_gamma_relt_var, p, q, beta_k_old))
+    gamma_k <- ginv(t(X)%*%W%*%X)%*%t(X)%*%W%*%y2_gamma
+    gamma_est[,k] <- gamma_k
+  }
+  eta_est <- matrix(beta_reform(as.vector(beta_est), p, q) * as.vector(gamma_est), ncol=K_up)
+  
+  coef_alpha_est_list[[iter]] <- as.vector(alpha_est)
+  coef_beta_est_list[[iter]] <- as.vector(beta_est)
+  coef_gamma_est_list[[iter]] <- as.vector(gamma_est)
+  coef_eta_est_list[[iter]] <- as.vector(eta_est)
+  
+  # q_c_matrix
+  q_c_matrix <- dnorm(whole.data$data_y, 
+                      mean = (whole.data$X%*%beta_est +
+                              whole.data$Z%*%alpha_est +
+                              whole.data$W%*%eta_est), 
+                      sd = 1)
+  q_c_matrix <- q_c_matrix * kronecker(matrix(1, nrow = n, ncol = 1),
+                                       matrix(pi_est_list[[iter-1]], nrow = 1))
+  q_c_matrix <- q_c_matrix/apply(q_c_matrix, 1, sum)
+  pi_est_list[[iter]] <- apply(q_c_matrix, 2, mean)
+  
+  dif_beta <- get_diff(coef_beta_est_list[[iter]], coef_beta_est_list[[iter-1]])
+  dif_alpha <- get_diff(coef_alpha_est_list[[iter]], coef_alpha_est_list[[iter-1]])
+  dif_gamma <- get_diff(coef_gamma_est_list[[iter]], coef_gamma_est_list[[iter-1]])
+  dif_eta <- get_diff(coef_eta_est_list[[iter]], coef_eta_est_list[[iter-1]])
+  if(min(c(dif_beta, dif_alpha, dif_gamma, dif_eta)) < tol){
+    print("Early End")
+    break
+  }
+}
+```
+
+```{r}
+coef_df <- data.frame(idx = 1:iter_max,
+                      beta = lapply(coef_beta_est_list, get_diff, 
+                                    coef_true$beta_true_K) %>% unlist(),
+                      alpha = lapply(coef_alpha_est_list, get_diff, 
+                                     coef_true$alpha_true_K) %>% unlist(),
+                      # gamma = lapply(coef_gamma_est_list, get_diff,
+                      #                coef_true$gamma_true_K) %>% unlist(),
+                      eta = lapply(coef_eta_est_list, get_diff, 
+                                   coef_true$eta_true_K) %>% unlist())
+coef_df <- melt(coef_df, id.vars = "idx")
+ggplot(coef_df, aes(x = idx, y = value, color = variable)) +
+  geom_line() +
+  theme_minimal() +
+  labs(y = "Difference from true coefficients")
+```
+
+
+

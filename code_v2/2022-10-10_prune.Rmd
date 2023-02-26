@@ -1,0 +1,349 @@
+---
+title: "简化模型"
+author: "任焱"
+date: "2022-10-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+经过尝试，及时调整初始化策略为第一轮更新 $\beta_k$ 也没有实质性提升，现简化模型为没有交互性的两部分
+
+```{r}
+rm(list = ls(all = TRUE))
+library(ggplot2)
+library(dplyr)
+source("sim.R")
+source("tools.R")
+```
+
+```{r}
+# 超参数设定
+n <- 400
+p <- 40
+q <- 10
+cotype_x <- "En"
+cotype_z <- "En"
+epsilon_sd <- 0
+beta_nonzero <- c(-2, -2, 2, 2) # 长度应和真实 group_num_sub 保持一致
+# alpha_nonzero <- c(-3, -1, 1, 3)
+alpha_nonzero <- c(0, 0, 0, 0) # 验证最简单情况不需要 alpha
+beta_vlen <- 5
+alpha_vlen <- 2
+
+K_up <- 4  # 估计时的最大类别，应该不少于 group_num_sub
+group_num_main <- 2                    
+group_num_sub <- 4    
+hier_struc <- list(c(1,2),c(3,4))
+prob_sub <- rep(1/group_num_sub, group_num_sub)  
+
+aa <- 2
+lambda_1 <- 0.3
+```
+
+# Data
+
+```{r}
+set.seed(7)
+whole.data <- generate_all_data(n, p, q, prob_sub, hier_struc, 
+                  beta_nonzero, alpha_nonzero, beta_vlen, alpha_vlen, 
+                  cotype_x, cotype_z, epsilon_sd)
+X <- whole.data$data$X
+Z <- whole.data$data$Z
+data <- whole.data$data$data_full
+coef <- whole.data$coef
+ci_sim <- whole.data$ci_sim
+y <- whole.data$y
+```
+
+# Initialization
+
+
+```{r}
+set.seed(111)
+lgv_para <- c(1,1,1,1)
+coef_beta_init <- coef$coef_beta - coef$coef_beta 
+coef_beta2_init <- coef$coef_beta - coef$coef_beta 
+tau_init <- coef$coef_beta - coef$coef_beta # 对应拉格朗日乘子
+```
+
+
+# Computation
+
+## True $q_c$
+
+### Build From Scratch
+
+```{r}
+set.seed(111)
+lgv_para <- c(1,1,1,1)
+# 0 初始化
+coef_beta_init <- coef$coef_beta - coef$coef_beta
+coef_beta2_init <- coef$coef_beta - coef$coef_bet
+# 真值附近
+# coef_beta_init <- coef$coef_beta + rnorm(length(coef$coef_beta), mean = 0, sd = 0.5)
+# coef_beta2_init <- coef$coef_beta + rnorm(length(coef$coef_beta), mean = 0, sd = 0.5)
+tau_init <- coef$coef_beta - coef$coef_beta # 对应拉格朗日乘子
+
+coef_beta_list <- list(coef_beta_init)
+coef_beta2_list <- list(coef_beta2_init)
+tau_list <- list(tau_init)
+
+coef_beta_est <- coef_beta_list[[1]]
+coef_beta2_est <- coef_beta2_list[[1]]
+tau_est <- tau_list[[1]]
+
+rho_list <- list(c(1, 1, 1, 1))
+rho_est <- rho_list[[1]]
+```
+
+```{r}
+q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
+for(iter in 2:50){
+  cat(ifelse(iter%%10==0,iter,"-"), sep = "")
+  coef_beta_est <- coef_beta_list[[iter-1]]
+  coef_beta2_est <- coef_beta2_list[[iter-1]]
+  tau_est <- tau_list[[iter-1]]
+  rho_est <- rho_list[[iter-1]]
+  
+  for(k in 1:K_up){
+    # beta
+    W_k_prime <- diag(q_c_matrix[,k]) * rho_est[k]
+    coef_beta_k_est <- solve(1/n*t(X)%*%W_k_prime%*%X + lgv_para[k]*diag(1,p)) %*%
+      (1/n*t(X)%*%W_k_prime%*%y + lgv_para[k]*coef_beta2_est[,k] - tau_est[,k])
+    coef_beta_est[,k] <- coef_beta_k_est
+    # theta
+    z_k <- coef_beta_k_est + tau_est[,k]/lgv_para[k]
+    coef_beta2_k_est <- mcp_solution(theta = lgv_para[k], 
+                                     a = z_k, gamma = aa, lambda = lambda_1)
+    coef_beta2_est[,k] <- coef_beta2_k_est
+    # tau
+    tau_est[,k] <- tau_est[,k] + lgv_para[k]*(coef_beta_k_est - coef_beta2_k_est)
+  }
+  
+  coef_beta_list[[iter]] <- coef_beta_est
+  coef_beta2_list[[iter]] <- coef_beta2_est
+  tau_list[[iter]] <- tau_est
+  rho_list[[iter]] <- c(1, 1, 1, 1)
+  
+  if(sum((coef_beta_list[[iter]] - coef_beta_list[[iter-1]])**2) < 1e-3){
+    return()
+  }
+}
+
+plot(unlist(lapply(coef_beta_list, function(x){sum((x-coef$coef_beta)**2)})), 
+     ylab = "dist", xlab = "iter", main = "Coef Distance From the True Value")
+# plot(unlist(lapply(tau_list, function(x){sum((x)**2)})), main = "tau")
+```
+
+### Package-Lasso
+
+```{r}
+library(ADMM)
+k <- 4
+q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
+output <- admm.lasso(X[ci_sim == k,], y[ci_sim == k], lambda = 1)
+# output$x
+```
+
+```{r}
+q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
+for(iter in 2:20){
+  cat(ifelse(iter%%10==0,iter,"-"), sep = "")
+  coef_beta_est <- coef_beta_list[[iter-1]]
+  
+  for(k in 1:K_up){
+    W_k <- diag(q_c_matrix[,k])
+    output <- admm.lasso(W_k%*%X, W_k%*%y, lambda = 1)
+    coef_beta_est[,k] <- output$x
+  }
+  coef_beta_list[[iter]] <- coef_beta_est
+  if(sum((coef_beta_list[[iter]]-coef_beta_list[[iter-1]])**2) < 0.001){
+    return()
+  }
+}
+coef_beta_est
+```
+
+
+## Estimate $q_c$
+
+### Build From Scratch
+
+```{r}
+set.seed(111)
+lgv_para <- c(1,1,1,1)
+# 0 初始化
+# coef_beta_init <- coef$coef_beta - coef$coef_beta
+coef_beta2_init <- coef$coef_beta - coef$coef_beta
+# 随机初始化
+coef_beta_init <- coef$coef_beta - coef$coef_beta + rnorm(length(coef$coef_beta), mean = 0, sd = 0.5)
+# coef_beta2_init <- coef$coef_beta - coef$coef_beta + rnorm(length(coef$coef_beta), mean = 0, sd = 0.5)
+# 真值附近
+# coef_beta_init <- coef$coef_beta + rnorm(length(coef$coef_beta), mean = 0, sd = 0.5)
+# coef_beta2_init <- coef$coef_beta + rnorm(length(coef$coef_beta), mean = 0, sd = 0.5)
+
+coef_beta_list <- list(coef_beta_init)
+coef_beta2_list <- list(coef_beta2_init)
+tau_list <- list(tau_init)
+
+coef_beta_est <- coef_beta_list[[1]]
+coef_beta2_est <- coef_beta2_list[[1]]
+tau_est <- tau_list[[1]]
+
+rho_list <- list(c(1, 1, 1, 1)/1)
+rho_est <- rho_list[[1]]
+
+pi_list <- list(rep(1/K_up, K_up))
+pi_est <- pi_list[[1]]
+```
+
+
+
+潜在问题：rho 增长过快
+对 rho 进行截断可以防止 mcp 求解时 key 消失（出现 NaN）的情况
+
+```{r}
+iter <- 2
+aa <- 1.2
+lambda_1 <- 0.9
+
+scs <- NULL
+for(iter in 2:30){
+  cat(ifelse(iter%%10==0,iter,"-"), sep = "")
+  coef_beta_est <- coef_beta_list[[iter-1]]
+  coef_beta2_est <- coef_beta2_list[[iter-1]]
+  tau_est <- tau_list[[iter-1]]
+  rho_est <- rho_list[[iter-1]]
+  
+  q_c_matrix <- dnorm(y, mean = X %*% coef_beta_est, 
+                            sd = 1 / rep(rho_list[[iter-1]], each = n)) *
+    rep(pi_list[[iter-1]], each = n)
+  
+  q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+  pi_est <- apply(q_c_matrix, 2, sum) / n
+  pi_list[[iter]] <- pi_est
+  
+  for(k in 1:K_up){
+    for(kk in 1:20){
+      # beta
+      W_k_prime <- diag(q_c_matrix[,k]) * rho_est[k]
+      coef_beta_k_est <- solve(1/n*t(X)%*%W_k_prime%*%X + lgv_para[k]*diag(1,p)) %*%
+        (1/n*t(X)%*%W_k_prime%*%y + lgv_para[k]*coef_beta2_est[,k] - tau_est[,k])
+      coef_beta_est[,k] <- coef_beta_k_est
+      # theta
+      z_k <- coef_beta_k_est + tau_est[,k]/lgv_para[k]
+      coef_beta2_k_est <- mcp_solution(theta = lgv_para[k], 
+                                       a = z_k, gamma = aa, lambda = lambda_1)
+      coef_beta2_est[,k] <- coef_beta2_k_est
+      # tau
+      tau_est[,k] <- tau_est[,k] + lgv_para[k]*(coef_beta_k_est - coef_beta2_k_est)
+    }
+  }
+  
+  rho_est <- sqrt(apply(q_c_matrix, 2, sum) / apply((y - X %*% coef_beta_est)**2 * q_c_matrix, 2, sum))
+  rho_list[[iter]] <- rho_est
+  
+  coef_beta_list[[iter]] <- coef_beta_est
+  coef_beta2_list[[iter]] <- coef_beta2_est
+  tau_list[[iter]] <- tau_est
+  rho_est <- apply(q_c_matrix, 2, sum) / apply(q_c_matrix*(y-X%*%coef_beta_est)**2, 2, sum)
+  rho_list[[iter]] <- ifelse(rho_est < 1000, rho_est, 1000)
+  ci_est <- apply(q_c_matrix, 1, which.max)
+  # scs[[iter]] <- sc(ci_est, ci_sim) # 计算效率很低
+  
+  if(sum((coef_beta_list[[iter]] - coef_beta_list[[iter-1]])**2) < 1e-3){
+    print("Converge!")
+    return()
+  }
+}
+coef_beta_est
+plot(unlist(lapply(coef_beta_list, function(x){sum((x-coef$coef_beta)**2)})), ylab = "")
+```
+
+### Package-Lasso
+
+```{r}
+set.seed(111)
+lgv_para <- c(1,1,1,1)
+# 0 初始化
+# coef_beta_init <- coef$coef_beta - coef$coef_beta
+coef_beta2_init <- coef$coef_beta - coef$coef_beta
+# 随机初始化
+coef_beta_init <- coef$coef_beta - coef$coef_beta + rnorm(length(coef$coef_beta), mean = 0, sd = 0.5)
+# coef_beta2_init <- coef$coef_beta - coef$coef_beta + rnorm(length(coef$coef_beta), mean = 0, sd = 0.5)
+# 真值附近
+# coef_beta_init <- coef$coef_beta + rnorm(length(coef$coef_beta), mean = 0, sd = 0.5)
+# coef_beta2_init <- coef$coef_beta + rnorm(length(coef$coef_beta), mean = 0, sd = 0.5)
+
+coef_beta_list <- list(coef_beta_init)
+coef_beta2_list <- list(coef_beta2_init)
+tau_list <- list(tau_init)
+
+coef_beta_est <- coef_beta_list[[1]]
+coef_beta2_est <- coef_beta2_list[[1]]
+tau_est <- tau_list[[1]]
+
+rho_list <- list(c(1, 1, 1, 1)/1)
+rho_est <- rho_list[[1]]
+
+pi_list <- list(rep(1/K_up, K_up))
+pi_est <- pi_list[[1]]
+```
+
+
+```{r}
+for(iter in 2:50){
+  cat(ifelse(iter%%10==0,iter,"-"), sep = "")
+  coef_beta_est <- coef_beta_list[[iter-1]]
+  rho_est <- rho_list[[iter-1]]
+  
+  q_c_matrix <- dnorm(y, mean = X %*% coef_beta_est, 
+                            sd = 1 / rep(rho_list[[iter-1]], each = n)) *
+    rep(pi_list[[iter-1]], each = n)
+  q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+  pi_est <- apply(q_c_matrix, 2, sum) / n
+  pi_list[[iter]] <- pi_est
+  
+  for(k in 1:K_up){
+    W_k_prime <- diag(q_c_matrix[,k]) * rho_est[k]
+    output <- admm.lasso(W_k_prime%*%X, W_k_prime%*%y, lambda = 1)
+    coef_beta_est[,k] <- output$x
+  }
+  
+  rho_est <- sqrt(apply(q_c_matrix, 2, sum) / apply((y - X %*% coef_beta_est)**2 * q_c_matrix, 2, sum))
+  rho_list[[iter]] <- rho_est
+  
+  coef_beta_list[[iter]] <- coef_beta_est
+  rho_est <- apply(q_c_matrix, 2, sum) / apply(q_c_matrix*(y-X%*%coef_beta_est)**2, 2, sum)
+  rho_list[[iter]] <- ifelse(rho_est < 1000, rho_est, 1000)
+  ci_est <- apply(q_c_matrix, 1, which.max)
+  # scs[[iter]] <- sc(ci_est, ci_sim) # 计算效率很低
+  
+  if(sum((coef_beta_list[[iter]] - coef_beta_list[[iter-1]])**2) < 1e-3){
+    print("Converge!")
+    return()
+  }
+}
+coef_beta_est
+plot(unlist(lapply(coef_beta_list, function(x){sum((x-coef$coef_beta)**2)})), ylab = "")
+```
+
+
+```{r}
+
+```
+
+
+
+
+
+# Reference
+
+- R 中梯度下降的包：https://rdocumentation.org/packages/gradDescent/versions/3.0
+
+
+
+

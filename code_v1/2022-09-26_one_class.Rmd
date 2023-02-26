@@ -1,0 +1,535 @@
+---
+title: "One Class"
+author: "任焱"
+date: "2022-09-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo = FALSE}
+rm(list = ls(all = TRUE))
+# setwd("D:/Ryanna/RUC_courses/Y1_2/Group/code")
+library(Matrix)
+library(MASS)
+library(fmrs)
+library(flexmix)
+library(ggplot2)
+library(corrplot)
+library(dplyr)
+library(reshape2)
+library(latex2exp)
+source("sim.r")
+source("func.r")
+source("estimate.r")
+```
+
+
+```{r}
+n <- 200                         # The sample size
+p <- 4                           # The dimension of x
+q <- 3                         # The dimension of z
+pq <- q*p                        # The dimension of each sample
+dim_nonzero_beta <- 2                         # The dimension of non-zero coefficients of x
+dim_nonzero_alpha <- 2                        # The dimension of non-zero coefficients of z
+dim_nonzero_gamma <- 4
+balance <- T                     # Balanced/Imbalanced subgroup
+gr_num_main <- 2                     # The number of rough subgroup 
+gr_num_sub <- 4                       # The number of refined subgroup 
+hier_struc <- list(c(1,2),c(3,4))  # Hierarchical subgroup structure
+# sd.epsi<-0.5                     # The residual error
+# corZX <- F                       # Correlated/Uncorrelated X and Z
+intercorr0<-"AR1"                # The correlation structure of Z
+signal_its <- 2 # signal intensity
+K <- gr_num_sub
+iter_max <- 10
+eps <- 0.001
+incl_inter <- TRUE               # 模拟实验数据生成时候是否要包含交互项
+tol <- 1e-5
+
+lambda_1 <- 0
+lambda_2 <- 0
+lambda_3 <- 0
+a <- 3
+iter_max <- 20
+K_up <- 4
+tau <- 1 
+
+# ------------ Necessary parameters to support algorithm implementation --------
+comb_pair <- combn(K,2)
+H_3 <- kronecker(Matrix(t(apply(comb_pair,2,dMatrixFun)),sparse = T),bdiag(diag(pq)))
+H_1 <- kronecker(Matrix(t(apply(comb_pair,2,dMatrixFun)),sparse = T),bdiag(diag(p)))
+H_2 <- kronecker(Matrix(t(apply(comb_pair,2,dMatrixFun)),sparse = T),bdiag(diag(q)))
+
+# ------------ Generate the regression coefficients -----------
+coef_main_value <- c(signal_its, -signal_its)
+# coef_main_value <- c(signal_its, 2signal_its)
+coef_sub_value <- c(1.5*signal_its, 0.5*signal_its, -0.5*signal_its, -1.5*signal_its)
+# coef_sub_value <- c(1*signal_its, 2*signal_its, 3*signal_its, 4*signal_its)
+if(balance){pr_sub<-rep(1/gr_num_sub,gr_num_sub)}else{pr_sub<-c(1/6,1/6,1/3,1/3)}
+
+# true main groups & subgroups
+set.seed(111)
+ci <- ci_generate(n, pr_sub, hier_struc)
+ci_sim <- rep(0, n) # true label
+for(i in 1:K){
+  ci_sim[ci$ci_sub[[i]]] <- i
+}
+
+# true coefficients
+set.seed(111)
+coef_true <- generate_coef_true(n, p, q, ci$ci_main, ci$ci_sub, 
+                                coef_main_value,  coef_sub_value, incl_inter,
+                                dim_nonzero_beta, dim_nonzero_alpha, dim_nonzero_gamma)
+# Generate data
+# whole.data <- generate_sim_data(n, p, q, coef_true, cotype_x="AR_E", cotype_z="AR_E")
+whole.data <- generate_sim_data(n, p, q, coef_true, cotype_x="En", cotype_z="En")
+```
+
+# 工具函数
+
+```{r}
+# 等价相互计算
+coef_eta2gamma <- function(coef, p, q){
+  coef_beta <- coef[1:p,]
+  coef_eta <- coef[(p+q+1):(p+q+p*q),]
+  coef_gamma <- coef_eta / kronecker(matrix(1, nrow=q, ncol=1), coef_beta)
+  return(rbind(coef[1:(p+q),], coef_gamma))
+}
+coef_gamma2eta <- function(coef, p, q){
+  coef_beta <- coef[1:p,]
+  coef_gamma <- coef[(p+q+1):(p+q+p*q),]
+  coef_eta <- kronecker(matrix(1, nrow=q, ncol=1), coef_beta) * coef_gamma
+  return(rbind(coef[1:(p+q),], coef_eta))
+}
+```
+
+```{r}
+# 结果 t(res) %*% beta_k 计算所有 beta_k 相关项
+# 返回结果 n*1 矩阵
+get_beta_var_fromlast <- function(wi, p, q, gamma_k_old){
+  beta_var <- apply(matrix(wi*gamma_k_old, ncol = q), 1, sum)
+  return(beta_var)
+}
+# gamma_k_old <- coef_gamma[,1]
+# # res <- apply(whole.data$W, 1, get_beta_var, p, q, gamma_k_old)
+# res <- apply(w, 1, get_beta_var_fromlast, p, q, gamma_k_old)
+# t(res) %*% beta_k_old
+```
+
+```{r}
+get_gamma_var_fromlast <- function(wi, p, q, beta_k_old){
+  gamma_var <- as.numeric(wi * kronecker(matrix(1,nrow=q,ncol=1), beta_k_old))
+  return(gamma_var)
+}
+# res <- apply(w, 1, get_gamma_var, p, q, beta_k_old)
+# t(res) %*% gamma_k_old
+```
+
+```{r}
+coef_bind <- function(coef_beta, coef_alpha, coef_last){
+  return(rbind(coef_beta, coef_alpha, coef_last))
+}
+coef_split <- function(coef, p, q){
+  coef_beta <- coef[1:p,]
+  coef_alpha <- coef[(p+1):(p+q),]
+  coef_last <- coef[(p+q+1):(nrow(coef)),]
+  return(list(coef_beta, coef_alpha, coef_last))
+}
+```
+
+# 单类检验
+
+```{r}
+p <- 2
+q <- 2
+x <- whole.data$X[,(1:p)]
+z <- whole.data$Z[,(1:q)]
+w <- matrix(0, n, p*q)
+  for(i in 1:n){
+    w[i,] <- kronecker(z[i,], x[i,])
+  }
+X <- cbind(x, z, w)
+# 稠密真实参数
+# 注意计算 y 时总要转化为 eta 版本
+# coef_* 系列值总是 gamma 版本而非 eta
+coef_true <- rbind(t(matrix(rep(c(2,2,-2,-2),4), 4)),
+                   t(matrix(rep(c(3,1,-1,-3),4), 4)))
+# y_true
+y2 <- X %*% coef_gamma2eta(coef_true, p, q)
+y <- NULL
+for(i in 1:length(ci_sim)){ y[i] <- y2[i,ci_sim[i]] }
+```
+
+```{r}
+# 真值
+coef_split_all <- coef_split(coef_true, p, q)
+coef_beta_true <- coef_split_all[[1]]
+coef_alpha_true <- coef_split_all[[2]]
+coef_gamma_true <- coef_split_all[[3]]
+coef_eta_true <- coef_split(coef_gamma2eta(coef_true, p, q), p, q)[[3]]
+```
+
+
+## 旧版本
+
+
+```{r}
+iter_max <- 200
+# k <- 2
+# sd <- .1
+
+# par(mfrow=c(4,4))
+par(mfrow=c(4,2))
+for(k in 1:K_up){
+  for(based_on_true in c(FALSE)){
+    for(sd in c(0.1, 1)){
+
+    print(k)
+    print(sd)
+y_one <- y[ci_sim == k]
+
+set.seed(9)
+# 真值
+coef_alpha_one <- coef_alpha_true[,k]
+coef_beta_one <- coef_beta_true[,k]
+coef_gamma_one <- coef_gamma_true[,k]
+# 真值基础上变动
+if(based_on_true){
+coef_alpha_one <- coef_alpha_true[,k] + rnorm(1*p, mean = 0, sd = sd)
+coef_beta_one <- coef_beta_true[,k] + rnorm(1*q, mean = 0, sd = sd)
+coef_gamma_one <- coef_gamma_true[,k] + rnorm(1*p*q, mean = 0, sd = sd)
+}else{
+# 完全随机初始化
+coef_alpha_one <- coef_alpha_true[,k] - coef_alpha_true[,k] + rnorm(1*p, mean = 0, sd = sd)
+coef_beta_one <- coef_beta_true[,k] -  coef_beta_true[,k] + rnorm(1*q, mean = 0, sd = sd)
+coef_gamma_one <- coef_gamma_true[,k] - coef_gamma_true[,k] + rnorm(1*p*q, mean = 0, sd = sd)
+}
+
+coef_dist <- NULL
+evs <- NULL
+for(iter in 1:iter_max){
+  ev <- NULL
+  coef_old <- c(coef_alpha_one, coef_beta_one, coef_gamma_one)
+  coef_dist[[iter]] <- sum((coef_alpha_true[,k]-coef_alpha_one)**2) +
+                             sum((coef_beta_true[,k]-coef_beta_one)**2) +
+                              sum((coef_gamma_true[,k]-coef_gamma_one)**2)
+  W <- diag(1, length(y_one))
+
+  print(iter)
+  print(matrix(c(coef_beta_one, coef_alpha_one, coef_gamma_one), ncol=1))
+
+  # beta
+  x_beta_k <- x[ci_sim == k,] + t(apply(w[ci_sim == k,], 1, get_beta_var_fromlast, p, q, coef_gamma_one))
+  y_beta_k <- y_one - z[ci_sim == k,]%*%coef_alpha_one
+  coef_beta_one <- solve(t(x_beta_k)%*%W%*%x_beta_k+diag(.1,p))%*%t(x_beta_k)%*%W%*%y_beta_k
+
+  # gamma
+  x_gamma_k <- t(apply(w[ci_sim == k,], 1, get_gamma_var_fromlast, p, q, coef_beta_one))
+  y_gamma_k <- y_one - x[ci_sim == k,]%*%coef_beta_one - z[ci_sim == k,]%*%coef_alpha_one
+  coef_gamma_one <- solve(t(x_gamma_k)%*%W%*%x_gamma_k+diag(.1,p*q))%*%t(x_gamma_k)%*%W%*%y_gamma_k
+
+  # alpha
+  x_alpha_k <- z[ci_sim == k,]
+  y_alpha_k <- y_one - x_beta_k%*%coef_beta_one
+  coef_alpha_one <- solve(t(x_alpha_k)%*%W%*%x_alpha_k+diag(.1,q))%*%t(x_alpha_k)%*%W%*%y_alpha_k
+
+  ev <- c(ev, eigen(t(x_beta_k)%*%W%*%x_beta_k)$val)
+  ev <- c(ev, eigen(t(x_alpha_k)%*%W%*%x_alpha_k)$val)
+  ev <- c(ev, eigen(t(x_gamma_k)%*%W%*%x_gamma_k)$val)
+  evs[[iter]] <- ev
+
+  coef_cur <- c(coef_alpha_one, coef_beta_one, coef_gamma_one)
+  if(sum((coef_cur - coef_old)**2) < 1e-5){
+    print("converge with no coef change")
+    # return()
+    break()
+  }
+}
+# "Coef Distance (Est from True)\n",
+plot(1:length(coef_dist), unlist(coef_dist), main = paste( "k", k, "sd", sd, "based on true value", based_on_true),
+     xlab = "Iteration", ylab = "Distance")
+# lapply(evs, min)
+}}}
+```
+
+## 参考文章初始化
+
+```{r}
+iter_max = 200
+k = 1
+par(mfrow=c(2,2))
+for(k in 1:K_up){
+y_one <- y[ci_sim == k]
+
+coef_alpha_one <- coef_alpha_true[,k] 
+coef_beta_one <- coef_beta_true[,k]
+coef_gamma_one <- coef_gamma_true[,k]
+coef_eta_one <- coef_eta_true[,k] # 后续不更新
+
+# 初始化
+coef_beta_one <- coef_beta_true[,k] -  coef_beta_true[,k] 
+coef_gamma_one <- coef_gamma_true[,k] - coef_gamma_true[,k] 
+W <- diag(1, length(y_one))
+x_alpha_k <- z[ci_sim == k,]
+y_alpha_k <- y_one
+coef_alpha_one <- solve(t(x_alpha_k)%*%W%*%x_alpha_k+diag(0.1,q))%*%t(x_alpha_k)%*%W%*%y_alpha_k 
+
+coef_dist <- NULL
+evs <- NULL
+for(iter in 1:iter_max){
+  ev <- NULL
+  coef_old <- c(coef_alpha_one, coef_beta_one, coef_gamma_one)
+  coef_dist[[iter]] <- sum((coef_alpha_true[,k]-coef_alpha_one)**2) + 
+                             sum((coef_beta_true[,k]-coef_beta_one)**2) +
+                              sum((coef_gamma_true[,k]-coef_gamma_one)**2)
+  W <- diag(1, length(y_one))
+  
+  print(iter)
+  print(matrix(c(coef_beta_one, coef_alpha_one, coef_gamma_one), ncol=1))
+  
+  
+  # beta
+  x_beta_k <- x[ci_sim == k,] + t(apply(w[ci_sim == k,], 1, get_beta_var_fromlast, p, q, coef_gamma_one))
+  y_beta_k <- y_one - z[ci_sim == k,]%*%coef_alpha_one
+  coef_beta_one <- solve(t(x_beta_k)%*%W%*%x_beta_k+diag(0.1,p))%*%t(x_beta_k)%*%W%*%y_beta_k
+  
+  # gamma
+  x_gamma_k <- t(apply(w[ci_sim == k,], 1, get_gamma_var_fromlast, p, q, coef_beta_one))
+  y_gamma_k <- y_one - x[ci_sim == k,]%*%coef_beta_one - z[ci_sim == k,]%*%coef_alpha_one
+  coef_gamma_one <- solve(t(x_gamma_k)%*%W%*%x_gamma_k+diag(0.1,p*q))%*%t(x_gamma_k)%*%W%*%y_gamma_k
+  
+  # alpha
+  x_alpha_k <- z[ci_sim == k,]
+  y_alpha_k <- y_one - x_beta_k%*%coef_beta_one 
+  coef_alpha_one <- solve(t(x_alpha_k)%*%W%*%x_alpha_k+diag(0.1,q))%*%t(x_alpha_k)%*%W%*%y_alpha_k
+  
+  ev <- c(ev, eigen(t(x_beta_k)%*%W%*%x_beta_k)$val)
+  ev <- c(ev, eigen(t(x_alpha_k)%*%W%*%x_alpha_k)$val)
+  ev <- c(ev, eigen(t(x_gamma_k)%*%W%*%x_gamma_k)$val)
+  evs[[iter]] <- ev
+  
+  coef_cur <- c(coef_alpha_one, coef_beta_one, coef_gamma_one)
+  if(sum((coef_cur - coef_old)**2) < 1e-5){
+    print("converge with no coef change")
+    # return()
+    break()
+  }
+}
+# "Coef Distance (Est from True)\n",
+plot(1:length(coef_dist), unlist(coef_dist), main = paste("Coef Distance K =", k),
+     xlab = "Iteration", ylab = "Distance")
+}
+```
+
+
+# 四类整合
+
+```{r}
+# 自动生成 latex 表格
+# library(stargazer)
+# stargazer(coef_est, summary=FALSE, rownames=FALSE)
+```
+
+
+```{r}
+q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
+sd_init <- .1
+iter_max <- 200
+
+# # 基于正确答案进行干扰
+# set.seed(999)
+# coef_init <- coef_true + rnorm(length(coef_true), mean = 0, sd = sd_init)
+# 
+# # 完全随机
+# set.seed(999)
+# coef_init <- coef_true - coef_true + rnorm(length(coef_true), mean = 0, sd = sd_init)
+
+# 固定初始化
+coef_beta <- coef_beta_true -  coef_beta_true 
+coef_gamma <- coef_gamma_true - coef_gamma_true 
+coef_alpha <- coef_alpha_true - coef_alpha_true
+for(k in 1:K_up){
+  W <- diag(q_c_matrix[,k])
+  coef_alpha[,k] <- solve(t(z)%*%W%*%z+diag(0.1,q))%*%t(z)%*%W%*%y 
+}
+coef_init <- coef_bind(coef_beta, coef_alpha, coef_gamma)
+
+coef_est <- coef_init
+coef_est_v2 <- coef_gamma2eta(coef_est, p, q)
+coef_dist <- sum((coef_est - coef_true)**2)
+# coef_dist <- list(apply(coef_est - coef_true, 2, function(x){sum(x**2)}))
+evs <- NULL
+scs <- NULL
+
+# print(coef_est)
+for(iter in 2:200){
+  
+  coef_old <- coef_est
+  # *************************** 更新参数 ******************************
+  coef_split_all <- coef_split(coef_est, p, q)
+  coef_beta <- coef_split_all[[1]]
+  # coef_beta <- coef_beta_true
+  coef_alpha <- coef_split_all[[2]]
+  # coef_alpha <- coef_alpha_true
+  coef_gamma <- coef_split_all[[3]]
+  # coef_gamma <- coef_gamma_true
+  
+  evs[[iter]] <- matrix(0, nrow = p+q+p*q, ncol = 4)
+  for (k in 1:K_up) {
+  # for (k in k_one:k_one) {
+    W <- diag(q_c_matrix[,k])
+    
+    
+    # beta_k
+    x_beta_k <- x + t(apply(w, 1, get_beta_var_fromlast, p, q, coef_gamma[,k]))
+    y_beta_k <- y - z%*%coef_alpha[,k]
+    coef_beta_k <- solve(t(x_beta_k)%*%W%*%x_beta_k+diag(1,p))%*%t(x_beta_k)%*%W%*%y_beta_k
+    coef_beta[,k] <- coef_beta_k
+    
+    # gamma_k
+    x_gamma_k <- t(apply(w, 1, get_gamma_var_fromlast, p, q, coef_beta[,k]))
+    y_gamma_k <- y - x%*%coef_beta[,k] - z%*%coef_alpha[,k]
+    coef_gamma_k <- solve(t(x_gamma_k)%*%W%*%x_gamma_k+diag(1,p*q))%*%t(x_gamma_k)%*%W%*%y_gamma_k
+    coef_gamma[,k] <- coef_gamma_k
+    
+    # alpha_k
+    x_alpha_k <- z
+    ## 需要用到 x_beta_k，由于 coef_gamma 有更新，这里再生成一遍
+    x_beta_k <- x + t(apply(w, 1, get_beta_var_fromlast, p, q, coef_gamma[,k]))
+    y_alpha_k <- y - x_beta_k%*%coef_beta[,k]
+    coef_alpha_k <- solve(t(x_alpha_k)%*%W%*%x_alpha_k+diag(1,q))%*%t(x_alpha_k)%*%W%*%y_alpha_k
+    coef_alpha[,k] <- coef_alpha_k
+    
+    coef_est[,k] <- c(coef_beta[,k], coef_alpha[,k], coef_gamma[,k]) # 注意本次只更新了其中第 k 列
+    coef_est_v2 <- coef_gamma2eta(coef_est, p, q) # 注意本次只更新了其中第 k 列
+    # coef_est_v2[(p+q+1):(p+q+p*q),] <- coef_eta_true
+    
+    # 记录求逆阵的特征值
+    evs_k <- c(eigen(t(x_beta_k)%*%W%*%x_beta_k)$val,
+               eigen(t(x_alpha_k)%*%W%*%x_alpha_k)$val,
+               eigen(t(x_gamma_k)%*%W%*%x_gamma_k)$val)
+    evs[[iter]][,k] <- evs_k
+  }
+  
+  # *************************** 判断收敛 ******************************
+  if(sum((coef_est - coef_old)**2) < 1e-5){
+    print('converge with no coef change')
+    break()
+  }
+  coef_dist[[iter]] <- sum((coef_est - coef_true)**2)
+  # coef_dist[[iter]] <- apply(coef_est - coef_true, 2, function(x){sum(x**2)})
+  # scs[[iter]] <- sc(ci_est, ci_sim)
+  print(iter)
+  print(coef_est)
+}
+plot(1:length(coef_dist), coef_dist,
+     xlab = "", ylab = "Coef Distance",
+     main = TeX("Coef Distance ($\\alpha_k,\\beta_k,\\gamma_{k}$)"))
+# coef_df <- data.frame(do.call(rbind, coef_dist)) %>% mutate(id = 1:length(coef_dist))
+# colnames(coef_df) <- c(paste0("Class",1:4), "id")
+# coef_df <- melt(coef_df, id.vars = "id")
+# ggplot(coef_df, aes(x = id, y = value, color = variable)) +
+#   geom_point(alpha = 0.4) +
+#   theme_minimal()
+```
+
+### 线性回归诊断
+
+```{r}
+coef_est <- rbind(coef_beta, coef_alpha, coef_gamma)
+coef_est_v2 <- coef_gamma2eta(coef_est, p, q)
+coef_eta <- coef_split(coef_est_v2, p, q)[[3]]
+res <- y_one - z[ci_sim == k,]%*%coef_alpha[,k] - x[ci_sim == k,]%*%coef_beta[,k] - w[ci_sim == k,]%*%coef_eta[,k]
+plot(res)
+abline(h = 0)
+```
+
+
+```{r}
+coef_beta <- coef_beta_true -  coef_beta_true 
+coef_gamma <- coef_gamma_true - coef_gamma_true 
+coef_alpha <- coef_alpha_true - coef_alpha_true
+for(k in 1:K_up){
+  W <- diag(q_c_matrix[,k])
+  coef_alpha[,k] <- solve(t(z)%*%W%*%z+diag(0.1,q))%*%t(z)%*%W%*%y 
+}
+
+k <- 4
+X_k <- X[ci_sim == k,]
+# W <- diag(q_c_matrix[,k])
+W <- diag(1, dim(X_k)[1])
+y_one <- y[ci_sim == k]
+    
+# beta_k
+x_beta_k <- x[ci_sim == k,] + t(apply(w[ci_sim == k,], 1, get_beta_var_fromlast, p, q, coef_gamma[,k]))
+y_beta_k <- y_one - z[ci_sim == k,]%*%coef_alpha[,k]
+coef_beta_k <- solve(t(x_beta_k)%*%W%*%x_beta_k)%*%t(x_beta_k)%*%W%*%y_beta_k
+coef_beta[,k] <- coef_beta_k
+
+# gamma_k
+x_gamma_k <- t(apply(w[ci_sim == k,], 1, get_gamma_var_fromlast, p, q, coef_beta[,k]))
+y_gamma_k <- y_one - x[ci_sim == k,]%*%coef_beta[,k] - z[ci_sim == k,]%*%coef_alpha[,k]
+coef_gamma_k <- solve(t(x_gamma_k)%*%W%*%x_gamma_k)%*%t(x_gamma_k)%*%W%*%y_gamma_k
+coef_gamma[,k] <- coef_gamma_k
+
+# alpha_k
+x_alpha_k <- z[ci_sim == k,]
+x_beta_k <- x[ci_sim == k,] + t(apply(w[ci_sim == k,], 1, get_beta_var_fromlast, p, q, coef_gamma[,k]))
+y_alpha_k <- y_one - x_beta_k%*%coef_beta[,k]
+coef_alpha_k <- solve(t(x_alpha_k)%*%W%*%x_alpha_k)%*%t(x_alpha_k)%*%W%*%y_alpha_k
+coef_alpha[,k] <- coef_alpha_k
+
+lm_beta <- lm(y_beta_k~0+x_beta_k)
+lm_alpha <- lm(y_alpha_k~0+x_alpha_k)
+lm_gamma <- lm(y_gamma_k~0+x_gamma_k)
+
+# print(coef_beta_k)
+# print(coef_alpha_k)
+# print(coef_gamma_k)
+# library(car)
+# influencePlot(lm_gamma,main="Influent Plot",
+#               sub="Circle size is proportional to Cook's distance")
+# 去除强影响点依旧无法实现系数的
+```
+
+
+
+```{r}
+evs_df <- data.frame(do.call(rbind, evs))
+colnames(evs_df) <- paste0("Class", 1:4)
+evs_df$round <- rep(1:(length(evs)-1), each = p+q+p*q)
+evs_df$coef <- rep(c("beta", "beta", "alpha", "alpha", "gamma", "gamma", "gamma", "gamma"), length(evs)-1)
+evs_df <- melt(evs_df, id.vars = c("round", "coef"))
+evs_df
+```
+
+```{r}
+p <- ggplot(evs_df, aes(x = round, y = value)) +
+  geom_point(alpha = 0.1) +
+  facet_wrap(~variable+coef, ncol = 3) +
+  theme_minimal()
+p
+library(plotly)
+ggplotly(p)
+```
+
+
+```{r}
+par(mfrow=c(2,2))
+for(k in 1:K_up){
+  hist(y[ci_sim == k], main = paste("y of Class", k))
+}
+```
+
+
+
+
+
+
+
+
+
+
