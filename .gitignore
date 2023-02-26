@@ -2,7 +2,7 @@
 /reference/
 
 # doc
-/doc/**/*[!pdf]
+doc/**/*[!pdf]
 
 # History files
 .Rhistory
