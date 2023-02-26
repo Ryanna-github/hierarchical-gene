@@ -1,0 +1,529 @@
+---
+title: "Untitled"
+author: "任焱"
+date: "2022-10-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+rm(list = ls(all = TRUE))
+library(ggplot2)
+library(dplyr)
+library(flexmix)
+library(ADMM)
+source("sim.R")
+source("tools.R")
+```
+# Data
+
+```{r}
+# 超参数设定
+n <- 400
+p <- 8
+q <- 4
+cotype_x <- "En"
+cotype_z <- "En"
+epsilon_sd <- 0.0
+# beta_nonzero <- c(-2, -2, 2, 2) # 长度应和真实 group_num_sub 保持一致
+beta_nonzero <- c(-3, -1, 1, 3) # 长度应和真实 group_num_sub 保持一致
+# beta_nonzero <- c(0, 0, 0, 0) # 长度应和真实 group_num_sub 保持一致
+# alpha_nonzero <- c(-3, -1, 1, 3)
+alpha_nonzero <- c(0, 0, 0, 0) # 验证最简单情况不需要 alpha
+beta_vlen <- 3
+alpha_vlen <- 2
+
+K_up <- 4  # 估计时的最大类别，应该不少于 group_num_sub
+group_num_main <- 2                    
+group_num_sub <- 4    
+hier_struc <- list(c(1,2),c(3,4))
+prob_sub <- rep(1/group_num_sub, group_num_sub)  
+
+aa <- 2
+lambda_1 <- 0.8
+```
+
+```{r}
+set.seed(7)
+whole.data <- generate_all_data(n, p, q, prob_sub, hier_struc, 
+                  beta_nonzero, alpha_nonzero, beta_vlen, alpha_vlen, 
+                  cotype_x, cotype_z, epsilon_sd)
+X <- whole.data$data$X
+Z <- whole.data$data$Z
+data <- whole.data$data$data_full
+coef <- whole.data$coef
+ci_sim <- whole.data$ci_sim
+y <- whole.data$y
+```
+
+
+```{r}
+set.seed(999) # 9,
+# pi_init <- rep(1/K_up, K_up)
+# q_c_matrix <- t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = .5, sd = .1)
+# q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
+```
+
+<!-- # 只对拟合项单维求导相关验证 -->
+
+<!-- ## 1. 固定其他参数，直接求看是否得到准确结果 -->
+
+<!-- ```{r} -->
+<!-- j <- 1 # 1:p 取值均可 -->
+<!-- k <- 1 # 1:K_up 均可 -->
+<!-- for(j in 1:p){ -->
+<!--   rho_est <- c(1, 1, 1, 1) -->
+<!--   rho_k <- rho_est[k] -->
+<!--   W_k <- diag(q_c_matrix[,k]) -->
+<!--   coef_beta <- coef$coef_beta -->
+<!--   coef_beta_kj <- (t(1*y - X[,-j]%*%(coef_beta[-j,k])) %*% W_k %*% X[,j]) /  -->
+<!--     (t(X[,j]) %*% W_k %*% X[,j]) -->
+<!--   print(as.numeric(coef_beta_kj/1)) -->
+<!-- } -->
+<!-- ``` -->
+
+<!-- ## 2. 迭代求解整个 beta_k -->
+
+<!-- ```{r} -->
+<!-- coef_beta_est <- coef$coef_beta - coef$coef_beta -->
+<!-- q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim) -->
+<!-- k <- 1 -->
+<!-- rho_est <- c(1, 1, 1, 1)/2 -->
+<!-- for(tt in 1:10){ -->
+<!--   for(j in 1:p){ -->
+<!--     rho_k <- rho_est[k] -->
+<!--     W_k <- diag(q_c_matrix[,k]) -->
+<!--     coef_beta_kj <- (t(rho_k*y - X[,-j]%*%(coef_beta_est[-j,k])) %*% W_k %*% X[,j]) /  -->
+<!--       (t(X[,j]) %*% W_k %*% X[,j]) -->
+<!--     coef_beta_est[j,k] <- coef_beta_kj -->
+<!--   } -->
+<!--   print(coef_beta_est[,]/rho_k) -->
+<!-- } -->
+<!-- ``` -->
+
+
+<!-- ## 3. q_c 的估计也纳入其中 -->
+
+<!-- 有两个不确定的因素再次引入： -->
+
+<!-- - 后验概率分布不再是真实值 -->
+<!-- - rho_k 需要更新计算 -->
+
+<!-- ### 真 q_c 更新 rho_k -->
+
+<!-- ```{r} -->
+<!-- update_beta_kj <- function(rho_est, coef_beta_est, k, j){ -->
+<!--   rho_k <- rho_est[k] -->
+<!--   W_k <- diag(q_c_matrix[,k]) -->
+<!--   coef_beta_kj <- (t(rho_k*y - X[,-j]%*%(coef_beta_est[-j,k])) %*% W_k %*% X[,j]) /  -->
+<!--     (t(X[,j]) %*% W_k %*% X[,j]) -->
+<!--   return(coef_beta_kj) -->
+<!-- } -->
+
+<!-- extend_x_to_row <- function(x, row_to){ -->
+<!--   K_up <- length(x) -->
+<!--   return(matrix(kronecker(rho_est, matrix(1, nrow=row_to)), ncol = K_up)) -->
+<!-- } -->
+<!-- ``` -->
+
+
+<!-- ```{r} -->
+<!-- rho_est <- c(1, 1, 1, 1)/2 -->
+<!-- q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim) -->
+<!-- coef_beta_est <- coef$coef_beta - coef$coef_beta -->
+<!-- coef_list <- NULL -->
+<!-- for(tt in 1:10){ -->
+<!--   for(k in 1:K_up){ -->
+<!--     W_k <- diag(q_c_matrix[,k]) -->
+<!--     # print(rho_est) -->
+<!--     # 更新参数 -->
+<!--     for(j in 1:p){ -->
+<!--       coef_beta_kj <- update_beta_kj(rho_est, coef_beta_est, k, j) -->
+<!--       coef_beta_est[j,k] <- coef_beta_kj -->
+<!--     } -->
+<!--     # print(coef_beta_est/get_rho_matrix(rho_est, p, K_up)) -->
+<!--     # 更新 rho_k -->
+<!--     A <- -y%*%W_k%*%y -->
+<!--     B <- t(X%*%coef_beta_est[,k]) %*% W_k %*% y -->
+<!--     C <- matrix(1, ncol=n)%*%W_k%*%matrix(1, nrow=n) -->
+<!--     rho_est[k] <- (-B - sqrt(B**2-4*A*C)) / (A*2) -->
+<!--   } -->
+<!--   coef_list[[tt]] <- coef_beta_est/extend_x_to_row(rho_est, p) -->
+<!-- } -->
+<!-- coef_list[[tt]] -->
+<!-- plot(unlist(lapply(coef_list, coef_dist, coef$coef_beta))) -->
+<!-- ``` -->
+
+<!-- ### 全更新 -->
+
+
+<!-- ```{r} -->
+<!-- # 初始化 -->
+<!-- rho_init <- c(1, 1, 1, 1)/5 -->
+<!-- rho_list <- list(rho_init) -->
+<!-- pi_init <- rep(1/K_up, K_up) -->
+<!-- pi_list <- list(pi_init) -->
+<!-- set.seed(999) -->
+<!-- # 真值附近 -->
+<!-- # q_c_matrix <- abs(get_q_c_matrix(n, K_up, ci_sim) + rnorm(n*K_up, mean = 1, sd = .1)) -->
+<!-- # 全随机 -->
+<!-- q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + -->
+<!--                   rnorm(n*K_up, mean = .5, sd = .1)) -->
+<!-- q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum) -->
+<!-- # coef_beta_init <- coef$coef_beta - coef$coef_beta + rnorm(p*K_up, mean = 0, sd = .1) -->
+<!-- coef_beta_init <- coef$coef_beta - coef$coef_beta -->
+<!-- coef_beta_list <- list(coef_beta_init) -->
+<!-- coef_beta_ori_list <- list(coef_beta_init/t(kronecker(rho_init, matrix(1, ncol = p)))) -->
+
+
+<!-- for(iter in 2:100){ -->
+<!--   coef_beta_est <- coef_beta_list[[iter-1]] -->
+<!--   rho_est <- rho_list[[iter-1]] -->
+<!--   for(k in 1:K_up){ -->
+<!--     W_k <- diag(q_c_matrix[,k]) -->
+<!--     # print(rho_est) -->
+<!--     # 更新参数 -->
+<!--     for(j in 1:p){ -->
+<!--       coef_beta_kj <- update_beta_kj(rho_est, coef_beta_est, k, j) -->
+<!--       coef_beta_est[j,k] <- coef_beta_kj -->
+<!--     } -->
+<!--     # 更新 rho_k -->
+<!--     A <- -y%*%W_k%*%y -->
+<!--     B <- t(X%*%coef_beta_est[,k]) %*% W_k %*% y -->
+<!--     C <- matrix(1, ncol=n)%*%W_k%*%matrix(1, nrow=n) -->
+<!--     rho_est[k] <- (-B - sqrt(B**2-4*A*C)) / (A*2) -->
+<!--   } -->
+<!--   rho_list[[iter]] <- rho_est -->
+<!--   coef_beta_list[[iter]] <- coef_beta_est -->
+<!--   coef_beta_ori_list[[iter]] <- coef_beta_est/extend_x_to_row(rho_est, p) -->
+
+<!--   q_c_matrix <- dnorm(y,  -->
+<!--                       mean = X %*% coef_beta_ori_list[[iter]],  -->
+<!--                       sd = 1/extend_x_to_row(rho_est, n)) * -->
+<!--     extend_x_to_row(pi_list[[iter-1]], n) -->
+<!--   q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum) -->
+
+<!--   pi_est <- apply(q_c_matrix, 2, sum) / n -->
+<!--   pi_list[[iter]] <- pi_est -->
+
+<!--   coef_diff_std <- (sum(coef_beta_list[[iter]]-coef_beta_list[[iter-1]])**2)/ -->
+<!--      (sum(coef_beta_list[[iter]])**2) -->
+<!--   if(coef_diff_std < 1e-7){ -->
+<!--     return() -->
+<!--   } -->
+<!-- } -->
+<!-- coef_beta_list[[iter]] -->
+<!-- coef_beta_ori_list[[iter]] -->
+<!-- plot(unlist(lapply(coef_beta_ori_list, coef_dist, coef$coef_beta))) -->
+<!-- ``` -->
+
+
+
+# 拟合项+惩罚项
+
+## 1. 观察条件取值
+
+```{r}
+get_coef_beta_kj <- function(upper, lower, aa, lambda_1, n, verbose = FALSE){
+  
+  coef_beta_kj <- mcp_solution(lower/n, upper/lower, aa, lambda_1)
+  # condi <- upper/lower
+  # coef_beta_kj <- condi
+  # if(abs(condi) <= aa*lambda_1){
+  #   # print("-------shrink-----------")
+  #   if(condi < 0){
+  #     coef_beta_kj <- negative_part((upper/n + lambda_1) / (lower/n - 1/aa))
+  #     if(verbose){print(paste("---------", condi, "to", coef_beta_kj))}
+  #   }else if(condi > 0){
+  #     coef_beta_kj <- positive_part((upper/n - lambda_1) / (lower/n - 1/aa))
+  #     if(verbose){print(paste("+++++++++", condi, "to", coef_beta_kj))}
+  #   }
+  # }
+  return(coef_beta_kj)
+}
+```
+
+
+```{r}
+lambda_1 <- 1
+aa <- 2
+q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
+j <- 1 # 1:p 取值均可
+k <- 1 # 1:K_up 均可
+for(j in 1:p){
+  rho_est <- c(1, 1, 1, 1)
+  rho_k <- rho_est[k]
+  W_k <- diag(q_c_matrix[,k])
+  set.seed(999)
+  coef_beta <- coef$coef_beta + rnorm(p*K_up, mean = 0, sd = 0.1)
+  coef_beta <- coef$coef_beta
+  upper <- t(rho_k*y - X[,-j]%*%(coef_beta[-j,k])) %*% W_k %*% X[,j]
+  lower <- t(X[,j]) %*% W_k %*% X[,j]
+  coef_beta_kj <- get_coef_beta_kj(upper, lower, aa, lambda_1, n, verbose=TRUE)
+  print(as.numeric(coef_beta_kj))
+}
+```
+
+
+相比不加惩罚项，系数有了收缩
+
+- 不能收缩到 0 ---> 修改正部后到 0
+- 最后一维符号发生变化，这种情况允许发生吗 ---> 正部
+
+## 2. 迭代求解整个向量
+
+```{r}
+plot_object <- function(X, y, coef_beta_k, rho_k, W_k, lambda_1, aa, mark, adp = TRUE){
+  # operate beta
+  betas <- seq(-6, 6, length.out = 201)
+  W_k <- diag(q_c_matrix[,k])
+  fits <- NULL
+  for(idx in 1:length(betas)){
+    fits[idx] <- 1/(2*n) * t(rho_k*y - X[,-j]%*%coef_beta_k[-j] - X[,j]*betas[idx]) %*% W_k %*% (rho_k*y - X[,-j]%*%coef_beta_k[-j] - X[,j]*betas[idx])
+  }
+  pens <- mcp_value(betas, aa, lambda_1)
+  res <- fits
+  if(adp){res <- res + pens}
+  # plot beta prime (original)
+  # plot(betas/rho_k, fits+lambda_1**2/(2*aa), cex = 0.1, col = "blue")
+  plot(betas/rho_k, res, cex = 0.5)
+  abline(v = mark/rho_k, col = "red")
+  abline(v = c(-aa*lambda_1, 0, aa*lambda_1)/rho_k, col = "blue")
+  abline(v = c((upper/n - lambda_1)/(lower/n - 1/aa))/rho_k, col = "orange")
+  # abline(v = c((upper/n + lambda_1)/(lower/n - 1/aa))/rho_k, col = "purple")
+  # return(res)
+}
+```
+
+
+
+```{r}
+plot_partial <- function(upper, lower, lambda_1, rho_k, aa, n, mark, adp = TRUE){
+  betas <- seq(-3,3,length.out=201)
+  # adds <- 0
+  adds <- ifelse(abs(betas) <= aa*lambda_1,
+                 sign(betas)*(lambda_1 - abs(betas)/aa), 0)
+  yy <- 1/n*(lower*betas - upper)
+  if(adp){yy <- yy + adds}
+  plot(betas/rho_k, yy, pch = 16, cex = 0.1)
+  abline(h = 0)
+  abline(v = mark/rho_k, col = "red")
+  abline(v = c(-aa*lambda_1, 0, aa*lambda_1)/rho_k, col = "blue")
+  abline(v = c((upper/n + lambda_1)/(lower/n - 1/aa))/rho_k, col = "orange")
+  # abline(v = c((upper/n + lambda_1)/(lower/n - 1/aa))/rho_k, col = "purple")
+}
+```
+
+## 实验
+
+```{r}
+# k <- 4
+# j <- 1
+# rho_est <- c(1, 1, 1, 1)/1
+# q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
+# rho_k <- rho_est[k]
+# coef_beta_est <- coef$coef_beta * rho_k + rnorm(p*K_up, mean = 0, sd = 0.1)
+# lambda_1 <- 1.5
+# aa <- 2
+# 
+# W_k <- diag(q_c_matrix[,k])
+# upper <- t(rho_k*y - X[,-j]%*%(coef_beta_est[-j,k])) %*% W_k %*% X[,j]
+# lower <- t(X[,j]) %*% W_k %*% X[,j]
+# coef_beta_kj <- get_coef_beta_kj(upper, lower, aa, lambda_1, n, verbose = TRUE)
+# print(coef_beta_kj)
+# plot_object(X, y, coef_beta_est[,k], rho_k, W_k, lambda_1, aa, coef_beta_kj)
+# plot_partial(upper, lower, lambda_1, rho_k, aa, n, coef_beta_kj)
+# coef_beta_kj
+```
+
+
+
+
+
+
+```{r}
+# coef_beta_est <- coef$coef_beta - coef$coef_beta
+rho_est <- c(1, 1, 1, 1)/1
+k <- 4
+rho_k <- rho_est[k]
+coef_beta_est <- coef$coef_beta * rho_k + rnorm(p*K_up, mean = 0, sd = 0.1) # beta, not beta prime
+q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
+
+lambda_1 <- 0.3
+aa <- 2
+
+for(k in 1:K_up){
+  for(tt in 1:1){
+    for(j in 1:p){
+      rho_k <- rho_est[k]
+      W_k <- diag(q_c_matrix[,k])
+      upper <- t(rho_k*y - X[,-j]%*%(coef_beta_est[-j,k])) %*% W_k %*% X[,j]
+      lower <- t(X[,j]) %*% W_k %*% X[,j]
+      # print(as.numeric(sign(lower/n - 1/aa)))
+      coef_beta_kj <- get_coef_beta_kj(upper, lower, aa, lambda_1, n, verbose = TRUE)
+      # print(coef_beta_kj)
+      # plot_object(X, y, coef_beta_est[,k], rho_k, W_k, lambda_1, aa, add_pen = TRUE)
+      # plot_partial(upper, lower, lambda_1, rho_k, aa, n)
+      # print(upper/lower)
+      # print(((upper/n - lambda_1) / (lower/n - 1/aa)))
+      coef_beta_est[j,k] <- coef_beta_kj
+    }
+    # print(coef_beta_est[,]/rho_k)
+  }
+}
+coef_beta_est[,]/rho_k
+```
+## 3. q_c 的估计也纳入其中
+
+### 真 q_c 更新 rho_k
+
+```{r}
+extend_x_to_row <- function(x, row_to){
+  K_up <- length(x)
+  return(matrix(kronecker(rho_est, matrix(1, nrow=row_to)), ncol = K_up))
+}
+```
+
+```{r}
+aa <- 2
+lambda_1 <- 0.2
+coef_list <- NULL
+rho_est <- c(1, 1, 1, 1)/2
+q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
+coef_beta_est <- coef$coef_beta - coef$coef_beta
+
+for(tt in 1:10){
+  for(k in 1:K_up){
+    W_k <- diag(q_c_matrix[,k])
+    rho_k <- rho_est[k]
+    # print(rho_est)
+    # 更新参数
+    for(j in 1:p){
+      upper <- t(rho_k*y - X[,-j]%*%(coef_beta_est[-j,k])) %*% W_k %*% X[,j]
+      lower <- t(X[,j]) %*% W_k %*% X[,j]
+      coef_beta_kj <- get_coef_beta_kj(upper, lower, aa, lambda_1, n, verbose = FALSE)
+      # update_beta_kj(rho_est, coef_beta_est, k, j)
+      coef_beta_est[j,k] <- coef_beta_kj
+    }
+    # 更新 rho_k
+    A <- -y%*%W_k%*%y
+    B <- t(X%*%coef_beta_est[,k]) %*% W_k %*% y
+    C <- matrix(1, ncol=n)%*%W_k%*%matrix(1, nrow=n)
+    rho_est[k] <- (-B - sqrt(B**2-4*A*C)) / (A*2)
+  }
+  coef_list[[tt]] <- coef_beta_est/extend_x_to_row(rho_est, p)
+}
+coef_list[[tt]]
+plot(unlist(lapply(coef_list, coef_dist, coef$coef_beta)))
+```
+
+<!--              [,1]          [,2]          [,3]         [,4] -->
+<!-- [1,] -2.888189392 -9.498572e-01  0.9468456623  2.890034404 -->
+<!-- [2,] -2.846176474 -9.466010e-01  0.9441477756  2.915179871 -->
+<!-- [3,] -2.871172880 -9.484162e-01  0.9476251469  2.883478095 -->
+<!-- [4,] -0.003031035  1.007193e-04 -0.0003401738 -0.003056304 -->
+<!-- [5,]  0.005300655  6.699863e-05 -0.0007422703 -0.001367491 -->
+<!-- [6,] -0.007135464  1.596192e-04 -0.0003024570 -0.003603538 -->
+<!-- [7,]  0.005190544 -2.291181e-04  0.0003447333  0.002727201 -->
+<!-- [8,]  0.002265260  3.546447e-05  0.0005258914  0.002137427 -->
+
+
+
+### 全更新
+
+
+```{r}
+# 初始化
+aa <- 1.2
+lambda_1 <- 0.15
+rho_init <- c(1, 1, 1, 1)/0.5
+rho_list <- list(rho_init)
+pi_init <- rep(1/K_up, K_up)
+pi_list <- list(pi_init)
+set.seed(999)
+# 真值附近
+# q_c_matrix <- abs(get_q_c_matrix(n, K_up, ci_sim) + rnorm(n*K_up, mean = 1, sd = .1))
+# 全随机
+q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) +
+                  rnorm(n*K_up, mean = 0, sd = .1))
+q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+# coef_beta_init <- coef$coef_beta - coef$coef_beta + rnorm(p*K_up, mean = 0, sd = .1)
+coef_beta_init <- coef$coef_beta - coef$coef_beta
+coef_beta_list <- list(coef_beta_init)
+coef_beta_ori_list <- list(coef_beta_init/t(kronecker(rho_init, matrix(1, ncol = p))))
+
+
+for(iter in 2:20){
+  coef_beta_est <- coef_beta_list[[iter-1]]
+  rho_est <- rho_list[[iter-1]]
+  for(k in 1:K_up){
+    W_k <- diag(q_c_matrix[,k])
+    rho_k <- rho_est[k]
+    # print(rho_est)
+    # 更新参数
+    for(j in 1:p){
+      upper <- t(rho_k*y - X[,-j]%*%(coef_beta_est[-j,k])) %*% W_k %*% X[,j]
+      lower <- t(X[,j]) %*% W_k %*% X[,j]
+      coef_beta_kj <- get_coef_beta_kj(upper, lower, aa, lambda_1, n, verbose = TRUE) # 与下等价
+      # coef_beta_kj <- get_coef_onedim(upper, lower, aa, lambda_1, n)
+      coef_beta_est[j,k] <- coef_beta_kj
+    }
+    # 更新 rho_k
+    A <- -y%*%W_k%*%y
+    B <- t(X%*%coef_beta_est[,k]) %*% W_k %*% y
+    C <- matrix(1, ncol=n)%*%W_k%*%matrix(1, nrow=n)
+    rho_est[k] <- (-B - sqrt(B**2-4*A*C)) / (A*2)
+  }
+  rho_list[[iter]] <- rho_est
+  coef_beta_list[[iter]] <- coef_beta_est
+  coef_beta_ori_list[[iter]] <- coef_beta_est/extend_x_to_row(rho_est, p)
+  
+  q_c_matrix <- dnorm(y, 
+                      mean = X %*% coef_beta_ori_list[[iter]], 
+                      sd = 1/extend_x_to_row(rho_est, n)) *
+    extend_x_to_row(pi_list[[iter-1]], n)
+  q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+  
+  pi_est <- apply(q_c_matrix, 2, sum) / n
+  pi_list[[iter]] <- pi_est
+  
+  coef_diff_std <- (sum(coef_beta_list[[iter]]-coef_beta_list[[iter-1]])**2)/
+     (sum(coef_beta_list[[iter]])**2 + 1e-4)
+  if(coef_diff_std < 1e-6){
+    return()
+  }
+}
+coef_beta_list[[iter]]
+coef_beta_ori_list[[iter]]
+plot(unlist(lapply(coef_beta_ori_list, coef_dist, coef$coef_beta)))
+coef_dist(coef_beta_ori_list[[iter]], coef$coef_beta)
+```
+
+
+
+
+```{r}
+# FLXMRglm() 为默认模型
+pi_init <- rep(1/K_up, K_up)
+set.seed(999)
+q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) +
+                  rnorm(n*K_up, mean = 0, sd = .1))
+q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+m_glm <- flexmix(y~X-1, k = 4, cluster = q_c_matrix,
+                 model = FLXMRglm(),
+             control = list())
+parameters(m_glm)
+coef_dist(coef$coef_beta, parameters(m_glm)[1:p,])
+```
+
+```{r}
+
+```
+
+

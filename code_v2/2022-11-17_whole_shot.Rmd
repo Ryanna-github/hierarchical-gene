@@ -1,0 +1,757 @@
+---
+title: "whole model 1st"
+author: "任焱"
+date: "2022-11-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+rm(list = ls(all = TRUE))
+library(ggplot2)
+library(dplyr)
+library(Matrix)
+library(flexmix)
+source("sim.R")
+source("tools.R")
+```
+
+```{r}
+# 超参数设定
+n <- 400
+p <- 8
+q <- 4
+cotype_x <- "En"
+cotype_z <- "En"
+epsilon_sd <- 0.0
+beta_nonzero <- c(-2, -2, 2, 2) # 长度应和真实 group_num_sub 保持一致
+beta_nonzero <- c(-3, -1, 1, 3) # 长度应和真实 group_num_sub 保持一致
+# alpha_nonzero <- c(-3, -1, 1, 3)
+alpha_nonzero <- c(-3, -1, 1, 3) # 验证最简单情况不需要 alpha
+# alpha_nonzero <- c(0, 0, 0, 0) # 验证最简单情况不需要 alpha
+beta_vlen <- 3
+alpha_vlen <- 2
+
+K_up <- 4  # 估计时的最大类别，应该不少于 group_num_sub
+group_num_main <- 2                    
+group_num_sub <- 4    
+hier_struc <- list(c(1,2),c(3,4))
+prob_sub <- rep(1/group_num_sub, group_num_sub)  
+reverse <- FALSE
+
+aa <- 1.2
+lambda_1 <- 0.2
+```
+
+```{r}
+set.seed(7)
+whole.data <- generate_all_data(n, p, q, prob_sub, hier_struc, 
+                  beta_nonzero, alpha_nonzero, beta_vlen, alpha_vlen, 
+                  cotype_x, cotype_z, epsilon_sd, reverse)
+X <- whole.data$data$X
+Z <- whole.data$data$Z
+data <- whole.data$data$data_full
+coef <- whole.data$coef
+coefv <- lapply(coef, as.vector) # 按照类别拉长
+ci_sim <- whole.data$ci_sim
+y <- whole.data$y
+```
+
+
+## 1. 观察条件取值
+
+只计算某一个类别中的某一个维度，其他所有量都给定为真值，模型在该种情况下需要计算出完全正确的结果才可继续。
+
+However，只有 tau=0，或者 H=0 时候才没有后面的项，否则无法控制其他项为真值，和只有拟合项以及惩罚项的情况无法完全等价，继续往后进行。
+
+```{r}
+comb_pair <- combn(K_up, 2)
+H_p <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
+          diag(p)) %>% Matrix(sparse = TRUE)
+H_q <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
+          diag(q)) %>% Matrix(sparse = TRUE)
+```
+
+
+```{r}
+tau <- 0
+tau_eps <- 1e-4
+q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
+j <- 2 # 1:p 取值均可
+s <- 3 # 1:q 取值均可
+k <- 2 # 1:K_up 均可
+# 以下定义不对，kj都直接取了环境中变量
+# 但是如果不放在特定文件里而是一直嵌在上下文里没有问题
+kj <- function(dim) {return((k-1)*dim+j)} # k 为第一索引，j 为第二索引
+ks <- function(dim) {return((k-1)*dim+s)}
+coef_full <- coef$coef_full
+coef_beta <- coef_full[1:p,]
+coef_alpha <- coef_full[(p+1):(p+q),]
+# diff_v <- matrix(0, nrow = p*(K_up-1)*K_up/2, ncol = 1)
+diff_v<- matrix(H_p %*% as.vector(coef$coef_full[1:p,]), ncol = 1)
+# diff_w <- matrix(0, nrow = q*(K_up-1)*K_up/2, ncol = 1)
+diff_w <- matrix(H_q %*% as.vector(coef$coef_full[(p+1):(p+q),]), ncol = 1)
+dual_xi <- matrix(1, nrow = p*(K_up-1)*K_up/2, ncol = 1)
+dual_zeta <- matrix(1, nrow = q*(K_up-1)*K_up/2, ncol = 1)
+
+rho_est <- c(1, 1, 1, 1)
+rho_k <- rho_est[k]
+W_k <- diag(q_c_matrix[,k])
+
+# update beta kj
+lower_1 <- t(X[,j]) %*% W_k %*% X[,j]
+lower_2 <- (t(H_p)%*%H_p)[kj(p),kj(p)]
+Lower <- lower_1/n + tau*lower_2
+upper_1 <- t(rho_k*y - X[,-j]%*%(coef_beta[-j,k]) - Z%*%coef_alpha[,k]) %*% W_k %*% X[,j]
+upper_2 <- (t(H_p)%*%(diff_v-1/(tau+tau_eps)*dual_xi))[kj(p)] -
+  as.vector(coef_beta)[-kj(p)]%*%(t(H_p)%*%H_p)[kj(p),-kj(p)]
+Upper <- upper_1/n + tau*upper_2
+coef_beta_kj <- mcp_solution(Lower, Upper/Lower, aa, lambda_1)
+as.numeric(mcp_solution(Lower, Upper/Lower, aa, lambda_1))
+as.numeric(mcp_solution(lower_1/n, upper_1/lower_1, aa, lambda_1))
+
+# update alpha kj
+lower_1 <- t(Z[,s]) %*% W_k %*% Z[,s]
+lower_2 <- (t(H_q)%*%H_q)[ks(q),ks(q)]
+Lower <- lower_1/n + tau*lower_2
+upper_1 <- t(rho_k*y - Z[,-s]%*%(coef_alpha[-s,k]) - X%*%coef_beta[,k]) %*% W_k %*% Z[,s]
+upper_2 <- (t(H_q)%*%(diff_w-1/(tau+tau_eps)*dual_zeta))[ks(q)] -
+  as.vector(coef_alpha)[-ks(q)]%*%(t(H_q)%*%H_q)[ks(q),-ks(q)]
+Upper <- upper_1/n + tau*upper_2
+coef_alpha_ks <- mcp_solution(Lower, Upper/Lower, aa, lambda_1)
+as.numeric(mcp_solution(Lower, Upper/Lower, aa, lambda_1))
+as.numeric(mcp_solution(lower_1, upper_1/lower_1, aa, lambda_1))
+```
+
+```{r}
+tau <- 0
+tau_eps <- 1e-4
+q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
+k <- 3 # 1:K_up 均可
+# 以下定义不对，kj都直接取了环境中变量
+# 但是如果不放在特定文件里而是一直嵌在上下文里没有问题
+kj <- function(dim) {return((k-1)*dim+j)} # k 为第一索引，j 为第二索引
+ks <- function(dim) {return((k-1)*dim+s)}
+coef_full <- coef$coef_full - coef$coef_full
+coef_beta <- coef_full[1:p,]
+coef_alpha <- coef_full[(p+1):(p+q),]
+# diff_v <- matrix(0, nrow = p*(K_up-1)*K_up/2, ncol = 1)
+diff_v <- matrix(H_p %*% as.vector(coef$coef_full[1:p,]), ncol = 1)
+# diff_w <- matrix(0, nrow = q*(K_up-1)*K_up/2, ncol = 1)
+diff_w <- matrix(H_q %*% as.vector(coef$coef_full[(p+1):(p+q),]), ncol = 1)
+dual_xi <- matrix(0, nrow = p*(K_up-1)*K_up/2, ncol = 1)
+dual_zeta <- matrix(0, nrow = q*(K_up-1)*K_up/2, ncol = 1)
+
+rho_est <- c(1, 1, 1, 1)/0.5
+rho_k <- rho_est[k]
+W_k <- diag(q_c_matrix[,k])
+
+for(tt in 1:10){
+  print(paste("===============", tt, "==============="))
+  for(j in 1:p){
+    # update beta kj
+    lower_1 <- t(X[,j]) %*% W_k %*% X[,j]
+    lower_2 <- (t(H_p)%*%H_p)[kj(p),kj(p)]
+    Lower <- lower_1/n + tau*lower_2
+    upper_1 <- t(rho_k*y - X[,-j]%*%(coef_beta[-j,k]) - Z%*%coef_alpha[,k]) %*% W_k %*% X[,j]
+    upper_2 <- (t(H_p)%*%(diff_v-1/(tau+tau_eps)*dual_xi))[kj(p)] -
+      as.vector(coef_beta)[-kj(p)]%*%(t(H_p)%*%H_p)[kj(p),-kj(p)]
+    Upper <- upper_1/n + tau*upper_2
+    # print(paste(mcp_solution(Lower, Upper/Lower, aa, lambda_1), 
+    #       "vs", 
+    #       mcp_solution(lower_1/n, upper_1/lower_1, aa, lambda_1)))
+    coef_beta_kj <- mcp_solution(Lower, Upper/Lower, aa, lambda_1)
+    # coef_beta_kj <- mcp_solution(lower_1/n, upper_1/lower_1, aa, lambda_1)
+    coef_beta[j,k] <- coef_beta_kj
+    print(as.numeric(coef_beta_kj)/rho_k)
+  }
+  
+  for(s in 1:q){
+    # update alpha ks
+    lower_1 <- t(Z[,s]) %*% W_k %*% Z[,s]
+    lower_2 <- (t(H_q)%*%H_q)[ks(q),ks(q)]
+    Lower <- lower_1/n + tau*lower_2
+    upper_1 <- t(rho_k*y - Z[,-s]%*%(coef_alpha[-s,k]) - X%*%coef_beta[,k]) %*% W_k %*% Z[,s]
+    upper_2 <- (t(H_q)%*%(diff_w-1/(tau+tau_eps)*dual_zeta))[ks(q)] -
+      as.vector(coef_alpha)[-ks(q)]%*%(t(H_q)%*%H_q)[ks(q),-ks(q)]
+    Upper <- upper_1/n + tau*upper_2
+    # print(paste(mcp_solution(Lower, Upper/Lower, aa, lambda_1), 
+    #       "vs", 
+    #       mcp_solution(lower_1/n, upper_1/lower_1, aa, lambda_1)))
+    coef_alpha_ks <- mcp_solution(Lower, Upper/Lower, aa, lambda_1)
+    # coef_alpha_ks <- mcp_solution(lower_1/n, upper_1/lower_1, aa, lambda_1)
+    coef_alpha[s,k] <- coef_alpha_ks
+    print(as.numeric(coef_alpha_ks)/rho_k)
+  }
+  coef_full[,k] <- c(coef_beta[,k], coef_alpha[,k])
+  # 更新 rho_k
+  A <- -y%*%W_k%*%y
+  B <- t(data%*%coef_full[,k]) %*% W_k %*% y
+  C <- matrix(1, ncol=n)%*%W_k%*%matrix(1, nrow=n)
+  rho_k <- as.numeric((-B - sqrt(B**2-4*A*C)) / (A*2))
+}
+```
+
+
+## 2. 只更新 rho_k，真 q_c 的迭代情况
+
+
+```{r}
+extend_x_to_row <- function(x, row_to){
+  K_up <- length(x)
+  return(matrix(kronecker(rho_est, matrix(1, nrow=row_to)), ncol = K_up))
+}
+```
+
+
+```{r}
+# 待更新
+```
+
+## 除去拟合项的验证
+
+奇异的线性方程组，使用伪逆矩阵可以求得结果但是结果未必争取，放弃这种验证思路，不包含拟合项的方法不可行
+
+```{r}
+c3 <- combn(3, 2)
+tmp_coef_beta <- matrix(c(1, 0, 0, 2, 0, 0, 3, 0, 0), ncol = 3)
+tmp_H <- kronecker(t(apply(c3, 2, get_e_mat, 3)),diag(3))%>%Matrix(sparse=TRUE)
+
+tmp_v <- tmp_H %*% as.vector(tmp_coef_beta)
+matrix(MASS::ginv(as.matrix(t(tmp_H)%*%tmp_H)) %*% t(tmp_H) %*% tmp_v, ncol = 3)
+```
+
+- 如果只用 Y = H beta 的线性方程，答案这是很接近真实但是依旧会向0收缩，不知道这个现象是否正常
+
+```{r}
+tau <- 1e-4
+tau_eps <- 1e-4
+aa <- 1.2
+lambda_1 <- 0.08
+rho_init <- c(1, 1, 1, 1)/1
+kj <- function(dim) {return((k-1)*dim+j)}
+ks <- function(dim) {return((k-1)*dim+s)}
+rho_list <- list(rho_init)
+pi_init <- rep(1/K_up, K_up)
+pi_list <- list(pi_init)
+set.seed(999)
+q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
+coef_full_init <- coef$coef_full - coef$coef_full
+coef_full_list <- list(coef_full_init)
+coef_full_ori_list <- list(coef_full_init/t(kronecker(rho_init, 
+                                                      matrix(1, ncol = p+q))))
+diff_v_init <- matrix(H_p %*% as.vector(coef$coef_full[1:p,]), ncol = 1)
+diff_v_list <- list(diff_v_init)
+diff_w_init <- matrix(H_q %*% as.vector(coef$coef_full[(p+1):(p+q),]), ncol = 1)
+diff_w_list <- list(diff_w_init)
+
+dual_xi_init <- matrix(0, nrow = (p)*K_up*(K_up-1)/2, ncol = 1)
+dual_xi_list <- list(dual_xi_init)
+dual_zeta_init <- matrix(0, nrow = (q)*K_up*(K_up-1)/2, ncol = 1)
+dual_zeta_list <- list(dual_zeta_init)
+
+for(iter in 2:50){
+  rho_est <- rho_list[[iter-1]]
+  coef_full_est <- coef_full_list[[iter-1]]
+  coef_beta_est <- coef_full_est[1:p,]
+  coef_alpha_est <- coef_full_est[(p+1):(p+q),]
+  
+  diff_v_est <- diff_v_list[[iter-1]]
+  diff_w_est <- diff_w_list[[iter-1]]
+  
+  dual_xi_est <- dual_xi_list[[iter-1]]
+  dual_zeta_est <- dual_zeta_list[[iter-1]]
+  
+  # coef_beta_est <- matrix(MASS::ginv(as.matrix(t(H_p)%*%H_p))%*%t(H_p)%*%diff_v_est, ncol = K_up)
+  # coef_alpha_est <- matrix(MASS::ginv(as.matrix(t(H_q)%*%H_q))%*%t(H_q)%*%diff_w_est, ncol = K_up)
+  # coef_full_est <- rbind(coef_beta_est, coef_alpha_est)
+  for(k in 1:K_up){
+    W_k <- diag(q_c_matrix[,k])
+    rho_k <- rho_est[k]
+    
+    for(j in 1:p){
+      lower_1 <- t(X[,j]) %*% W_k %*% X[,j]
+      lower_2 <- (t(H_p)%*%H_p)[kj(p),kj(p)]
+      Lower <- lower_1/n + tau*lower_2
+      # Lower <- lower_1/n
+      upper_1 <- t(rho_k*y - X[,-j]%*%(coef_beta_est[-j,k]) - Z%*%coef_alpha_est[,k]) %*% W_k %*% X[,j]
+      upper_2 <- (t(H_p)%*%(diff_v_est-1/(tau+tau_eps)*dual_xi_est))[kj(p)] -
+        as.vector(coef_beta_est)[-kj(p)]%*%(t(H_p)%*%H_p)[kj(p),-kj(p)]
+      Upper <- upper_1/n + tau*upper_2
+      # Upper <- upper_1/n
+      coef_beta_kj <- mcp_solution(Lower, Upper/Lower, aa, lambda_1)
+      coef_beta_est[j,k] <- coef_beta_kj
+      # coef_beta_est[j,k] <- Upper/Lower
+    }
+    for(s in 1:q){
+      lower_1 <- t(Z[,s]) %*% W_k %*% Z[,s]
+      lower_2 <- (t(H_q)%*%H_q)[ks(q),ks(q)]
+      Lower <- lower_1/n + tau*lower_2
+      # Lower <- lower_1/n
+      upper_1 <- t(rho_k*y - Z[,-s]%*%(coef_alpha_est[-s,k]) - X%*%coef_beta_est[,k]) %*% W_k %*% Z[,s]
+      upper_2 <- (t(H_q)%*%(diff_w_est-1/(tau+tau_eps)*dual_zeta_est))[ks(q)] -
+        as.vector(coef_alpha_est)[-ks(q)]%*%(t(H_q)%*%H_q)[ks(q),-ks(q)]
+      Upper <- upper_1/n + tau*upper_2
+      # Upper <- upper_1/n
+      coef_alpha_ks <- mcp_solution(Lower, Upper/Lower, aa, lambda_1)
+      coef_alpha_est[s,k] <- coef_alpha_ks
+      # coef_alpha_est[s,k] <- Upper/Lower
+    }
+    coef_full_est[,k] <- c(coef_beta_est[,k], coef_alpha_est[,k])
+    A <- -y%*%W_k%*%y
+    B <- t(data%*%coef_full_est[,k]) %*% W_k %*% y
+    C <- matrix(1, ncol=n)%*%W_k%*%matrix(1, nrow=n)
+    rho_est[k] <- (-B - sqrt(B**2-4*A*C)) / (A*2)
+  }
+  rho_list[[iter]] <- rho_est
+  coef_full_list[[iter]] <- coef_full_est
+  coef_full_ori_list[[iter]] <- coef_full_est/extend_x_to_row(rho_est, p+q)
+  
+  diff_v_list[[iter]] <- diff_v_list[[iter-1]]
+  diff_w_list[[iter]] <- diff_w_list[[iter-1]]
+  dual_xi_list[[iter]] <- dual_xi_list[[iter-1]]
+  dual_zeta_list[[iter]] <- dual_zeta_list[[iter-1]]
+  
+  pi_est <- apply(q_c_matrix, 2, sum)/n
+  pi_list[[iter]] <- pi_est
+}
+coef_full_list[[iter]]
+coef_full_ori_list[[iter]]
+plot(unlist(lapply(coef_full_ori_list, coef_dist, coef$coef_full)), ylab = "")
+coef_dist(coef_full_ori_list[[iter]], coef$coef_full)
+```
+
+
+## 3. 全更新
+
+```{r}
+tau <- 10
+tau_eps <- 1e-4
+aa <- 1.2
+lambda_1 <- 0.08
+lambda_2 <- 0.0
+lambda_3 <- 0.0
+rho_init <- c(1, 1, 1, 1)/1
+kj <- function(dim) {return((k-1)*dim+j)}
+ks <- function(dim) {return((k-1)*dim+s)}
+rho_list <- list(rho_init)
+pi_init <- rep(1/K_up, K_up)
+pi_list <- list(pi_init)
+set.seed(999)
+q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
+# 真值附近
+# q_c_matrix <- abs(get_q_c_matrix(n, K_up, ci_sim) + rnorm(n*K_up, mean = 1, sd = .1))
+# 全随机
+# q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
+q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+
+# coef full
+coef_full_init <- coef$coef_full - coef$coef_full
+# coef_full_init <- coef$coef_full
+coef_full_list <- list(coef_full_init)
+coef_full_ori_list <- list(coef_full_init/t(kronecker(rho_init, 
+                                                      matrix(1, ncol = p+q))))
+# coef diff (v,w):=u
+# diff_v_init <- matrix(0, nrow = (p)*K_up*(K_up-1)/2, ncol = 1)
+diff_v_init <- matrix(H_p %*% as.vector(coef$coef_full[1:p,]), ncol = 1)
+diff_v_list <- list(diff_v_init)
+# diff_w_init <- matrix(0, nrow = (q)*K_up*(K_up-1)/2, ncol = 1)
+diff_w_init <- matrix(H_q %*% as.vector(coef$coef_full[(p+1):(p+q),]), ncol = 1)
+diff_w_list <- list(diff_w_init)
+
+# dual variable (xi,zeta):=eta
+dual_xi_init <- matrix(0, nrow = (p)*K_up*(K_up-1)/2, ncol = 1)
+dual_xi_list <- list(dual_xi_init)
+dual_zeta_init <- matrix(0, nrow = (q)*K_up*(K_up-1)/2, ncol = 1)
+dual_zeta_list <- list(dual_zeta_init)
+
+
+# tmp record
+case_list <- NULL
+
+for(iter in 2:50){
+  rho_est <- rho_list[[iter-1]]
+  coef_full_est <- coef_full_list[[iter-1]]
+  coef_beta_est <- coef_full_est[1:p,]
+  coef_alpha_est <- coef_full_est[(p+1):(p+q),]
+  
+  diff_v_est <- diff_v_list[[iter-1]]
+  diff_w_est <- diff_w_list[[iter-1]]
+  
+  dual_xi_est <- dual_xi_list[[iter-1]]
+  dual_zeta_est <- dual_zeta_list[[iter-1]]
+  
+  # =========================== beta, alpha update =========================
+  for(k in 1:K_up){
+    W_k <- diag(q_c_matrix[,k])
+    rho_k <- rho_est[k]
+    # beta
+    for(j in 1:p){
+      lower_1 <- t(X[,j]) %*% W_k %*% X[,j]
+      lower_2 <- (t(H_p)%*%H_p)[kj(p),kj(p)]
+      Lower <- lower_1/n + tau*lower_2
+      # Lower <- tau*lower_2
+      upper_1 <- t(rho_k*y - X[,-j]%*%(coef_beta_est[-j,k]) - Z%*%coef_alpha_est[,k]) %*% W_k %*% X[,j]
+      upper_2 <- (t(H_p)%*%(diff_v_est-1/(tau+tau_eps)*dual_xi_est))[kj(p)] -
+        as.vector(coef_beta_est)[-kj(p)]%*%(t(H_p)%*%H_p)[kj(p),-kj(p)]
+      Upper <- upper_1/n + tau*upper_2
+      # Upper <- tau*upper_2
+      coef_beta_kj <- mcp_solution(Lower, Upper/Lower, aa, lambda_1)
+      coef_beta_est[j,k] <- coef_beta_kj
+    }
+    # alpha
+    for(s in 1:q){
+      lower_1 <- t(Z[,s]) %*% W_k %*% Z[,s]
+      lower_2 <- (t(H_q)%*%H_q)[ks(q),ks(q)]
+      Lower <- lower_1/n + tau*lower_2
+      # Lower <- tau*lower_2
+      upper_1 <- t(rho_k*y - Z[,-s]%*%(coef_alpha_est[-s,k]) - X%*%coef_beta_est[,k]) %*% W_k %*% Z[,s]
+      upper_2 <- (t(H_q)%*%(diff_w_est-1/(tau+tau_eps)*dual_zeta_est))[ks(q)] -
+        as.vector(coef_alpha_est)[-ks(q)]%*%(t(H_q)%*%H_q)[ks(q),-ks(q)]
+      Upper <- upper_1/n + tau*upper_2
+      # Upper <- tau*upper_2
+      coef_alpha_ks <- mcp_solution(Lower, Upper/Lower, aa, lambda_1)
+      coef_alpha_est[s,k] <- coef_alpha_ks
+    }
+    coef_full_est[,k] <- c(coef_beta_est[,k], coef_alpha_est[,k])
+    # 更新 rho_k
+    A <- -y%*%W_k%*%y
+    B <- t(data%*%coef_full_est[,k]) %*% W_k %*% y
+    C <- matrix(1, ncol=n)%*%W_k%*%matrix(1, nrow=n)
+    rho_est[k] <- (-B - sqrt(B**2-4*A*C)) / (A*2)
+  }
+  rho_list[[iter]] <- rho_est
+  coef_full_list[[iter]] <- coef_full_est
+  coef_full_ori_list[[iter]] <- coef_full_est/extend_x_to_row(rho_est, p+q)
+  
+  # ============================== v, w update ============================
+  # 按 kk' 更新
+  # diff_v2_est <- H_p %*% as.vector(coef_beta_est) + 1/(tau+tau_eps) * dual_xi_est
+  # diff_w2_est <- H_q %*% as.vector(coef_alpha_est) + 1/(tau+tau_eps) * dual_zeta_est
+  # 
+  # case_kk <- NULL
+  # k1 <- 2
+  # k2 <- 3
+  # for(k1 in 1:(K_up-1)){
+  #   for(k2 in (k1+1):K_up){
+  #     ikk <- which(apply(comb_pair, 2, function(x){all(x==c(k1,k2))}))
+  #     # print(ikk)
+  #     v_kk <- diff_v_est[((ikk-1)*p+1):(ikk*p)]
+  #     w_kk <- diff_w_est[((ikk-1)*q+1):(ikk*q)]
+  #     u_kk <- c(v_kk, w_kk)
+  #     v_kk2 <- diff_v2_est[((ikk-1)*p+1):(ikk*p)]
+  #     w_kk2 <- diff_w2_est[((ikk-1)*q+1):(ikk*q)]
+  #     
+  #     v_kk2.F <- norm(matrix(v_kk2), type = "2")
+  #     w_kk2.F <- norm(matrix(w_kk2), type = "2")
+  #     u_kk2.F <- sqrt(v_kk2.F**2 + w_kk2.F**2)
+  #     
+  #     coef1 <- positive_part(1-lambda_2/(tau/u_kk2.F+tau_eps))/(1-1/aa/(tau+tau_eps))
+  #     coef2 <- positive_part(1-lambda_3/(tau/v_kk2.F+tau_eps))/(1-1/aa/(tau+tau_eps))
+  #     
+  #     case_kk <- c(case_kk, case_when(
+  #       (u_kk2.F > aa*lambda_2) & (w_kk2.F > aa*lambda_3) ~ 1,
+  #       (u_kk2.F <= aa*lambda_2) & (coef1*v_kk2.F > aa*lambda_3) ~ 2,
+  #       (w_kk2.F**2+(coef2*v_kk2.F)**2 > (aa*lambda_2)**2) & 
+  #              (v_kk2.F <= aa*lambda_3) ~ 3,
+  #       TRUE ~ 4
+  #     ))
+  #     # print(mcp_d(u_kk,aa,lambda_2,FALSE)/(tau/u_kk2.F+tau_eps), sep = "")
+  #     # print(mcp_d(v_kk,aa,lambda_3,FALSE)/(tau/v_kk2.F+tau_eps), sep = "")
+  #     
+  #     if((u_kk2.F > aa*lambda_2) & (w_kk2.F > aa*lambda_3)){
+  #       diff_v_est[((ikk-1)*p+1):(ikk*p)] <- v_kk2
+  #       diff_w_est[((ikk-1)*q+1):(ikk*q)] <- w_kk2
+  #     }else if((u_kk2.F <= aa*lambda_2) & (coef1*v_kk2.F > aa*lambda_3)){
+  #       diff_v_est[((ikk-1)*p+1):(ikk*p)] <- coef1*v_kk2
+  #       diff_w_est[((ikk-1)*q+1):(ikk*q)] <- coef1*w_kk2
+  #     }else if((w_kk2.F**2+(coef2*v_kk2.F)**2 > (aa*lambda_2)**2) & 
+  #              (v_kk2.F <= aa*lambda_3)){
+  #       diff_v_est[((ikk-1)*p+1):(ikk*p)] <- coef2*v_kk2
+  #       diff_w_est[((ikk-1)*q+1):(ikk*q)] <- w_kk2
+  #     }else{
+  #       diff_v_est[((ikk-1)*p+1):(ikk*p)] <- v_kk2/
+  #         (1+mcp_d(u_kk,aa,lambda_2,FALSE)/(tau/u_kk2.F+tau_eps) +
+  #            mcp_d(v_kk,aa,lambda_3,FALSE)/(tau/v_kk2.F+tau_eps))
+  #       diff_w_est[((ikk-1)*q+1):(ikk*q)] <- w_kk2/
+  #         (1+mcp_d(u_kk,aa,lambda_2,FALSE)/(tau/u_kk2.F+tau_eps))
+  #     }
+  #   }
+  # }
+  # case_list[[iter]] <- case_kk
+  # diff_v_list[[iter]] <- diff_v_est
+  # diff_w_list[[iter]] <- diff_w_est
+  # 
+  # # =========================== xi, zeta update ===========================
+  # dual_xi_list[[iter]] <- dual_xi_list[[iter-1]] + 
+  #   tau*(H_p %*% as.vector(coef_beta_est) - diff_v_est)
+  # dual_zeta_list[[iter]] <- dual_zeta_list[[iter-1]] + 
+  #   tau*(H_q %*% as.vector(coef_alpha_est) - diff_w_est)
+  
+  # other
+  # update q_c matrix
+  # q_c_matrix <- dnorm(y, 
+  #                     mean = data%*%coef_full_ori_list[[iter]], 
+  #                     sd = 1/extend_x_to_row(rho_est, n)) *
+  #   extend_x_to_row(pi_list[[iter-1]], n)
+  # q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+  
+  
+  diff_v_list[[iter]] <- diff_v_list[[iter-1]]
+  diff_w_list[[iter]] <- diff_w_list[[iter-1]]
+  dual_xi_list[[iter]] <- dual_xi_list[[iter-1]]
+  dual_zeta_list[[iter]] <- dual_zeta_list[[iter-1]]
+  
+  pi_est <- apply(q_c_matrix, 2, sum)/n
+  pi_list[[iter]] <- pi_est
+  
+  coef_diff_std <- (sum(coef_full_list[[iter]]-coef_full_list[[iter-1]])**2)/
+     (sum(coef_full_list[[iter]])**2 + 1e-4)
+  if(coef_diff_std < 1e-5){
+    return()
+  }
+}
+coef_full_list[[iter]]
+coef_full_ori_list[[iter]]
+plot(unlist(lapply(coef_full_ori_list, coef_dist, coef$coef_full)), ylab = "")
+coef_dist(coef_full_ori_list[[iter]], coef$coef_full)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## 4. 基于flexmix的全更新
+
+```{r}
+pi_init <- rep(1/K_up, K_up)
+set.seed(999) # 9,
+q_c_matrix <- t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = .5, sd = .1)
+q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+m_glm <- flexmix(y~cbind(X, Z)-1, k = 4, cluster = q_c_matrix,
+                 model = FLXMRglm(),
+             control = list())
+coef_init <- parameters(m_glm)[1:(p+q),]
+colnames(coef_init) <- NULL
+rownames(coef_init) <- NULL
+coef_init
+coef_dist(coef$coef_full, parameters(m_glm)[1:(p+q),])
+```
+
+```{r}
+tau <- 0.5
+aa <- 1.2
+lambda_1 <- 0.1
+lambda_2 <- 0.1
+lambda_3 <- 0.1
+rho_init <- c(1, 1, 1, 1)/0.5
+kj <- function(dim) {return((k-1)*dim+j)}
+ks <- function(dim) {return((k-1)*dim+s)}
+rho_list <- list(rho_init)
+pi_init <- rep(1/K_up, K_up)
+pi_list <- list(pi_init)
+
+q_c_matrix <- dnorm(y,
+                    mean = data %*% coef_full_ori_list[[1]],
+                    sd = 1/extend_x_to_row(rho_init, n)) *
+  extend_x_to_row(pi_init, n)
+q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+
+# coef full
+coef_full_init <- coef_init
+coef_full_list <- list(coef_full_init)
+coef_full_ori_list <- list(coef_full_init/t(kronecker(rho_init,
+                                                      matrix(1, ncol = p+q))))
+# coef diff (v,w):=u
+diff_v_init <- matrix(0, nrow = (p)*K_up*(K_up-1)/2, ncol = 1)
+diff_v_list <- list(diff_v_init)
+diff_w_init <- matrix(0, nrow = (q)*K_up*(K_up-1)/2, ncol = 1)
+diff_w_list <- list(diff_w_init)
+
+# dual variable (xi,zeta):=eta
+dual_xi_init <- matrix(0, nrow = (p)*K_up*(K_up-1)/2, ncol = 1)
+dual_xi_list <- list(dual_xi_init)
+dual_zeta_init <- matrix(0, nrow = (q)*K_up*(K_up-1)/2, ncol = 1)
+dual_zeta_list <- list(dual_zeta_init)
+
+for(iter in 2:50){
+  rho_est <- rho_list[[iter-1]]
+  coef_full_est <- coef_full_list[[iter-1]]
+  coef_beta_est <- coef_full_est[1:p,]
+  coef_alpha_est <- coef_full_est[(p+1):(p+q),]
+
+  diff_v_est <- diff_v_list[[iter-1]]
+  diff_w_est <- diff_w_list[[iter-1]]
+
+  dual_xi_est <- dual_xi_list[[iter-1]]
+  dual_zeta_est <- dual_zeta_list[[iter-1]]
+
+
+  # =========================== beta, alpha update =========================
+  for(k in 1:K_up){
+    W_k <- diag(q_c_matrix[,k])
+    rho_k <- rho_est[k]
+    # beta
+    for(j in 1:p){
+      lower_1 <- t(X[,j]) %*% W_k %*% X[,j]
+      lower_2 <- (t(H_p)%*%H_p)[kj(p),kj(p)]
+      Lower <- lower_1/n + tau*lower_2
+      upper_1 <- t(rho_k*y - X[,-j]%*%(coef_beta_est[-j,k]) - Z%*%coef_alpha_est[,k]) %*% W_k %*% X[,j]
+      upper_2 <- (t(H_p)%*%(diff_v_est-1/(tau+tau_eps)*dual_xi_est))[kj(p)] -
+        as.vector(coef_beta_est)[-kj(p)]%*%(t(H_p)%*%H_p)[kj(p),-kj(p)]
+      Upper <- upper_1/n + tau*upper_2
+      coef_beta_kj <- mcp_solution(Lower, Upper/Lower, aa, lambda_1)
+      coef_beta_est[j,k] <- coef_beta_kj
+    }
+    # alpha
+    for(s in 1:q){
+      lower_1 <- t(Z[,s]) %*% W_k %*% Z[,s]
+      lower_2 <- (t(H_q)%*%H_q)[ks(q),ks(q)]
+      Lower <- lower_1/n + tau*lower_2
+      upper_1 <- t(rho_k*y - Z[,-s]%*%(coef_alpha_est[-s,k]) - X%*%coef_beta_est[,k]) %*% W_k %*% Z[,s]
+      upper_2 <- (t(H_q)%*%(diff_w_est-1/(tau+tau_eps)*dual_zeta_est))[ks(q)] -
+        as.vector(coef_alpha_est)[-ks(q)]%*%(t(H_q)%*%H_q)[ks(q),-ks(q)]
+      Upper <- upper_1/n + tau*upper_2
+      coef_alpha_ks <- mcp_solution(Lower, Upper/Lower, aa, lambda_1)
+      coef_alpha_est[s,k] <- coef_alpha_ks
+    }
+    coef_full_est[,k] <- c(coef_beta_est[,k], coef_alpha_est[,k])
+    # 更新 rho_k
+    A <- -y%*%W_k%*%y
+    B <- t(data%*%coef_full_est[,k]) %*% W_k %*% y
+    C <- matrix(1, ncol=n)%*%W_k%*%matrix(1, nrow=n)
+    rho_est[k] <- (-B - sqrt(B**2-4*A*C)) / (A*2)
+  }
+  rho_list[[iter]] <- rho_est
+  coef_full_list[[iter]] <- coef_full_est
+  coef_full_ori_list[[iter]] <- coef_full_est/extend_x_to_row(rho_est, p+q)
+
+  # ============================== v, w update ============================
+  # 按 kk' 更新
+  diff_v2 <- H_p %*% as.vector(coef_beta_est) + 1/tau * dual_xi_est
+  diff_w2 <- H_q %*% as.vector(coef_alpha_est) + 1/tau * dual_zeta_est
+  for(k1 in 1:(K_up-1)){
+    for(k2 in (k1+1):K_up){
+      ikk <- which(apply(comb_pair, 2, function(x){all(x==c(k1,k2))}))
+      v_kk <- diff_v_est[((ikk-1)*p+1):(ikk*p)]
+      w_kk <- diff_w_est[((ikk-1)*q+1):(ikk*q)]
+      u_kk <- c(v_kk, w_kk)
+      v_kk2 <- diff_v2[((ikk-1)*p+1):(ikk*p)]
+      w_kk2 <- diff_v2[((ikk-1)*q+1):(ikk*q)]
+
+      v_kk2.F <- norm(matrix(v_kk2), type = "2")
+      w_kk2.F <- norm(matrix(v_kk2), type = "2")
+      u_kk2.F <- sqrt(v_kk2.F**2 + w_kk2.F**2)
+
+      coef1 <- positive_part(1-lambda_2/tau/u_kk2.F)/(1-1/aa/tau)
+      coef2 <- positive_part(1-lambda_3/tau/v_kk2.F)/(1-1/aa/tau)
+
+      if((v_kk2.F > aa*lambda_2) & (w_kk2.F > aa*lambda_3)){
+        diff_v_est[((ikk-1)*p+1):(ikk*p)] <- v_kk2
+        diff_w_est[((ikk-1)*q+1):(ikk*q)] <- w_kk2
+      }else if((v_kk2.F <= aa*lambda_2) & (coef1*v_kk2.F > aa*lambda_3)){
+        diff_v_est[((ikk-1)*p+1):(ikk*p)] <- coef1*v_kk2
+        diff_w_est[((ikk-1)*q+1):(ikk*q)] <- coef1*w_kk2
+      }else if((w_kk2.F**2+(coef2*v_kk2.F)**2 > (aa*lambda_2)**2) &
+               (v_kk2.F <= aa*lambda_3)){
+        diff_v_est[((ikk-1)*p+1):(ikk*p)] <- coef2*v_kk2
+        diff_w_est[((ikk-1)*q+1):(ikk*q)] <- w_kk2
+      }else{
+        diff_v_est[((ikk-1)*p+1):(ikk*p)] <- v_kk2/
+          (1+mcp_d(u_kk,aa,lambda_2,FALSE)/tau/u_kk2.F +
+             mcp_d(v_kk,aa,lambda_3,FALSE)/tau/v_kk2.F)
+        diff_w_est[((ikk-1)*q+1):(ikk*q)] <- v_kk2/
+          (1+mcp_d(u_kk,aa,lambda_2,FALSE)/tau/u_kk2.F)
+      }
+    }
+  }
+  diff_v_list[[iter]] <- diff_v_est
+  diff_w_list[[iter]] <- diff_w_est
+
+
+  # =========================== xi, zeta update ===========================
+  dual_xi_list[[iter]] <- dual_xi_list[[iter-1]] +
+    tau*(H_p %*% as.vector(coef_beta_est) - diff_v_est)
+  dual_zeta_list[[iter]] <- dual_zeta_list[[iter-1]] +
+    tau*(H_q %*% as.vector(coef_alpha_est) - diff_w_est)
+
+  # other
+  # update q_c matrix
+  q_c_matrix <- dnorm(y,
+                      mean = data%*%coef_full_ori_list[[iter]],
+                      sd = 1/extend_x_to_row(rho_est, n)) *
+    extend_x_to_row(pi_list[[iter-1]], n)
+  q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+
+  pi_est <- apply(q_c_matrix, 2, sum) / n
+  pi_list[[iter]] <- pi_est
+
+  coef_diff_std <- (sum(coef_full_list[[iter]]-coef_full_list[[iter-1]])**2)/
+     (sum(coef_full_list[[iter]])**2 + 1e-4)
+  if(coef_diff_std < 1e-7){
+    return()
+  }
+}
+coef_full_list[[iter]]
+coef_full_ori_list[[iter]]
+plot(unlist(lapply(coef_full_ori_list, coef_dist, coef$coef_full)), ylab = "")
+coef_dist(coef_full_ori_list[[iter]], coef$coef_full)
+```
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+

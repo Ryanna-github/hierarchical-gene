@@ -1,0 +1,575 @@
+---
+title: "迭代test"
+author: "renyan"
+date: "2022/5/16"
+output: 
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+
+```{r, echo = FALSE}
+rm(list = ls(all = TRUE))
+ls()
+setwd("D:/Ryanna/RUC_courses/Y1_2/Group/code")
+library(Matrix)
+library(MASS)
+library(fmrs)
+library(ggplot2)
+library(corrplot)
+library(dplyr)
+library(reshape2)
+source("sim.r")
+source("func.r")
+```
+
+
+# 模拟数据生成
+
+```{r}
+n <- 120                         # The sample size
+p <- 4                           # The dimension of x
+q <- 3                         # The dimension of z
+pq <- q*p                        # The dimension of each sample
+dim_nonzero_beta <- 2                         # The dimension of non-zero coefficients of x
+dim_nonzero_alpha <- 2                        # The dimension of non-zero coefficients of z
+dim_nonzero_gamma <- 4
+balance <- T                     # Balanced/Imbalanced subgroup
+gr_num_main <- 2                     # The number of rough subgroup 
+gr_num_sub <- 4                       # The number of refined subgroup 
+hier_struc <- list(c(1,2),c(3,4))  # Hierarchical subgroup structure
+# sd.epsi<-0.5                     # The residual error
+# corZX <- F                       # Correlated/Uncorrelated X and Z
+intercorr0<-"AR1"                # The correlation structure of Z
+signal_its <- 2 # signal intensity
+K <- gr_num_sub
+iter_max <- 10
+eps <- 0.001
+incl_inter <- FALSE               # 模拟实验数据生成时候是否要包含交互项
+
+lambda_1 <- 0
+lambda_2 <- 0
+lambda_3 <- 0
+a <- 3
+
+# ------------ Necessary parameters to support algorithm implementation --------
+comb_pair <- combn(K,2)
+H_3 <- kronecker(Matrix(t(apply(comb_pair,2,dMatrixFun)),sparse = T),bdiag(diag(pq)))
+H_1 <- kronecker(Matrix(t(apply(comb_pair,2,dMatrixFun)),sparse = T),bdiag(diag(p)))
+H_2 <- kronecker(Matrix(t(apply(comb_pair,2,dMatrixFun)),sparse = T),bdiag(diag(q)))
+
+# ------------ Generate the regression coefficients -----------
+coef_main_value <- c(signal_its, -signal_its)
+# coef_main_value <- c(signal_its, 2signal_its)
+coef_sub_value <- c(1.5*signal_its, 0.5*signal_its, -0.5*signal_its, -1.5*signal_its)
+# coef_sub_value <- c(1*signal_its, 2*signal_its, 3*signal_its, 4*signal_its)
+if(balance){pr_sub<-rep(1/gr_num_sub,gr_num_sub)}else{pr_sub<-c(1/6,1/6,1/3,1/3)}
+
+# true main groups & subgroups
+ci <- ci_generate(n, pr_sub, hier_struc)
+ci_sim <- rep(0, n) # true label
+for(i in 1:K){
+  ci_sim[ci$ci_sub[[i]]] <- i
+}
+
+# true coefficients
+set.seed(999)
+coef_true <- generate_coef_true(n, p, q, ci$ci_main, ci$ci_sub, 
+                                coef_main_value,  coef_sub_value, incl_inter,
+                                dim_nonzero_beta, dim_nonzero_alpha, dim_nonzero_gamma)
+# Generate data
+whole.data <- generate_sim_data(n, p, q, coef_true, cotype_x="AR_E", cotype_z="AR_E")
+```
+
+### 检查y计算是否正确
+
+```{r}
+idx <- 1
+t <- cbind(whole.data$X, whole.data$Z, whole.data$W)
+ci_sim[idx]
+
+sum(t[idx,] * coef_true$coef_true_K[,ci_sim[idx]]) # data_y
+whole.data$data_y[idx]
+t[idx,] * coef_true$coef_true_K[,ci_sim[idx]]
+```
+
+```{r}
+# data_y
+coef_beta <- as.vector(coef_true$beta_true_mat)
+coef_alpha <- as.vector(coef_true$alpha_true_mat)
+coef_gamma <- as.vector(coef_true$gamma_true_mat)
+coef_eta <- kronecker(coef_beta, matrix(1, q, 1)) * coef_gamma
+
+
+# r1 <- whole.data$data_X[,1:p] %*% coef_beta[1:p]
+r1 <- whole.data$data_X %*% coef_beta
+r1[idx]
+r2 <- whole.data$data_Z %*% coef_alpha
+r2[idx]
+r <-  whole.data$data_X %*% coef_beta + whole.data$data_Z %*% coef_alpha
+r[idx]
+# tmp <-  whole.data$data_X %*% coef_beta + whole.data$data_Z %*% coef_alpha + 
+#   whole.data$data_W %*% coef_eta
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Iteration
+
+## Iteration-1
+
+
+```{r}
+coef_init <- whole.data$coef_true
+```
+
+```{r}
+# 按列索引
+idx_X <- c(1:(p))
+idx_Z <- c((p+1):((p+q)))
+idx_W <- c(((p+q)+1):((p+q+pq)))
+idx_X_full <- sort(rep((0:(K-1))*(p+q+pq), p)) + idx_X
+idx_Z_full <- sort(rep((0:(K-1))*(p+q+pq), q)) + idx_Z
+idx_W_full <- sort(rep((0:(K-1))*(p+q+pq), pq)) + idx_W
+coef_init_beta <- coef_init[idx_X_full]
+coef_init_alpha <- coef_init[idx_Z_full]
+coef_init_eta <- coef_init[idx_W_full]
+coef_init_gamma <- coef_init_eta/kronecker(coef_init_beta+eps, matrix(1, nrow=q, ncol=1))
+
+X <- whole.data$X_all
+y <- whole.data$data_y
+
+####################### Initialize coef ######################
+# group
+# *1 sgeMatrix
+u_init <- H_1 %*% coef_init_beta
+v_init <- H_2 %*% coef_init_alpha
+w_init <- H_3 %*% coef_init_gamma
+# *1 sgeMatrix
+xi_init <- Matrix(0, ncol=1, nrow=p*K*(K-1)/2, sparse=T)
+zeta_init <- Matrix(0, ncol=1, nrow=q*K*(K-1)/2, sparse=T)
+eta_init <- Matrix(0, ncol=1, nrow=pq*K*(K-1)/2, sparse=T) # 字母有混淆，暂且这么记
+
+# iteration
+# weight/res 相关选择在这里修改
+# 根据分析暂时选择使用 res 相关
+iter <- 1
+coef_beta_est_list <- vector(mode="list", length=iter_max)
+coef_alpha_est_list <- vector(mode="list", length=iter_max)
+coef_eta_est_list <- vector(mode="list", length=iter_max)
+coef_gamma_est_list <- vector(mode="list", length=iter_max)
+coef_beta_est_list[[iter]] <- coef_init_beta
+coef_alpha_est_list[[iter]] <- coef_init_alpha
+coef_eta_est_list[[iter]] <- coef_init_eta
+coef_gamma_est_list[[iter]] <- coef_init_gamma
+
+u_est_list <- vector(mode="list", length=iter_max); u_est_list[[iter]] <- u_init
+v_est_list <- vector(mode="list", length=iter_max); v_est_list[[iter]] <- v_init
+w_est_list <- vector(mode="list", length=iter_max); w_est_list[[iter]] <- w_init
+
+xi_est_list <- vector(mode="list", length=iter_max)
+zeta_est_list <- vector(mode="list", length=iter_max)
+eta_est_list <- vector(mode="list", length=iter_max)
+xi_est_list[[iter]] <- xi_init
+zeta_est_list[[iter]] <- zeta_init
+eta_est_list[[iter]] <- eta_init
+
+rho_est_list <- vector(mode="list", length=iter_max)
+rho_est_list[[iter]] <- unlist(lapply(ci$ci_sub, function(x){1/sd(whole.data$data_y[x])}))
+mu_est_list <- vector(mode="list", length=iter_max)
+mu_est_list[[iter]] <- unlist(lapply(ci$ci_sub, function(x){mean(whole.data$data_y[x])}))
+pi_est_list <- vector(mode="list", length=iter_max)
+pi_est_list[[iter]] <- pr_sub
+
+# y_est_list <- vector(mode="list", length=iter_max)
+# y_est_list[[iter]] <- fmr$y_res
+
+# 监测触发条件
+# 被shrin上k的维度个数
+shrink_sum_beta_list <- vector(mode="list", length=iter_max)
+shrink_sum_alpha_list <- vector(mode="list", length=iter_max)
+shrink_sum_gamma_list <- vector(mode="list", length=iter_max)
+
+dist_u_list <- vector(mode="list", length=iter_max)
+dist_v_list <- vector(mode="list", length=iter_max)
+dist_w_list <- vector(mode="list", length=iter_max)
+```
+
+## Iteration-n
+
+ADMM 算法循环体
+
+```{r}
+iter_max <- 10
+K_up <- 4
+tau <- 1 
+
+H_1_prod <- t(H_1)%*%H_1
+H_2_prod <- t(H_2)%*%H_2
+H_3_prod <- t(H_3)%*%H_3
+```
+
+
+
+
+### Test Part
+
+```{r}
+row_lap <- function(x, period){
+  mat <- matrix(x, nrow = period)
+  return(apply(mat, 1, sum))
+}
+positive_part <- function(x){
+  x[x < 0] <- 0
+  return(x)
+}
+```
+
+```{r}
+df <- data.frame(y = whole.data$data_y)
+ci_tmp <- rep(1, n)
+for(i in 2:K_up){ ci_tmp[ci$ci_sub[[i]]] <- i }
+df$ci <- factor(ci_tmp)
+df %>% group_by(ci) %>% summarise(mu_true = mean(y))
+ggplot(df, aes(x = y, fill = ci)) +
+  geom_histogram(position = "dodge") +
+  theme_minimal()
+```
+
+
+
+```{r}
+iter <- 2
+pi_k <- pi_est_list[[iter-1]]
+q_c_matrix <- matrix(0, nrow = n, ncol = K_up)
+for(k in 1:K_up){
+  q_c_matrix[,k] <- dnorm(whole.data$data_y,
+                          mean = mu_est_list[[iter-1]][k],
+                          sd = 1/rho_est_list[[iter-1]][k])
+}
+q_c_matrix <- q_c_matrix * kronecker(matrix(1, nrow = n, ncol = 1), matrix(pi_k, nrow = 1))
+q_c_matrix <- q_c_matrix/apply(q_c_matrix, 1, sum)
+
+# ======================================= PART 1 =======================================
+for(k in 1:K_up){
+  b_k_common <- 1/tau * sum(q_c_matrix[,k] *
+                              rho_est_list[[iter-1]][k]**2 *
+                              (whole.data$data_y - mu_est_list[[iter-1]][k]))
+  # -------------------------------------- PART 1.1 --------------------------------------
+  # alpha_k
+  A_k <- (H_2_prod)[((k-1)*q+1):(k*q),]
+  b_k1 <- t(H_2)[((k-1)*q+1):(k*q),]%*%(v_est_list[[iter-1]]-1/tau*zeta_est_list[[iter-1]])
+  b_k2 <- apply(q_c_matrix[,k] * whole.data$Z, 2, sum)
+  b_k <- b_k1 + b_k_common * b_k2 # 矩阵+元组=>矩阵
+  coef_alpha_est_list[[iter]][((k-1)*q+1):(k*q)] <- qr.solve(A_k, b_k)[1:q] # non-zeros terms
+
+  # -------------------------------------- PART 1.2 --------------------------------------
+  # beta_k
+  beta_k <- coef_beta_est_list[[iter-1]][((k-1)*p+1):(k*p)]
+  gamma_k <- coef_gamma_est_list[[iter-1]][((k-1)*pq+1):(k*pq)]
+  beta_shrink_case <- (abs(beta_k) <= a*lambda_1)
+  shrink_sum_beta_list[[iter-1]] <- sum(beta_shrink_case)
+
+  A_k <- (H_1_prod)[((k-1)*p+1):(k*p),]
+  b_k1 <- t(H_1)[((k-1)*p+1):(k*p),]%*%(u_est_list[[iter-1]]-1/tau*xi_est_list[[iter-1]])
+  w_gamma_prod <- t(t(whole.data$W) * gamma_k)
+  b_k2 <- apply(q_c_matrix[,k] * (whole.data$X + t(apply(w_gamma_prod, 1, row_lap, p))), 2, sum)
+  b_k_shrink <- 1/tau * sign(beta_k) * (lambda_1 - 1/a*abs(beta_k))
+  b_k <- b_k1 + b_k_common * b_k2
+  b_k[beta_shrink_case] <- b_k[beta_shrink_case] - b_k_shrink[beta_shrink_case]
+  coef_beta_est_list[[iter]][((k-1)*p+1):(k*p)] <- qr.solve(A_k, b_k)[1:p]
+
+  # -------------------------------------- PART 1.3 --------------------------------------
+  # gamma_k
+  beta_k <- coef_beta_est_list[[iter-1]][((k-1)*p+1):(k*p)]
+  gamma_k <- coef_gamma_est_list[[iter-1]][((k-1)*pq+1):(k*pq)]
+  gamma_shrink_case <- (abs(gamma_k) <= a*lambda_1)
+  shrink_sum_gamma_list[[iter-1]] <- sum(gamma_shrink_case)
+
+  A_k <- (H_3_prod)[((k-1)*pq+1):(k*pq),]
+  b_k1 <- t(H_3)[((k-1)*pq+1):(k*pq),]%*%(w_est_list[[iter-1]]-1/tau*eta_est_list[[iter-1]])
+  w_beta_prod <- t(t(whole.data$W) * as.numeric(kronecker(beta_k, matrix(1, nrow = q, ncol = 1))))
+  b_k2 <- apply(q_c_matrix[,k] * w_beta_prod, 2, sum)
+  b_k2 <- sum(q_c_matrix[,k] * as.numeric(whole.data$W%*%matrix(rep(beta_k, q), ncol=1)))
+  b_k_shrink <- 1/tau * sign(gamma_k) * (lambda_1 - 1/a*abs(gamma_k))
+  b_k <- b_k1 + b_k_common * b_k2
+  b_k[gamma_shrink_case] <- b_k[gamma_shrink_case] - b_k_shrink[gamma_shrink_case]
+  coef_gamma_est_list[[iter]][((k-1)*pq+1):(k*pq)] <- qr.solve(A_k, b_k)[1:pq]
+}
+coef_eta_est_list[[iter]] <- kronecker(coef_beta_est_list[[iter]], matrix(1, nrow=q, ncol=1)) * coef_gamma_est_list[[iter]]
+# ======================================= PART 2 =======================================
+for(k in 1:K_up){
+  u_hat <- H_1 %*% coef_beta_est_list[[iter]] + 1/tau * xi_est_list[[iter-1]]
+  v_hat <- H_2 %*% coef_alpha_est_list[[iter]] + 1/tau * zeta_est_list[[iter-1]]
+  w_hat <- H_3 %*% coef_gamma_est_list[[iter]] + 1/tau * eta_est_list[[iter-1]]
+  # each column corresponds to one kk' pair
+  u_hat_matrix <- matrix(u_hat, nrow = p)
+  v_hat_matrix <- matrix(v_hat, nrow = q)
+  w_hat_matrix <- matrix(w_hat, nrow = pq)
+
+  # all hats
+  phi_norm2_1 <- apply(rbind(u_hat_matrix, v_hat_matrix, w_hat_matrix),
+                       2, function(x){sqrt(sum(x**2))})
+  psi_norm2_1 <- apply(rbind(u_hat_matrix, v_hat_matrix),
+                      2, function(x){sqrt(sum(x**2))})
+  w_norm2_1 <- apply(w_hat_matrix, 2, function(x){sqrt(sum(x**2))})
+
+  phi_coe <- positive_part(1-lambda_2/tau/phi_norm2_1)/(1-1/a/tau)
+  psi_coe <- positive_part(1-lambda_3/tau/psi_norm2_1)/(1-1/a/tau)
+  kkpair_idx_nn <- which((phi_norm2_1>a*lambda_2) & (psi_norm2_1>a*lambda_3))
+  kkpair_idx_sn <- which((phi_coe*phi_norm2_1<=a*lambda_2) & (psi_coe*psi_norm2_1>a*lambda_3))
+  kkpair_idx_ns <- which(((phi_coe*phi_norm2_1)**2+(w_norm2_1)**2>(a*lambda_2)**2) &
+                           (psi_coe*psi_norm2_1<=a*lambda_3))
+  kkpair_idx_ss <- setdiff(1:(K_up*(K_up-1)/2),
+                           Reduce(union,list(kkpair_idx_nn,kkpair_idx_sn,kkpair_idx_ns)))
+
+  u_est_list[[iter]] <- matrix(0, nrow = p*(K_up*(K_up-1)/2))
+  v_est_list[[iter]] <- matrix(0, nrow = q*(K_up*(K_up-1)/2))
+  w_est_list[[iter]] <- matrix(0, nrow = pq*(K_up*(K_up-1)/2))
+  # case1: no shrinkage
+  if(length(kkpair_idx_nn) > 0){
+    for(kk in kkpair_idx_nn){
+      u_est_list[[iter]][((kk-1)*p+1):(kk*p)] <- u_hat[((kk-1)*p+1):(kk*p)]
+      v_est_list[[iter]][((kk-1)*q+1):(kk*q)] <- v_hat[((kk-1)*q+1):(kk*q)]
+      w_est_list[[iter]][((kk-1)*pq+1):(kk*pq)] <- w_hat[((kk-1)*pq+1):(kk*pq)]
+    }
+  }
+  # case2: overall shrinkage (prop)
+  if(length(kkpair_idx_sn > 0)){
+    for(kk in kkpair_idx_nn){
+      u_est_list[[iter]][((kk-1)*p+1):(kk*p)] <- phi_coe[kk] * u_hat[((kk-1)*p+1):(kk*p)]
+      v_est_list[[iter]][((kk-1)*q+1):(kk*q)] <- phi_coe[kk] * v_hat[((kk-1)*q+1):(kk*q)]
+      w_est_list[[iter]][((kk-1)*pq+1):(kk*pq)] <- phi_coe[kk] * w_hat[((kk-1)*pq+1):(kk*pq)]
+    }
+  }
+  if(length(kkpair_idx_ns > 0)){
+    for(kk in kkpair_idx_nn){
+      u_est_list[[iter]][((kk-1)*p+1):(kk*p)] <- psi_coe[kk] * u_hat[((kk-1)*p+1):(kk*p)]
+      v_est_list[[iter]][((kk-1)*q+1):(kk*q)] <- psi_coe[kk] * v_hat[((kk-1)*q+1):(kk*q)]
+      w_est_list[[iter]][((kk-1)*pq+1):(kk*pq)] <- w_hat[((kk-1)*pq+1):(kk*pq)]
+    }
+  }
+  if(length(kkpair_idx_ss > 0)){
+    for(kk in kkpair_idx_nn){
+      u_est_list[[iter]][((kk-1)*p+1):(kk*p)] <- u_hat[((kk-1)*p+1):(kk*p)]/
+                  (1+(lambda_2/phi_norm2_1[kk]-1/a)/tau+(lambda_3/psi_norm2_1[kk]-1/a)/tau)
+      v_est_list[[iter]][((kk-1)*q+1):(kk*q)] <- v_hat[((kk-1)*q+1):(kk*q)]/
+                  (1+(lambda_2/phi_norm2_1[kk]-1/a)/tau+(lambda_3/psi_norm2_1[kk]-1/a)/tau)
+      w_est_list[[iter]][((kk-1)*pq+1):(kk*pq)] <- w_hat[((kk-1)*pq+1):(kk*pq)]/
+                  (1+(lambda_2/phi_norm2_1[kk]-1/a)/tau+(lambda_3/psi_norm2_1[kk]-1/a)/tau)
+    }
+  }
+}
+
+# ======================================= PART 3 =======================================
+xi_est_list[[iter]] <- xi_est_list[[iter-1]] +
+  tau*(H_1 %*% coef_beta_est_list[[iter]] - u_est_list[[iter-1]])
+zeta_est_list[[iter]] <- zeta_est_list[[iter-1]] +
+  tau*(H_2 %*% coef_alpha_est_list[[iter]] - v_est_list[[iter-1]])
+eta_est_list[[iter]] <- eta_est_list[[iter-1]] +
+  tau*(H_3 %*% coef_gamma_est_list[[iter]] - w_est_list[[iter-1]])
+
+# ======================================= PART 4 =======================================
+# rho
+coef_eta <- kronecker(coef_beta_est_list[[iter]], matrix(1, q, 1)) * coef_gamma_est_list[[iter]]
+
+mu_est_list[[iter]] <- (whole.data$X %*% matrix(coef_beta_est_list[[iter]], ncol=K_up) +
+  whole.data$Z %*% matrix(coef_alpha_est_list[[iter]], ncol=K_up) +
+  whole.data$W %*% matrix(coef_eta, ncol=K_up)) * q_c_matrix
+mu_est_list[[iter]] <- apply(mu_est_list[[iter]], 2, mean)
+
+y_mu_diff_k <- kronecker(whole.data$data_y, matrix(1, nrow=1, ncol=K_up)) -
+         kronecker(matrix(mu_est_list[[iter-1]], nrow=1), matrix(1, nrow=n, ncol=1))
+rho_est_list[[iter]] <- sqrt(apply(q_c_matrix, 2, sum) / apply(q_c_matrix*y_mu_diff_k**2, 2, sum))
+
+# ====================================== E 步补充 ======================================
+# 此步更新，mu，qc 更新在 M 步之前完成
+pi_est_list[[iter]] <- apply(q_c_matrix, 2, mean)
+```
+
+
+
+### Full Iteration
+
+
+```{r}
+for(iter in 2:iter_max){
+  pi_k <- pi_est_list[[iter-1]]
+  q_c_matrix <- matrix(0, nrow = n, ncol = K_up)
+  for(k in 1:K_up){
+    q_c_matrix[,k] <- dnorm(whole.data$data_y,
+                            mean = mu_est_list[[iter-1]][k],
+                            sd = 1/rho_est_list[[iter-1]][k])
+  }
+  q_c_matrix <- q_c_matrix * kronecker(matrix(1, nrow = n, ncol = 1), matrix(pi_k, nrow = 1))
+  q_c_matrix <- q_c_matrix/apply(q_c_matrix, 1, sum)
+  
+  # ======================================= PART 1 ======================================= 
+  for(k in 1:K_up){
+    b_k_common <- 1/tau * sum(q_c_matrix[,k] * 
+                                rho_est_list[[iter-1]][k]**2 * 
+                                (whole.data$data_y - mu_est_list[[iter-1]][k]))
+    # -------------------------------------- PART 1.1 --------------------------------------
+    # alpha_k
+    A_k <- (H_2_prod)[((k-1)*q+1):(k*q),]
+    b_k1 <- t(H_2)[((k-1)*q+1):(k*q),]%*%(v_est_list[[iter-1]]-1/tau*zeta_est_list[[iter-1]])
+    b_k2 <- apply(q_c_matrix[,k] * whole.data$Z, 2, sum)
+    b_k <- b_k1 + b_k_common * b_k2 # 矩阵+元组=>矩阵
+    coef_alpha_est_list[[iter]][((k-1)*q+1):(k*q)] <- qr.solve(A_k, b_k)[1:q] # non-zeros terms
+    
+    # -------------------------------------- PART 1.2 --------------------------------------
+    # beta_k
+    beta_k <- coef_beta_est_list[[iter-1]][((k-1)*p+1):(k*p)]
+    gamma_k <- coef_gamma_est_list[[iter-1]][((k-1)*pq+1):(k*pq)]
+    beta_shrink_case <- (abs(beta_k) <= a*lambda_1) 
+    shrink_sum_beta_list[[iter-1]] <- sum(beta_shrink_case)
+  
+    A_k <- (H_1_prod)[((k-1)*p+1):(k*p),]
+    b_k1 <- t(H_1)[((k-1)*p+1):(k*p),]%*%(u_est_list[[iter-1]]-1/tau*xi_est_list[[iter-1]])
+    w_gamma_prod <- t(t(whole.data$W) * gamma_k)
+    b_k2 <- apply(q_c_matrix[,k] * (whole.data$X + t(apply(w_gamma_prod, 1, row_lap, p))), 2, sum)
+    b_k_shrink <- 1/tau * sign(beta_k) * (lambda_1 - 1/a*abs(beta_k))
+    b_k <- b_k1 + b_k_common * b_k2
+    b_k[beta_shrink_case] <- b_k[beta_shrink_case] - b_k_shrink[beta_shrink_case]
+    coef_beta_est_list[[iter]][((k-1)*p+1):(k*p)] <- qr.solve(A_k, b_k)[1:p]
+    
+    # -------------------------------------- PART 1.3 --------------------------------------
+    # gamma_k
+    beta_k <- coef_beta_est_list[[iter-1]][((k-1)*p+1):(k*p)]
+    gamma_k <- coef_gamma_est_list[[iter-1]][((k-1)*pq+1):(k*pq)]
+    gamma_shrink_case <- (abs(gamma_k) <= a*lambda_1) 
+    shrink_sum_gamma_list[[iter-1]] <- sum(gamma_shrink_case)
+  
+    A_k <- (H_3_prod)[((k-1)*pq+1):(k*pq),]
+    b_k1 <- t(H_3)[((k-1)*pq+1):(k*pq),]%*%(w_est_list[[iter-1]]-1/tau*eta_est_list[[iter-1]])
+    w_beta_prod <- t(t(whole.data$W) * as.numeric(kronecker(beta_k, matrix(1, nrow = q, ncol = 1))))
+    b_k2 <- apply(q_c_matrix[,k] * w_beta_prod, 2, sum)
+    b_k2 <- sum(q_c_matrix[,k] * as.numeric(whole.data$W%*%matrix(rep(beta_k, q), ncol=1)))
+    b_k_shrink <- 1/tau * sign(gamma_k) * (lambda_1 - 1/a*abs(gamma_k))
+    b_k <- b_k1 + b_k_common * b_k2
+    b_k[gamma_shrink_case] <- b_k[gamma_shrink_case] - b_k_shrink[gamma_shrink_case]
+    coef_gamma_est_list[[iter]][((k-1)*pq+1):(k*pq)] <- qr.solve(A_k, b_k)[1:pq]
+  }
+  coef_eta_est_list[[iter]] <- kronecker(coef_beta_est_list[[iter]], matrix(1, nrow=q, ncol=1)) * coef_gamma_est_list[[iter]]
+  # ======================================= PART 2 ======================================= 
+  for(k in 1:K_up){
+    u_hat <- H_1 %*% coef_beta_est_list[[iter]] + 1/tau * xi_est_list[[iter-1]]
+    v_hat <- H_2 %*% coef_alpha_est_list[[iter]] + 1/tau * zeta_est_list[[iter-1]]
+    w_hat <- H_3 %*% coef_gamma_est_list[[iter]] + 1/tau * eta_est_list[[iter-1]]
+    # each column corresponds to one kk' pair
+    u_hat_matrix <- matrix(u_hat, nrow = p)
+    v_hat_matrix <- matrix(v_hat, nrow = q)
+    w_hat_matrix <- matrix(w_hat, nrow = pq)
+    
+    # all hats
+    phi_norm2_1 <- apply(rbind(u_hat_matrix, v_hat_matrix, w_hat_matrix), 
+                         2, function(x){sqrt(sum(x**2))})
+    psi_norm2_1 <- apply(rbind(u_hat_matrix, v_hat_matrix), 
+                        2, function(x){sqrt(sum(x**2))})
+    w_norm2_1 <- apply(w_hat_matrix, 2, function(x){sqrt(sum(x**2))})
+    
+    phi_coe <- positive_part(1-lambda_2/tau/phi_norm2_1)/(1-1/a/tau)
+    psi_coe <- positive_part(1-lambda_3/tau/psi_norm2_1)/(1-1/a/tau)
+    kkpair_idx_nn <- which((phi_norm2_1>a*lambda_2) & (psi_norm2_1>a*lambda_3))
+    kkpair_idx_sn <- which((phi_coe*phi_norm2_1<=a*lambda_2) & (psi_coe*psi_norm2_1>a*lambda_3))
+    kkpair_idx_ns <- which(((phi_coe*phi_norm2_1)**2+(w_norm2_1)**2>(a*lambda_2)**2) &
+                             (psi_coe*psi_norm2_1<=a*lambda_3))
+    kkpair_idx_ss <- setdiff(1:(K_up*(K_up-1)/2),
+                             Reduce(union,list(kkpair_idx_nn,kkpair_idx_sn,kkpair_idx_ns)))
+    
+    u_est_list[[iter]] <- matrix(0, nrow = p*(K_up*(K_up-1)/2))
+    v_est_list[[iter]] <- matrix(0, nrow = q*(K_up*(K_up-1)/2))
+    w_est_list[[iter]] <- matrix(0, nrow = pq*(K_up*(K_up-1)/2))
+    # case1: no shrinkage
+    if(length(kkpair_idx_nn) > 0){
+      for(kk in kkpair_idx_nn){
+        u_est_list[[iter]][((kk-1)*p+1):(kk*p)] <- u_hat[((kk-1)*p+1):(kk*p)]
+        v_est_list[[iter]][((kk-1)*q+1):(kk*q)] <- v_hat[((kk-1)*q+1):(kk*q)]
+        w_est_list[[iter]][((kk-1)*pq+1):(kk*pq)] <- w_hat[((kk-1)*pq+1):(kk*pq)]
+      }
+    }
+    # case2: overall shrinkage (prop)
+    if(length(kkpair_idx_sn > 0)){
+      for(kk in kkpair_idx_nn){
+        u_est_list[[iter]][((kk-1)*p+1):(kk*p)] <- phi_coe[kk] * u_hat[((kk-1)*p+1):(kk*p)]
+        v_est_list[[iter]][((kk-1)*q+1):(kk*q)] <- phi_coe[kk] * v_hat[((kk-1)*q+1):(kk*q)]
+        w_est_list[[iter]][((kk-1)*pq+1):(kk*pq)] <- phi_coe[kk] * w_hat[((kk-1)*pq+1):(kk*pq)]
+      }
+    }
+    if(length(kkpair_idx_ns > 0)){
+      for(kk in kkpair_idx_nn){
+        u_est_list[[iter]][((kk-1)*p+1):(kk*p)] <- psi_coe[kk] * u_hat[((kk-1)*p+1):(kk*p)]
+        v_est_list[[iter]][((kk-1)*q+1):(kk*q)] <- psi_coe[kk] * v_hat[((kk-1)*q+1):(kk*q)]
+        w_est_list[[iter]][((kk-1)*pq+1):(kk*pq)] <- w_hat[((kk-1)*pq+1):(kk*pq)]
+      }
+    }
+    if(length(kkpair_idx_ss > 0)){
+      for(kk in kkpair_idx_nn){
+        u_est_list[[iter]][((kk-1)*p+1):(kk*p)] <- u_hat[((kk-1)*p+1):(kk*p)]/
+                    (1+(lambda_2/phi_norm2_1[kk]-1/a)/tau+(lambda_3/psi_norm2_1[kk]-1/a)/tau)
+        v_est_list[[iter]][((kk-1)*q+1):(kk*q)] <- v_hat[((kk-1)*q+1):(kk*q)]/
+                    (1+(lambda_2/phi_norm2_1[kk]-1/a)/tau+(lambda_3/psi_norm2_1[kk]-1/a)/tau)
+        w_est_list[[iter]][((kk-1)*pq+1):(kk*pq)] <- w_hat[((kk-1)*pq+1):(kk*pq)]/
+                    (1+(lambda_2/phi_norm2_1[kk]-1/a)/tau+(lambda_3/psi_norm2_1[kk]-1/a)/tau)
+      }
+    }
+  }
+  
+  # ======================================= PART 3 =======================================
+  xi_est_list[[iter]] <- xi_est_list[[iter-1]] + 
+    tau*(H_1 %*% coef_beta_est_list[[iter]] - u_est_list[[iter-1]])
+  zeta_est_list[[iter]] <- zeta_est_list[[iter-1]] + 
+    tau*(H_2 %*% coef_alpha_est_list[[iter]] - v_est_list[[iter-1]])
+  eta_est_list[[iter]] <- eta_est_list[[iter-1]] + 
+    tau*(H_3 %*% coef_gamma_est_list[[iter]] - w_est_list[[iter-1]])
+    
+  # ======================================= PART 4 ======================================= 
+  # rho
+  coef_eta <- kronecker(coef_beta_est_list[[iter]], matrix(1, q, 1)) * coef_gamma_est_list[[iter]]
+  
+  mu_est_list[[iter]] <- (whole.data$X %*% matrix(coef_beta_est_list[[iter]], ncol=K_up) + 
+    whole.data$Z %*% matrix(coef_alpha_est_list[[iter]], ncol=K_up) + 
+    whole.data$W %*% matrix(coef_eta, ncol=K_up)) * q_c_matrix
+  mu_est_list[[iter]] <- apply(mu_est_list[[iter]], 2, mean)
+  
+  y_mu_diff_k <- kronecker(whole.data$data_y, matrix(1, nrow=1, ncol=K_up)) -
+           kronecker(matrix(mu_est_list[[iter-1]], nrow=1), matrix(1, nrow=n, ncol=1))
+  rho_est_list[[iter]] <- sqrt(apply(q_c_matrix, 2, sum) / apply(q_c_matrix*y_mu_diff_k**2, 2, sum))
+  
+  # ====================================== E 步补充 ====================================== 
+  # 此步更新，mu，qc 更新在 M 步之前完成
+  pi_est_list[[iter]] <- apply(q_c_matrix, 2, mean)
+}
+```
+
+
+```{r}
+coef_beta_est_list
+coef_alpha_est_list
+rho_est_list
+mu_est_list
+```
+
+
+
+

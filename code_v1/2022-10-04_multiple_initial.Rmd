@@ -1,0 +1,521 @@
+---
+title: "Multiple Initial Values"
+author: "任焱"
+date: "2022-10-04"
+output: html_document
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo = FALSE}
+rm(list = ls(all = TRUE))
+# setwd("D:/Ryanna/RUC_courses/Y1_2/Group/code")
+library(Matrix)
+library(MASS)
+library(fmrs)
+library(flexmix)
+library(ggplot2)
+library(corrplot)
+library(dplyr)
+library(reshape2)
+library(latex2exp)
+library(itertools)
+source("sim.r")
+source("func.r")
+source("estimate.r")
+```
+
+
+```{r}
+n <- 200                         # The sample size
+p <- 4                           # The dimension of x
+q <- 3                         # The dimension of z
+pq <- q*p                        # The dimension of each sample
+dim_nonzero_beta <- 2                         # The dimension of non-zero coefficients of x
+dim_nonzero_alpha <- 2                        # The dimension of non-zero coefficients of z
+dim_nonzero_gamma <- 4
+balance <- T                     # Balanced/Imbalanced subgroup
+gr_num_main <- 2                     # The number of rough subgroup 
+gr_num_sub <- 4                       # The number of refined subgroup 
+hier_struc <- list(c(1,2),c(3,4))  # Hierarchical subgroup structure
+# sd.epsi<-0.5                     # The residual error
+# corZX <- F                       # Correlated/Uncorrelated X and Z
+intercorr0<-"AR1"                # The correlation structure of Z
+signal_its <- 2 # signal intensity
+K <- gr_num_sub
+iter_max <- 10
+eps <- 0.001
+incl_inter <- TRUE               # 模拟实验数据生成时候是否要包含交互项
+tol <- 1e-5
+
+lambda_1 <- 0
+lambda_2 <- 0
+lambda_3 <- 0
+a <- 3
+iter_max <- 20
+K_up <- 4
+tau <- 1 
+
+# ------------ Necessary parameters to support algorithm implementation --------
+comb_pair <- combn(K,2)
+H_3 <- kronecker(Matrix(t(apply(comb_pair,2,dMatrixFun)),sparse = T),bdiag(diag(pq)))
+H_1 <- kronecker(Matrix(t(apply(comb_pair,2,dMatrixFun)),sparse = T),bdiag(diag(p)))
+H_2 <- kronecker(Matrix(t(apply(comb_pair,2,dMatrixFun)),sparse = T),bdiag(diag(q)))
+
+# ------------ Generate the regression coefficients -----------
+coef_main_value <- c(signal_its, -signal_its)
+# coef_main_value <- c(signal_its, 2signal_its)
+coef_sub_value <- c(1.5*signal_its, 0.5*signal_its, -0.5*signal_its, -1.5*signal_its)
+# coef_sub_value <- c(1*signal_its, 2*signal_its, 3*signal_its, 4*signal_its)
+if(balance){pr_sub<-rep(1/gr_num_sub,gr_num_sub)}else{pr_sub<-c(1/6,1/6,1/3,1/3)}
+
+# true main groups & subgroups
+set.seed(11)
+ci <- ci_generate(n, pr_sub, hier_struc)
+ci_sim <- rep(0, n) # true label
+for(i in 1:K){
+  ci_sim[ci$ci_sub[[i]]] <- i
+}
+
+# true coefficients
+set.seed(11)
+coef_true <- generate_coef_true(n, p, q, ci$ci_main, ci$ci_sub, 
+                                coef_main_value,  coef_sub_value, incl_inter,
+                                dim_nonzero_beta, dim_nonzero_alpha, dim_nonzero_gamma)
+# Generate data
+# whole.data <- generate_sim_data(n, p, q, coef_true, cotype_x="AR_E", cotype_z="AR_E")
+whole.data <- generate_sim_data(n, p, q, coef_true, cotype_x="En", cotype_z="En")
+```
+
+
+```{r}
+p <- 2
+q <- 2
+x <- whole.data$X[,(1:p)]
+z <- whole.data$Z[,(1:q)]
+w <- matrix(0, n, p*q)
+  for(i in 1:n){
+    w[i,] <- kronecker(z[i,], x[i,])
+  }
+X <- cbind(x, z, w)
+# 稠密真实参数
+# 注意计算 y 时总要转化为 eta 版本
+# coef_* 系列值总是 gamma 版本而非 eta
+coef_true <- rbind(t(matrix(rep(c(2,2,-2,-2),4), 4)),
+                   t(matrix(rep(c(3,1,-1,-3),4), 4)))
+# y_true
+y2 <- X %*% coef_gamma2eta(coef_true, p, q)
+y <- NULL
+for(i in 1:length(ci_sim)){ y[i] <- y2[i,ci_sim[i]] }
+```
+
+
+```{r}
+# 真值
+coef_split_all <- coef_split(coef_true, p, q)
+coef_split_all_v2 <- coef_gamma2eta(coef_true, p, q)
+coef_beta_true <- coef_split_all[[1]]
+coef_alpha_true <- coef_split_all[[2]]
+coef_gamma_true <- coef_split_all[[3]]
+coef_eta_true <- coef_split_all_v2[[3]]
+```
+
+
+
+# 单类框架-多初始值
+
+```{r}
+# 仅对于单类设定几组初始值
+# y_one 是为了固定初始化的 alpha 传递，其他地方不需要
+# 固定初始化效果较稳定，首先进行检验
+coef_est_init <- function(y_one, p, q, seeds = c(1), sd = 0.1){
+  coef_est_list <- NULL
+  # 固定初始化
+  # coef_beta_one <- rep(0, p)
+  coef_alpha_one <- rep(0, q)
+  coef_gamma_one <- rep(0, p*q)
+  x_beta_k <- x[ci_sim == k,]
+  y_beta_k <- y_one
+  W <- diag(1, length(y_one))
+  coef_beta_one <- solve(t(x_beta_k)%*%W%*%x_beta_k+diag(0.1,q))%*%t(x_beta_k)%*%W%*%y_beta_k 
+  coef_est_list[[1]] <- c(coef_beta_one, coef_alpha_one, coef_gamma_one)
+  # 随机初始化
+  # for(init_idx in 2:(length(seeds)+1)){
+  #   set.seed(seeds[init_idx-1])
+  #   coef_est_list[[init_idx]] <- rnorm(p+q+p*q, mean = 0, sd = sd)
+  # }
+  return(coef_est_list)
+}
+```
+
+
+```{r}
+iter_max <- 200
+par(mfrow = c(2, 2))
+k <- 4
+for(k in 1:K_up){
+  print(paste("====================== k", k, "==============================="))
+  # k <- 3
+  y_one <- y[ci_sim == k]
+  
+  # par(mfrow = c(4, 4))
+  # coef_init_sets <- coef_est_init(y_one, p, q, (2:8)*8)
+  seeds_list <- (2:100)*8
+  seeds_list <- c(999)
+  coef_init_sets <- coef_est_init(y_one, p, q, seeds_list)
+  mse_list <- NULL
+  coef_est_list <- NULL
+  for(coef_idx in 1:length(coef_init_sets)){
+    print(paste("***********************", coef_idx, "************************"))
+    coef_est <- coef_init_sets[[coef_idx]]
+    coef_beta_one <- coef_est[1:p]
+    coef_alpha_one <- coef_est[(p+1):(p+q)]
+    coef_gamma_one <- coef_est[(p+q+1):(p+q+p*q)]
+  
+    coef_dist <- NULL
+    for(iter in 1:iter_max){
+      coef_old <- c(coef_alpha_one, coef_beta_one, coef_gamma_one)
+      coef_dist[[iter]] <- sum((coef_true[,k]-
+                                  c(coef_beta_one, coef_alpha_one, coef_gamma_one))**2)
+      W <- diag(1, length(y_one))
+  
+      # print(iter)
+      # print(matrix(c(coef_beta_one, coef_alpha_one, coef_gamma_one), ncol=1))
+      
+      # gamam
+      x_gamma_k <- t(apply(w[ci_sim == k,], 1, get_gamma_var_fromlast, p, q, coef_beta_one))
+      y_gamma_k <- y_one - x[ci_sim == k,]%*%coef_beta_one - z[ci_sim == k,]%*%coef_alpha_one
+      coef_gamma_one <- solve(t(x_gamma_k)%*%W%*%x_gamma_k+diag(0.1,p*q))%*%t(x_gamma_k)%*%W%*%y_gamma_k
+      # gd_gamma <- gdescent(f,grad_f,x_gamma_k,y_gamma_k,0.01,intercept = FALSE)
+      # coef_gamma_one <- gd_gamma$b[,gd_gamma$iter-1]
+  
+      # alpha
+      x_alpha_k <- z[ci_sim == k,]
+      y_alpha_k <- y_one - x_beta_k%*%coef_beta_one
+      coef_alpha_one <- solve(t(x_alpha_k)%*%W%*%x_alpha_k+diag(0.1,q))%*%t(x_alpha_k)%*%W%*%y_alpha_k
+  
+      # beta
+      x_beta_k <- x[ci_sim == k,] + t(apply(w[ci_sim == k,], 1, get_beta_var_fromlast, p, q, coef_gamma_one))
+      y_beta_k <- y_one - z[ci_sim == k,]%*%coef_alpha_one
+      coef_beta_one <- solve(t(x_beta_k)%*%W%*%x_beta_k+diag(0.1,p))%*%t(x_beta_k)%*%W%*%y_beta_k
+      # gd_beta <- gdescent(f,grad_f,x_beta_k,y_beta_k,0.01,intercept = FALSE)
+      # coef_beta_one <- gd_beta$b[,gd_beta$iter-1]
+  
+  
+      coef_cur <- c(coef_alpha_one, coef_beta_one, coef_gamma_one)
+      if(sum((coef_cur - coef_old)**2) < 1e-5){
+        print("converge with no coef change")
+        # return()
+        break()
+      }
+    }
+    # "Coef Distance (Est from True)\n",
+    plot(1:length(coef_dist), unlist(coef_dist), main = paste("Coef Distance K =", k),
+         xlab = "Iteration", ylab = "Distance")
+    #
+    x_beta_k <- x[ci_sim == k,] + t(apply(w[ci_sim == k,], 1, get_beta_var_fromlast, p, q, coef_gamma_one))
+    y_est <- z[ci_sim == k,]%*%coef_alpha_one + x_beta_k%*%coef_beta_one
+    # hist(y_est - y_one, main = paste0("Residual histogram with MSE: ", sum((y_est - y_one)**2)))
+    # print("******************************")
+    # print(coef_cur)
+  
+    mse_list[[coef_idx]] <- sum((y_est - y_one)**2)
+    coef_est_list[[coef_idx]] <- coef_cur
+  
+    if(sum((y_est - y_one)**2) < 1){
+      print("Find the ideal coef!")
+      break()
+    }
+  }
+}
+
+
+
+# # 迭代到较好结果，提前终止循环，理想情况应当出现该类情况
+# if(coef_idx < length(coef_init_sets)){
+#   coef_est_one <- coef_est_list[[which.min(unlist(mse_list))]]
+# }else{
+#   print("No ideal results. Check the plot.")
+# }
+# plot(unlist(mse_list), main = "MSE of Different Initial Values", ylab = "MSE")
+# coef_est_one
+```
+
+
+# 多类别框架-多初始值
+
+```{r}
+# y 是为了固定初始化的 alpha 传递，其他地方不需要
+# 固定初始化效果较稳定，首先进行检验
+coef_est_init_full <- function(y, p, q, K_up = K_up, seeds = c(1), sd_r = 0.1){
+  coef_est_list <- NULL
+  # 固定初始化
+  coef_beta <- matrix(0, nrow = p, ncol = K_up)
+  coef_gamma <- matrix(0, nrow = p*q, ncol = K_up)
+  x_alpha_k <- z
+  y_alpha_k <- y
+  coef_alpha <-  matrix(0, nrow = q, ncol = K_up)
+  for(k in 1:K_up){
+    W <- diag(q_c_matrix[,k])
+    coef_alpha[,k] <- solve(t(x_alpha_k)%*%W%*%x_alpha_k+diag(0.1,q))%*%t(x_alpha_k)%*%W%*%y_alpha_k 
+  }
+  coef_est_list[[1]] <- rbind(coef_beta, coef_alpha, coef_gamma)
+  
+  # 随机初始化
+  for(init_idx in 2:(length(seeds)+1)){
+    set.seed(seeds[init_idx-1])
+    coef_est_list[[init_idx]] <- matrix(rnorm((p+q+p*q)*K_up, mean = 0, sd = sd_r), ncol = K_up)
+  }
+  return(coef_est_list)
+}
+```
+
+
+假设知道所有样本的真实归类，只是将但类别嵌入多类别框架，实际运行效果与单分类相同
+
+```{r}
+# q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
+# sd_init <- .1
+# iter_max <- 200
+# 
+# # 随机选取一组随机种子
+# # par(mfrow = c(3,3))
+# set.seed(999)
+# coef_init_sets <- coef_est_init_full(y, p, q, K_up = K_up,
+#                                      seeds = sample(x = 1:1000, size = 2))
+# coef_est_list <- NULL
+# mse_list <- NULL
+# coef_dist <- NULL
+# for(coef_idx in 1:length(coef_init_sets)){
+#   coef_est <- coef_init_sets[[coef_idx]]
+#   coef_est_v2 <- coef_gamma2eta(coef_est, p, q)
+# 
+#   for(iter in 2:iter_max){
+#     coef_old <- coef_est
+#     # *************************** 更新参数 ******************************
+#     coef_split_all <- coef_split(coef_est, p, q)
+#     coef_beta <- coef_split_all[[1]]
+#     coef_alpha <- coef_split_all[[2]]
+#     coef_gamma <- coef_split_all[[3]]
+# 
+#     for (k in 1:K_up){
+#       W <- diag(q_c_matrix[,k])
+# 
+#       # beta_k
+#       x_beta_k <- x + t(apply(w, 1, get_beta_var_fromlast, p, q, coef_gamma[,k]))
+#       y_beta_k <- y - z%*%coef_alpha[,k]
+#       coef_beta_k <- solve(t(x_beta_k)%*%W%*%x_beta_k+diag(.1,p))%*%t(x_beta_k)%*%W%*%y_beta_k
+#       coef_beta[,k] <- coef_beta_k
+# 
+#       # gamma_k
+#       x_gamma_k <- t(apply(w, 1, get_gamma_var_fromlast, p, q, coef_beta[,k]))
+#       y_gamma_k <- y - x%*%coef_beta[,k] - z%*%coef_alpha[,k]
+#       coef_gamma_k <- solve(t(x_gamma_k)%*%W%*%x_gamma_k+diag(.1,p*q))%*%t(x_gamma_k)%*%W%*%y_gamma_k
+#       coef_gamma[,k] <- coef_gamma_k
+# 
+#       # alpha_k
+#       x_alpha_k <- z
+#       ## 需要用到 x_beta_k，由于 coef_gamma 有更新，这里再生成一遍
+#       x_beta_k <- x + t(apply(w, 1, get_beta_var_fromlast, p, q, coef_gamma[,k]))
+#       y_alpha_k <- y - x_beta_k%*%coef_beta[,k]
+#       coef_alpha_k <- solve(t(x_alpha_k)%*%W%*%x_alpha_k+diag(.1,q))%*%t(x_alpha_k)%*%W%*%y_alpha_k
+#       coef_alpha[,k] <- coef_alpha_k
+# 
+#       coef_est[,k] <- c(coef_beta[,k], coef_alpha[,k], coef_gamma[,k]) # 注意本次只更新了其中第 k 列
+#       coef_est_v2 <- coef_gamma2eta(coef_est, p, q) # 注意本次只更新了其中第 k 列
+#     }
+# 
+#     # *************************** 判断收敛 ******************************
+#     if(sum((coef_est - coef_old)**2) < 1e-5){
+#       print('converge with no coef change')
+#       break()
+#     }
+#     coef_dist[[iter]] <- sum((coef_est - coef_true)**2)
+#     # coef_dist[[iter]] <- apply(coef_est - coef_true, 2, function(x){sum(x**2)})
+#     # scs[[iter]] <- sc(ci_est, ci_sim)
+#     # print(iter)
+#     # print(coef_est)
+#   }
+# 
+#   # 每一组初始化绘制一次距离
+#   # plot(1:length(coef_dist), coef_dist,
+#   #    xlab = "", ylab = "Coef Distance",
+#   #    main = TeX("Coef Distance (all three)"))
+# 
+#   y_est <- z%*%coef_alpha + x_beta_k%*%coef_beta
+#   coef_est_list[[coef_idx]] <- coef_est
+#   mse_list[[coef_idx]] <- sum(((y - y_est) * q_c_matrix)**2)
+# }
+# plot(unlist(mse_list), xlab = "", ylab = "MSE", main = "MSE of Different Initial Values (4 classes at once)")
+```
+
+```{r}
+# library(xtable)
+# xtable(coef_est_list[[78]],digits=3)
+```
+
+
+# 多类别-包含后验概率估计
+
+## 对于单初始值加入后验概率估计
+
+先重新定义随机初始化函数，在未知分类的时候，固定初始化失效，移除
+
+```{r}
+# 只包含随机初始化
+coef_est_init_random <- function(p, q, K_up = K_up, 
+                                 seeds = c(1), sd_r = 0.1){
+  coef_est_list <- NULL
+  for(init_idx in 1:length(seeds)){
+    set.seed(seeds[init_idx])
+    coef_est_list[[init_idx]] <- matrix(rnorm((p+q+p*q)*K_up, mean = 0, sd = sd_r), ncol = K_up)
+  }
+  return(coef_est_list)
+}
+```
+
+```{r}
+# 不同 rho 版本应做如下调整
+# 新版本，同 rho 不同 rho 都适用
+# t(dnorm(rep(0, 10),
+#           mean = t(cbind(matrix(0, nrow = 10, ncol =1),
+#                        matrix(1, nrow = 10, ncol =1))),
+#           sd = c(1, 0.1)) * c(0.1, 100000))
+# 
+# # 旧版本（同 rho 时候可以）
+# t(t(dnorm(rep(0, 10),
+#           mean = cbind(matrix(0, nrow = 10, ncol =1),
+#                        matrix(1, nrow = 10, ncol =1)),
+#           sd = c(0.1, 0.01))))
+# t(t(dnorm(rep(0, 10),
+#           mean = cbind(matrix(0, nrow = 10, ncol =1),
+#                        matrix(1, nrow = 10, ncol =1)),
+#           sd = c(0.1, 0.01))) * c(0.1, 100000))
+```
+
+
+```{r}
+# coef_est
+iter_max <- 500
+qc_eps <- 1e-5 # 防止参数估计完全正确，q_c 估计分母出现 0 的情况
+pi_est_list <- list(rep(1/K_up, K_up)) # 初始化为在各类中均匀分布
+rho_est_list <- list(c(1,1,1,1)) # 直接指定，实际有待调整
+
+
+set.seed(999)
+coef_init_sets <- coef_est_init_full(y, p, q, K_up = K_up,
+                                     seeds = sample(x = 1:1000, size = 2))
+coef_est <- coef_init_sets[[2]]
+
+# coef_est <- coef_est_init_random(p, q, K_up = K_up)[[1]]
+# coef_est_v2 <- coef_gamma2eta(coef_est, p, q) # 每轮也需要更新，qc 计算需要
+
+coef_dist <- NULL
+scs <- NULL
+
+for(iter in 2:iter_max){
+  # ********************* 更新后验概率矩阵 *********************
+  if (iter == 2) {
+    q_c_matrix <- t(t(matrix(1 / (y - (X %*% coef_est_v2) + qc_eps)**2, ncol = K_up)) * pi_est_list[[iter - 1]])
+    q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+  } else {
+    q_c_matrix <- t(dnorm(y, mean = t(X %*% coef_est_v2), 
+                            sd = 1 / mean(rho_est_list[[iter - 1]])) * pi_est_list[[iter - 1]])
+    q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+    vanishidx <- which(apply(q_c_matrix, 1, function(x) { sum(x) %>% is.na()}))
+    if (!identical(vanishidx, integer(0))) {
+      print(paste("******************", vanishidx, "****************"))
+      # 若有密度消失样本，归为距离均值最近的类别
+      # 应再处理 rho 暂时忽略这步
+      q_c_matrix_addin <- t(t(matrix(1 / (y[vanishidx] - (X %*% coef_est_v2)[vanishidx, ] + qc_eps)**2, ncol = K_up)) * pi_est_list[[iter - 1]])
+      q_c_matrix_addin <- q_c_matrix_addin / apply(q_c_matrix_addin, 1, sum)
+      q_c_matrix[vanishidx, ] <- q_c_matrix_addin
+    }
+  }
+  
+  # *************************** 更新 pi ******************************
+  pi_est <- apply(q_c_matrix, 2, sum) / n
+  pi_est_list[[iter]] <- pi_est
+  
+  
+  # *************************** 更新参数 ******************************
+  coef_old <- coef_est
+  coef_split_all <- coef_split(coef_est, p, q)
+  coef_beta <- coef_split_all[[1]]
+  coef_alpha <- coef_split_all[[2]]
+  coef_gamma <- coef_split_all[[3]]
+  
+  for (k in 1:K_up){
+    W <- diag(q_c_matrix[,k])
+
+    # beta_k
+    x_beta_k <- x + t(apply(w, 1, get_beta_var_fromlast, p, q, coef_gamma[,k]))
+    y_beta_k <- y - z%*%coef_alpha[,k]
+    coef_beta_k <- solve(t(x_beta_k)%*%W%*%x_beta_k+diag(.1,p))%*%t(x_beta_k)%*%W%*%y_beta_k
+    coef_beta[,k] <- coef_beta_k
+    
+    # gamma_k
+    x_gamma_k <- t(apply(w, 1, get_gamma_var_fromlast, p, q, coef_beta[,k]))
+    y_gamma_k <- y - x%*%coef_beta[,k] - z%*%coef_alpha[,k]
+    coef_gamma_k <- solve(t(x_gamma_k)%*%W%*%x_gamma_k+diag(.1,p*q))%*%t(x_gamma_k)%*%W%*%y_gamma_k
+    coef_gamma[,k] <- coef_gamma_k
+    
+    # alpha_k
+    x_alpha_k <- z
+    ## 需要用到 x_beta_k，由于 coef_gamma 有更新，这里再生成一遍
+    x_beta_k <- x + t(apply(w, 1, get_beta_var_fromlast, p, q, coef_gamma[,k]))
+    y_alpha_k <- y - x_beta_k%*%coef_beta[,k]
+    coef_alpha_k <- solve(t(x_alpha_k)%*%W%*%x_alpha_k+diag(.1,q))%*%t(x_alpha_k)%*%W%*%y_alpha_k
+    coef_alpha[,k] <- coef_alpha_k
+    
+    coef_est[,k] <- c(coef_beta[,k], coef_alpha[,k], coef_gamma[,k]) # 注意本次只更新了其中第 k 列
+    coef_est_v2 <- coef_gamma2eta(coef_est, p, q) # 注意本次只更新了其中第 k 列
+  }
+  # 同 rho 版本
+  # rho_est <- rep(sqrt(n / sum((y - X %*% coef_est_v2)**2 * q_c_matrix)), 4)
+  # 不同 rho 版本
+  rho_est <- sqrt(apply(q_c_matrix, 2, sum) / apply((y - X %*% coef_est)**2 * q_c_matrix, 2, sum))
+  rho_est_list[[iter]] <- rho_est
+  
+  # *************************** 判断收敛 ******************************
+  if(sum((coef_est - coef_old)**2) < 1e-5){
+    print('converge with no coef change')
+    break()
+  }
+  coef_dist[[iter]] <- sum((coef_est - coef_true)**2)
+  ci_est <- apply(q_c_matrix, 1, which.max)
+  scs[[iter]] <- sc(ci_est, ci_sim)
+  print(iter)
+  print(coef_est)
+}
+plot(unlist(coef_dist))
+plot(unlist(scs))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

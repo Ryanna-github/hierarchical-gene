@@ -1,0 +1,241 @@
+---
+title: "Untitled"
+author: "renyan"
+date: "2022/2/13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+setwd("D:/Ryanna/RUC_courses/Y1_2/Group/code")
+library(dplyr)
+library(stringr)
+library(Matrix)
+```
+
+```{r}
+# data <- read.table("../data/TCell_nc.txt", header = TRUE)
+# save(data, file = "../data/sample_all.RData")
+# colnames(data) <- gsub('\\.', '-', colnames(data))
+load("../data/sample_all.RData")
+data <- na.omit(data)
+```
+
+```{r}
+cell_ds <- read.table("../data/cell_description.txt", 
+                      sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+df <- data.frame(cell = colnames(data)[-c(1,2)])
+df <- merge(df, cell_ds, by.x = "cell", by.y = "UniqueCell_ID") %>%
+  filter(str_detect(majorCluster, "CD4"))
+```
+```{r}
+length(intersect(colnames(data)[-c(1,2)], cell_ds$UniqueCell_ID))
+```
+
+```{r}
+dim(data)
+dim(df)
+length(df$cell)
+```
+
+
+```{r}
+data %>% select(c("geneID", "geneSymbol", df$cell))
+```
+
+```{r}
+length(unique(data$geneSymbol))
+```
+
+```{r}
+# t <- Reduce(union, lapply(strsplit(as.character(df$cell), split = "-"), function(x) x[1]))
+```
+
+
+
+## GGM
+
+```{r}
+data_copy <- data 
+```
+
+
+```{r}
+source("function.R")
+source("sim-func.R")
+```
+
+
+```{r}
+# wnt <- read.table("../data/geneset.txt")$V1
+K <- 4
+set.seed(1234)
+nidx <- sample(3:dim(data)[1], 1000, replace = FALSE)
+gidx <- sample(1:dim(data)[2], 100, replace = FALSE)
+data <- as.matrix(data[nidx, gidx])
+# rownames(data) <- NULL
+# colnames(data) <- NULL
+```
+
+```{r}
+lambda <- genelambda.obo(nlambda1=5,lambda1_max=0.5,lambda1_min=0.1,
+                         nlambda2=15,lambda2_max=1.5,lambda2_min=0.1,
+                         nlambda3=10,lambda3_max=3.5,lambda3_min=0.5)
+```
+
+
+```{r}
+tuning.lambda.FGGM(lambda, data, K, initial.selection="K-means")
+```
+
+```{r}
+lambda1 = lambda$lambda1
+lambda2 = lambda$lambda2
+lambda3 = lambda$lambda3
+L1 = length(lambda1)
+L2 = length(lambda2)
+L3 = length(lambda3)
+L = L1+L2+L3
+aBIC = rep(0,L)
+n_all = dim(data)[1]
+```
+
+```{r}
+# initial_func
+n <- dim(data)[1]
+p <- dim(data)[2]
+Mu <- matrix(0, K, p)
+kmeans.clust <- kmeans(data, K, nstart = 200)
+memb <- kmeans.clust$cluster
+prob <- kmeans.clust$size/n
+Theta <- array(0, dim = c(p, p, K))
+S <- array(0, dim = c(p, p, K))
+for(k in 1:K)
+{
+  Mu[k,] <- t(colMeans(data[memb == k, , drop = FALSE]) )
+  S[,,k]  <- cov(data[memb == k, , drop = FALSE])
+  Theta[,,k] <- solve(S[,,k] + diag(p))
+}
+# write.csv(S[,,3], file = '../data/tmp.csv')
+# rankMatrix(S[,,3])
+  
+int.res <- list()
+int.res$prob <-  prob
+int.res$Mu <-  Mu
+int.res$Theta <- Theta
+int.res$S <- S
+int.res$memb <- memb
+```
+
+
+```{r}
+set.seed(1)
+out.initial = initialize_fuc(data,K)
+```
+
+
+
+
+```{r}
+  # initialize
+  if(initial.selection=="K-means"){
+    
+    memb = out.initial$memb
+    L.mat = matrix(0,n_all,K)
+    for(jj in 1:n_all) L.mat[jj, memb[jj]]=1
+    out.initial$L.mat = L.mat
+  } else if(initial.selection=="dbscan"){
+    out.initial = initialize_fuc.dbscan(data,K)
+    memb = out.initial$memb
+    L.mat = matrix(0,n_all,K)
+    for(jj in 1:n_all) L.mat[jj, memb[jj]]=1
+    out.initial$L.mat = L.mat
+  }
+  else {out.initial = initialize}
+  
+  if(L == 3){
+    l=1
+    aBIC = rep(0,l)
+    Mu_hat.list = list()
+    Theta_hat.list = list()
+    prob.list = list()
+    L.mat.list = list()
+    member.list = list()
+    lam1 = lambda1;lam2 = lambda2;lam3 = lambda3;
+    PP = FGGM.refit(data, K, lam1, lam2, lam3, initialization=F, initialize=out.initial, average=average, asymmetric=asymmetric, local_appro=local_appro)
+    mu_hat=PP$mu;Theta_hat=PP$Xi;L.mat = PP$L.mat0;group = PP$group;prob = PP$prob0;aBIC[l] = PP$bic; member = PP$member
+    Mu_hat.list[[l]]=mu_hat; Theta_hat.list[[l]]=Theta_hat; prob.list[[l]]=prob; L.mat.list[[l]] = L.mat; member.list[[l]]=member
+  } else {
+    Mu_hat.list = list()
+    Theta_hat.list = list()
+    prob.list = list()
+    L.mat.list = list()
+    member.list = list()
+    # search lam3
+    lam1 = median(lambda1);lam2 = median(lambda2)
+    for (l in 1:L3) {
+      lam3 = lambda3[l]
+      PP = FGGM.refit(data, K, lam1, lam2, lam3, initialization=F, initialize=out.initial, average=average, asymmetric=asymmetric, local_appro=local_appro)
+      mu_hat=PP$mu;Theta_hat=PP$Xi;L.mat = PP$L.mat0;group = PP$group;prob = PP$prob0;aBIC[l] = PP$bic; member = PP$member
+      Mu_hat.list[[l]]=mu_hat; Theta_hat.list[[l]]=Theta_hat; prob.list[[l]]=prob; L.mat.list[[l]] = L.mat; member.list[[l]]=member
+      if(trace){
+        print(c(cat(paste(l,"lam1 lam2 lam3 ="),c(round(lam1,2),round(lam2,2),round(lam3,2)),":"),paste("K =",as.numeric(dim(Theta_hat)[3]))))
+      }
+    }
+    aBIC[is.na(aBIC)] = 10^10
+    aBIC[aBIC==0] = abs(aBIC[aBIC!=0][1])*10
+    n_lam3 = which(aBIC[1:L3] == min(aBIC[1:L3]))[1];lam3 = lambda3[n_lam3]
+    
+    # search lam2
+    for (l2 in 1:L2) {
+      lam2 = lambda2[l2];l = L3+l2
+      PP = FGGM.refit(data, K, lam1, lam2, lam3, initialization=F, initialize=out.initial, average=average, asymmetric=asymmetric, local_appro=local_appro)
+      mu_hat=PP$mu;Theta_hat=PP$Xi;L.mat = PP$L.mat0;group = PP$group;prob = PP$prob0;aBIC[l] = PP$bic; member = PP$member
+      Mu_hat.list[[l]]=mu_hat; Theta_hat.list[[l]]=Theta_hat; prob.list[[l]]=prob; L.mat.list[[l]] = L.mat; member.list[[l]]=member
+      if(trace){
+        print(c(cat(paste(l,"lam1 lam2 lam3 ="),c(round(lam1,2),round(lam2,2),round(lam3,2)),":"),paste("K =",as.numeric(dim(Theta_hat)[3]))))
+      }
+    }
+    aBIC[is.na(aBIC)] = 10^10
+    n_lam2 = which(aBIC[(L3+1):(L3+L2)] == min(aBIC[(L3+1):(L3+L2)]))[1];lam2 = lambda2[n_lam2]
+    # search lam1
+    for (l1 in 1:L1) {
+      lam1 = lambda1[l1];l = L3+L2+l1
+      PP = FGGM.refit(data, K, lam1, lam2, lam3, initialization=F, initialize=out.initial, average=average, asymmetric=asymmetric, local_appro=local_appro)
+      mu_hat=PP$mu;Theta_hat=PP$Xi;L.mat = PP$L.mat0;group = PP$group;prob = PP$prob0;aBIC[l] = PP$bic; member = PP$member
+      Mu_hat.list[[l]]=mu_hat; Theta_hat.list[[l]]=Theta_hat; prob.list[[l]]=prob; L.mat.list[[l]] = L.mat; member.list[[l]]=member
+      if(trace){
+        print(c(cat(paste(l,"lam1 lam2 lam3 ="),c(round(lam1,2),round(lam2,2),round(lam3,2)),":"),paste("K =",as.numeric(dim(Theta_hat)[3]))))
+      }
+    }
+    aBIC[is.na(aBIC)] = 10^10
+    aBIC[aBIC==0] = abs(aBIC[aBIC!=0][1])*10
+    n_lam1 = which(aBIC[(L3+L2+1):(L3+L2+L1)] == min(aBIC[(L3+L2+1):(L3+L2+L1)]))[1];lam1 = lambda1[n_lam1]
+  }
+  K.list <- rep(1,length(Theta_hat.list))
+  for (l in 1:length(Theta_hat.list)) {
+    K.list[l] <- as.numeric(dim(Theta_hat.list[[l]])[3])
+  }
+  aBIC[which(K.list == 1)] <- 10^10
+  
+  n_lam = which(aBIC == min(aBIC))[1]
+  Opt_aBIC = min(aBIC)
+  Opt_lambda = c(lam1,lam2,lam3)
+  result = list(Opt_lambda=Opt_lambda,Mu_hat.list=Mu_hat.list,Theta_hat.list=Theta_hat.list,prob.list=prob.list,member.list=member.list,L.mat.list=L.mat.list,Opt_aBIC=Opt_aBIC,BIC=aBIC,Opt_num=n_lam)
+  return(result)
+}
+```
+
+
+
+
+
+
+
+
+
+
