@@ -1,3 +1,9 @@
+# reference
+/reference/
+
+# doc
+/doc/**/*[!pdf]
+
 # History files
 .Rhistory
 .Rapp.history
