@@ -3,6 +3,7 @@
 
 # doc
 doc/*/*[!pdf]
+.DS_Store
 
 # History files
 .Rhistory
