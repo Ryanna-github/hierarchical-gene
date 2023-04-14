@@ -356,8 +356,8 @@ coef_dist(c(beta_est, alpha_est), coef$coef_full[,k])
 tau <- 2
 tau <- ifelse(tau == 0, 1e-4, tau)
 aa <- 1.2
-# lambda_1 <- 0.02
-lambda_1 <- 0.0
+lambda_1 <- 0.08
+# lambda_1 <- 0.0
 rho_init <- c(1, 1, 1, 1)/1
 # lambda_2 <- 0.0
 # lambda_3 <- 0.0
@@ -469,17 +469,17 @@ for(iter in 2:200){
   coef_full_list[[iter]] <- coef_full_est
   coef_full_ori_list[[iter]] <- coef_full_est/extend_x_to_row(rho_est,p+q)
   
-  # diff_v_list[[iter]] <- matrix(H_p%*%as.vector(coef_beta_est),ncol=1) + dual_xi_est/tau
-  # diff_w_list[[iter]] <- matrix(H_q%*%as.vector(coef_alpha_est),ncol=1) + dual_zeta_est/tau
-  # dual_xi_list[[iter]] <- dual_xi_list[[iter-1]] +
-  #   tau*(matrix(H_p%*%as.vector(coef_beta_est),ncol=1) - diff_v_list[[iter]])
-  # dual_zeta_list[[iter]] <- dual_zeta_list[[iter-1]] +
-  #   tau*(matrix(H_q%*%as.vector(coef_alpha_est),ncol=1) - diff_w_list[[iter]])
+  diff_v_list[[iter]] <- matrix(H_p%*%as.vector(coef_beta_est),ncol=1) + dual_xi_est/tau
+  diff_w_list[[iter]] <- matrix(H_q%*%as.vector(coef_alpha_est),ncol=1) + dual_zeta_est/tau
+  dual_xi_list[[iter]] <- dual_xi_list[[iter-1]] +
+    tau*(matrix(H_p%*%as.vector(coef_beta_est),ncol=1) - diff_v_list[[iter]])
+  dual_zeta_list[[iter]] <- dual_zeta_list[[iter-1]] +
+    tau*(matrix(H_q%*%as.vector(coef_alpha_est),ncol=1) - diff_w_list[[iter]])
   
-  diff_v_list[[iter]] <- diff_v_list[[iter-1]]
-  diff_w_list[[iter]] <- diff_w_list[[iter-1]]
-  dual_xi_list[[iter]] <- dual_xi_list[[iter-1]]
-  dual_zeta_list[[iter]] <- dual_zeta_list[[iter-1]]
+  # diff_v_list[[iter]] <- diff_v_list[[iter-1]]
+  # diff_w_list[[iter]] <- diff_w_list[[iter-1]]
+  # dual_xi_list[[iter]] <- dual_xi_list[[iter-1]]
+  # dual_zeta_list[[iter]] <- dual_zeta_list[[iter-1]]
   
   pi_est <- apply(q_c_matrix, 2, sum)/n
   pi_list[[iter]] <- pi_est
