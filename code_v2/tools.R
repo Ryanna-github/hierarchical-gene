@@ -24,9 +24,10 @@ mcp_value <- function(x, gamma, lambda, element_wise = TRUE){
 # Partial derivatives of MCP penalty
 mcp_d <- function(x, gamma, lambda, element_wise = TRUE){
   if(!element_wise){x <- norm(matrix(x), type = "2")}
-  res <- ifelse(abs(x)<=gamma*lambda, sign(x)*(lambda - abs(x)/gamma), 0)
+  res <- ifelse(abs(x)<=gamma*lambda, (lambda - abs(x)/gamma), 0)
   return(res)
 }
+
 
 # standard \theta/2(x-a)^2 + pen(x;lambda,gamma) solution
 mcp_solution <- function(theta, a, gamma, lambda){
