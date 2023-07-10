@@ -543,8 +543,8 @@ lambda_1 <- 0.08
 # aa <- 1.2
 # lambda_1 <- 0
 
-lambda_2 <- 0.0
-lambda_3 <- 0.0
+lambda_2 <- 10.0
+lambda_3 <- 5.0
 rho_init <- c(1, 1, 1, 1)/1
 
 kj <- function(dim) {return((k-1)*dim+j)}
@@ -763,6 +763,10 @@ plot_tracker(get_tracker_df(c2_tracker), title_text = "c2") %>% ggplotly()
 
 
 
+n=200, p=8， q=4
+error
+
+p=100,q=10/100 非零个数
 
 
 
@@ -776,7 +780,22 @@ plot_tracker(get_tracker_df(c2_tracker), title_text = "c2") %>% ggplotly()
 
 
 
-
+```{r}
+n <- 10
+res1_list <-NULL
+res2_list <- NULL
+for(n in 2:50){
+  res1 <- 0
+  for(j in 1:(n-1)){
+    res1 <- res1 + 2*j*log(j)
+  }
+  res1_list <- c(res1_list, res1)
+  res2 <- n^2 * log(n) - n^2/2 + 1/2
+  res2_list <- c(res2_list, res2)
+}
+plot(2:50, res1_list)
+points(2:50, res2_list)
+```
 
 
 
