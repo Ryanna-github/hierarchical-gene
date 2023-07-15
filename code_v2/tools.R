@@ -28,7 +28,6 @@ mcp_d <- function(x, gamma, lambda, element_wise = TRUE){
   return(res)
 }
 
-
 # standard \theta/2(x-a)^2 + pen(x;lambda,gamma) solution
 mcp_solution <- function(theta, a, gamma, lambda){
   key <- norm(matrix(a), type = "2")
@@ -97,7 +96,10 @@ get_e_mat <- function(indx, len){
   return(e)
 }
 
-
+extend_x_to_row <- function(x, row_to){
+  K_up <- length(x)
+  return(matrix(kronecker(x, matrix(1, nrow=row_to)), ncol = K_up))
+}
 
 
 
