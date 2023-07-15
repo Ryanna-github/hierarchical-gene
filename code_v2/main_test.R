@@ -4,9 +4,11 @@ library(ggplot2)
 library(dplyr)
 library(Matrix)
 library(flexmix)
+library(readr)
 source("sim.R")
 source("tools.R")
 source("func.R")
+
 
 # 超参数设定
 n <- 200
@@ -73,9 +75,7 @@ for(i in 1:nrow(para_set[,])){
 }
 colnames(result) <- c("cdist", "ci_prob_mean", "mse")
 res <- cbind(para_set[1:nrow(result),], result)
-write.csv(res, file = "2023-07-15-trail.csv", row.names = F)
-
-
+write_csv(tt, "2023-07-16-trail.csv", col_names=TRUE, append=TRUE)
 
 
 
