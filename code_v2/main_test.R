@@ -56,28 +56,59 @@ H_q <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
 
 
 para_set <- expand.grid(list(q_c_seed = 1:5,
-                             lambda_1 = seq(0.1, 0.5, 0.1),
-                             lambda_2 = seq(0.0, 2, 0.5),
-                             lambda_3 = seq(0.0, 2, 0.5),
-                             aa = seq(1.2, 2.4, 0.6),
-                             tau = seq(0, 2, 0.5)))
+                             lambda_1 = c(0.3, 0.4),
+                             lambda_2 = seq(0.0, 0.3, 0.1),
+                             lambda_3 = seq(0.0, 0.3, 0.1),
+                             aa = seq(1.2, 2.4, 1.2),
+                             tau = seq(0.0, 0.9, 0.3)))
 result <- NULL
+# source("func.R")
+# td <- ADMM_trail(aa = 1.2,
+#                  tau = 0.0,
+#                  lambda_1 = 0.3,
+#                  lambda_2 = 0.1,
+#                  lambda_3 = 0.1,
+#                  q_c_seed = 1)
+
+
+save_path <- "2023-07-17_nonepsilon.csv"
+first_time_write <- TRUE
+
+# 先计算 flexmix 结果
+# fmres <- list()
+# for(q_c_seed in 1:5){
+#   fmres[[q_c_seed]] <- flexmix_trail(q_c_seed)
+# }
+
+
 for(i in 1:nrow(para_set[,])){
-  if(i%%10 == 0){print(i);print("*************")}
   para <- para_set[i,]
   td <- ADMM_trail(aa = para$aa,
                    tau = para$tau,
                    lambda_1 = para$lambda_1,
                    lambda_2 = para$lambda_2,
                    lambda_3 = para$lambda_3,
-                   q_c_seed = para$q_c_seed)
-  result <- rbind(result, c(td$cdist, td$ci_prob_mean, td$mse))
+                   q_c_seed = para$q_c_seed,
+                   coef_full_init = coef$coef_full-coef$coef_full)
+  result <- rbind(result, c(para$q_c_seed,
+                            para$aa,
+                            para$tau,
+                            para$lambda_1,
+                            para$lambda_2,
+                            para$lambda_3,
+                            td$cdist, 
+                            td$ci_prob_mean, 
+                            td$mse, 
+                            td$sc_score))
+  if(i%%100 == 0){
+    print(paste(i, "**********************************"))
+    colnames(result) <- c("q_c_seed", "aa", "tau", "l1", "l2", "l3",
+                          "cdist", "ci_prob_mean", "mse", "sc")
+    write_csv(data.frame(result), file=save_path, col_names=first_time_write, append=TRUE)
+    first_time_write <- FALSE
+    result <- NULL
+  }
 }
-colnames(result) <- c("cdist", "ci_prob_mean", "mse")
-res <- cbind(para_set[1:nrow(result),], result)
-write_csv(tt, "2023-07-16-trail.csv", col_names=TRUE, append=TRUE)
-
-
 
 
 

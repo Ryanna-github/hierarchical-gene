@@ -28,6 +28,7 @@ mcp_d <- function(x, gamma, lambda, element_wise = TRUE){
   return(res)
 }
 
+
 # standard \theta/2(x-a)^2 + pen(x;lambda,gamma) solution
 mcp_solution <- function(theta, a, gamma, lambda){
   key <- norm(matrix(a), type = "2")
@@ -38,7 +39,6 @@ mcp_solution <- function(theta, a, gamma, lambda){
   }
   return(res)
 }
-
 
 # =============================== 评价指标 ================================
 ## -------------------------------- 分类 ----------------------------------
@@ -95,6 +95,7 @@ get_e_mat <- function(indx, len){
   e[indx[2],] <- (-1)
   return(e)
 }
+
 
 extend_x_to_row <- function(x, row_to){
   K_up <- length(x)

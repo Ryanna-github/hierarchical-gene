@@ -1,6 +1,27 @@
 
+flexmix_trail <- function(q_c_seed){
+  set.seed(q_c_seed)
+  pi_init <- rep(1/K_up, K_up)
+  rho_init <- c(1, 1, 1, 1)/1
+  q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
+  q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+  m_glm <- flexmix(y~cbind(X, Z)-1, k = K_up, cluster = q_c_matrix,
+                   model = FLXMRglm(),
+                   control = list(minprior = 0))
+  coef_est <- parameters(m_glm)[1:(p+q),] *
+    t(kronecker(rho_init, matrix(1, ncol = p+q)))
+  row.names(coef_est) <- NULL
+  cdist <- coef_dist(coef_est, coef$coef_full)
+  sc_score <- sc(m_glm@cluster, ci_sim)
+  return(list(cdist = cdist, 
+              ci_prob_mean = 999,
+              coef_full_ori = coef_est,
+              mse = 999,
+              sc_score = sc_score))
+}
 
-ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed, eps =1e-4){
+ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed, 
+                       coef_full_init, eps =1e-7){
   tau <- ifelse(tau == 0, 1e-4, tau) # 防止 tau == 0 导致分母为0情况
   rho_init <- c(1, 1, 1, 1)/1
   
@@ -18,13 +39,16 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed, eps =1e-
   q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
   
   # coef full
-  coef_full_init <- coef$coef_full - coef$coef_full
+  # coef_full_init <- coef$coef_full - coef$coef_full
+  
   # coef_full_init[(p+1):(p+q),] <- coef$coef_alpha
   # coef_full_init[1:p,] <- coef$coef_beta
   # coef_full_init <- coef$coef_full * t(kronecker(rho_init, matrix(1, ncol = p+q)))
   coef_full_list <- list(coef_full_init)
   coef_full_ori_list <- list(coef_full_init/t(kronecker(rho_init, 
                                                         matrix(1, ncol = p+q))))
+  
+  
   
   # coef diff (v,w):=u
   diff_v_init <- matrix(H_p %*% as.vector(coef_full_init[1:p,]), ncol = 1)
@@ -41,8 +65,6 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed, eps =1e-
   dual_zeta_list <- list(dual_zeta_init)
   
   case <- NULL
-  u_tracker <- NULL
-  v_tracker <- NULL
   cu_tracker <- NULL
   cv_tracker <- NULL
   
@@ -105,6 +127,8 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed, eps =1e-
     
     diff_v_est <- matrix(H_p %*% as.vector(coef_beta_est), ncol = 1)
     diff_w_est <- matrix(H_q %*% as.vector(coef_alpha_est), ncol = 1)
+    diff_v_last <- diff_v_list[[iter-1]]
+    diff_w_last <- diff_w_list[[iter-1]]
     
     # v,w 的更新 2 means prime
     diff_v2_est <- H_p%*%as.vector(coef_beta_est) + 1/tau*dual_xi_est
@@ -118,8 +142,12 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed, eps =1e-
         w_kk <- diff_w_est[((ikk-1)*q+1):(ikk*q)]
         u_kk <- c(v_kk, w_kk)
         
-        v_kk.F <- norm(matrix(v_kk), type = "2")
-        w_kk.F <- norm(matrix(w_kk), type = "2")
+        v_kk_last <- diff_v_last[((ikk-1)*p+1):(ikk*p)]
+        w_kk_last <- diff_w_last[((ikk-1)*q+1):(ikk*q)]
+        u_kk_last <- c(v_kk_last, w_kk_last)
+        
+        v_kk.F <- norm(matrix(v_kk_last), type = "2")
+        w_kk.F <- norm(matrix(w_kk_last), type = "2")
         u_kk.F <- sqrt(v_kk.F**2 + w_kk.F**2)
         
         v_kk2 <- diff_v2_est[((ikk-1)*p+1):(ikk*p)]
@@ -143,10 +171,9 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed, eps =1e-
         )
         # tracker
         case <- c(case, case_kk)
-        u_tracker <- c(u_tracker, u_kk2.F)
-        v_tracker <- c(v_tracker, v_kk2.F)
         cu_tracker <- c(cu_tracker, cu)
         cv_tracker <- c(cv_tracker, cv)
+      
         
         if(case_kk == 1){
           diff_v_est[((ikk-1)*p+1):(ikk*p)] <- v_kk2
@@ -163,6 +190,10 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed, eps =1e-
                mcp_d(v_kk.F,aa,lambda_3,TRUE)/tau/(v_kk.F+eps))
           diff_w_est[((ikk-1)*q+1):(ikk*q)] <- w_kk2/
             (1+mcp_d(u_kk.F,aa,lambda_2,TRUE)/tau/(u_kk.F+eps))
+          # 用 0 初始化时以下不合适，会总被压缩为 0
+          # print(paste("case 4: ", sum(diff_v_est < 1e-9), sum(diff_w_est < 1e-9)))
+          # diff_v_est[diff_v_est < 1e-9] <- 0
+          # diff_w_est[diff_w_est < 1e-9] <- 0
         }
       }
     }
@@ -217,15 +248,17 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed, eps =1e-
   ci_matrix <- t(apply(q_c_matrix, 1, function(x){as.numeric(x == max(x))}))
   y_hat <- rowSums(ci_matrix * data%*%coef_full_list[[iter]])
   mse <- sum((y-y_hat)^2/n)
+  sc_score <- sc(ci_est, ci_sim)
   
   print(cdist)
   print(mse)
   return(list(cdist = cdist, 
               ci_prob_mean = mean(ci_prob),
-              q_c_matrix = q_c_matrix, 
+              # q_c_matrix = q_c_matrix,
               coef_full_ori = coef_full_ori_list[[iter]],
-              coef_full = coef_full_list[[iter]],
-              mse = mse))
+              # coef_full = coef_full_list[[iter]],
+              mse = mse,
+              sc_score = sc_score))
 }
 
 

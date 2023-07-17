@@ -61,9 +61,9 @@ result <- tuning.lambda(lambda, whole.data, n, q, p, beta.init)
 index.list <- evaluation.tuning(n,q,p, result$admmres, result$abic.n, result$admmres2, result$abic.n2, Beta0, gr.GE=gr.GE, result$bic.var)
 index.list$err.s
 
-
 bt <- result$beta.over
 bt <- matrix(bt, ncol = p+q)
+
 
 
 data.total <- whole.data
