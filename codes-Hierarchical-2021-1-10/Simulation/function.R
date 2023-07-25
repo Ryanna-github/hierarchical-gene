@@ -77,7 +77,9 @@ ADMM<-function(n, q, p, data.total, beta.init, lambda1, lambda2, p_y=1,
     
     eta.i = a.matrix%*%beta.est.list[[iter]]
     gamma.i = gamma.est.list[[iter-1]]
+    # eta.i = a.matrix%*%beta.est.list[[iter]] + t(gamma.i)/penal.para
     eta.tem1<-eta.i+t(gamma.i)/penal.para
+    # eta.tem1<-eta.i
     eta.tem1.main<-as.matrix(eta.tem1[d.main.n,],sparse=T)
     eta.tem1.GE<-as.matrix(eta.tem1[d.GE.n,],sparse=T)
     eta.i1<-eta.i

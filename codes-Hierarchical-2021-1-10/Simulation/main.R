@@ -64,6 +64,13 @@ index.list$err.s
 bt <- result$beta.over
 bt <- matrix(bt, ncol = p+q)
 
+bt_copy <- bt
+
+# 原无 bar 版本
+write.csv(bt, file = "2023-07-24_res_ori.csv", row.names = F)
+# 修改为加上 bar 版本
+write.csv(bt_copy, file = "2023-07-24_res_mod.csv", row.names = F)
+
 
 
 data.total <- whole.data

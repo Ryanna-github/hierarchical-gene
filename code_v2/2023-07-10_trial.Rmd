@@ -151,18 +151,6 @@ ADMM_trail(aa=1.2, tau=0.5, lambda_1=0.08, lambda_2=2, lambda_3=0, q_c_seed=q_c_
 
 
 
-```{r}
-# plot(res$q_c_seed, res$ci_prob_mean)
-plot(res$lambda_1, res$mse)
-plot(res$lambda_2, res$mse)
-plot(res$lambda_3, res$mse)
-
-plot(res$lambda_1, res$cdist)
-plot(res$lambda_2, res$cdist)
-plot(res$lambda_3, res$cdist)
-```
-
-
 
 
 
@@ -494,16 +482,66 @@ coef_dist(coef_full_ori_list[[iter]], coef$coef_full)
 ```
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # test
 
 ```{r}
+q_c_seed <- 4
+set.seed(q_c_seed)
+pi_init <- rep(1/K_up, K_up)
+rho_init <- c(1, 1, 1, 1)/1
+q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
+q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+m_glm <- flexmix(y~cbind(X, Z)-1, cluster = q_c_matrix,
+                 model = FLXMRglm(),
+                 control = list(minprior = 0.001))
+coef_est <- parameters(m_glm)[1:(p+q),] *
+  t(kronecker(rho_init, matrix(1, ncol = p+q)))
+print(coef_est)
+```
+
+
+
+
+```{r}
+source("func.R")
 aa = 1.2
-tau = 0.0
+tau = 0.2
 lambda_1 = 0.3
-lambda_2 = 0.3
-lambda_3 = 0.3
+lambda_2 = 2
+lambda_3 = 0.5
 q_c_seed = 1
 eps <- 1e-7
+ADMM_trail(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed, coef$coef_full-coef$coef_full)
+```
+
+
+```{r}
+aa = 1.2
+tau = 1
+lambda_1 = 0.3
+lambda_2 = 0.0
+lambda_3 = 0.0
+q_c_seed = 1
+eps <- 1e-7
+set.seed(99)
+coef_full_init <- coef$coef_full - coef$coef_full
+# coef_full_init <- coef$coef_full - coef$coef_full  + rnorm(length(coef$coef_full), 0, 1)
 
 tau <- ifelse(tau == 0, 1e-4, tau) # 防止 tau == 0 导致分母为0情况
 rho_init <- c(1, 1, 1, 1)/1
@@ -514,22 +552,24 @@ rho_list <- list(rho_init)
 pi_init <- rep(1/K_up, K_up)
 pi_list <- list(pi_init)
 set.seed(q_c_seed)
-# q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
+q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
 # 真值附近
 # q_c_matrix <- abs(get_q_c_matrix(n, K_up, ci_sim) + rnorm(n*K_up, mean = 1, sd = .1))
 # 全随机
-q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
+# q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
 q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
 
 # coef full
-coef_full_init <- coef$coef_full - coef$coef_full 
-set.seed(999)
-# coef_full_init[(p+1):(p+q),] <- coef$coef_alpha + rnorm(q*K_up, 0, 2)
-# coef_full_init[1:p,] <- coef$coef_beta + rnorm(p*K_up, 0, 2)
+# coef_full_init <- coef$coef_full - coef$coef_full
+
+# coef_full_init[(p+1):(p+q),] <- coef$coef_alpha
+# coef_full_init[1:p,] <- coef$coef_beta
 # coef_full_init <- coef$coef_full * t(kronecker(rho_init, matrix(1, ncol = p+q)))
 coef_full_list <- list(coef_full_init)
 coef_full_ori_list <- list(coef_full_init/t(kronecker(rho_init, 
                                                       matrix(1, ncol = p+q))))
+
+
 
 # coef diff (v,w):=u
 diff_v_init <- matrix(H_p %*% as.vector(coef_full_init[1:p,]), ncol = 1)
@@ -549,7 +589,7 @@ case <- NULL
 cu_tracker <- NULL
 cv_tracker <- NULL
 
-for(iter in 2:200){
+for(iter in 2:100){
   rho_est <- rho_list[[iter-1]]
   coef_full_est <- coef_full_list[[iter-1]]
   coef_beta_est <- coef_full_est[1:p,]
@@ -571,7 +611,7 @@ for(iter in 2:200){
       # lower_2 <- 0
       Lower <- lower_1/n + tau*lower_2
       upper_1 <- t(X[,j]) %*% W_k %*% (rho_est[k]*y - X[,-j]%*%(coef_beta_est[-j,k]) - Z%*%coef_alpha_est[,k])
-      upper_2 <- (t(H_p)%*%(diff_v_est-dual_xi_est/tau))[kj(p)] - 
+      upper_2 <- (t(H_p)%*%(diff_v_est-dual_xi_est))[kj(p)] - 
         as.vector(coef_beta_est)[-kj(p)]%*%((t(H_p)%*%H_p)[kj(p),-kj(p)])
       # upper_2 <- 0
       Upper <- upper_1/n + tau*upper_2
@@ -585,7 +625,7 @@ for(iter in 2:200){
       # lower_2 <- 0
       Lower <- lower_1/n + tau*lower_2
       upper_1 <- t(rho_est[k]*y - Z[,-s]%*%(coef_alpha_est[-s,k]) - X%*%coef_beta_est[,k]) %*% W_k %*% Z[,s]
-      upper_2 <- (t(H_q)%*%(diff_w_est-dual_zeta_est/tau))[ks(q)] - 
+      upper_2 <- (t(H_q)%*%(diff_w_est-dual_zeta_est))[ks(q)] - 
         as.vector(coef_alpha_est)[-ks(q)]%*%((t(H_q)%*%H_q)[ks(q),-ks(q)])
       # upper_2 <- 0
       Upper <- upper_1/n + tau*upper_2
@@ -603,7 +643,7 @@ for(iter in 2:200){
   # coef_full_ori_list[[iter]] <- coef_full_est/extend_x_to_row(rho_est,p+q)
   rho_list[[iter]] <- rho_est
   coef_full_list[[iter]] <- coef_full_est
-  
+
   coef_full_ori_list[[iter]] <- coef_full_est/extend_x_to_row(rho_est,p+q)
   
   diff_v_est <- matrix(H_p %*% as.vector(coef_beta_est), ncol = 1)
@@ -612,8 +652,8 @@ for(iter in 2:200){
   diff_w_last <- diff_w_list[[iter-1]]
   
   # v,w 的更新 2 means prime
-  diff_v2_est <- H_p%*%as.vector(coef_beta_est) + 1/tau*dual_xi_est
-  diff_w2_est <- H_q%*%as.vector(coef_alpha_est) + 1/tau*dual_zeta_est
+  diff_v2_est <- H_p%*%as.vector(coef_beta_est) + dual_xi_est
+  diff_w2_est <- H_q%*%as.vector(coef_alpha_est) + dual_zeta_est
   
   for(k1 in 1:(K_up-1)){
     for(k2 in (k1+1):K_up){
@@ -654,38 +694,33 @@ for(iter in 2:200){
       case <- c(case, case_kk)
       cu_tracker <- c(cu_tracker, cu)
       cv_tracker <- c(cv_tracker, cv)
+    
+      # diff_v_est[((ikk-1)*p+1):(ikk*p)] <- v_kk2/
+      #   (1+mcp_d(u_kk.F,aa,lambda_2,TRUE)/tau/(u_kk.F+eps) +
+      #      mcp_d(v_kk.F,aa,lambda_3,TRUE)/tau/(v_kk.F+eps))
+      # diff_w_est[((ikk-1)*q+1):(ikk*q)] <- w_kk2/
+      #   (1+mcp_d(u_kk.F,aa,lambda_2,TRUE)/tau/(u_kk.F+eps))
       
-      # 假设总是 case 4
-      diff_v_est[((ikk-1)*p+1):(ikk*p)] <- v_kk2/
-        (1+mcp_d(u_kk.F,aa,lambda_2,TRUE)/tau/(u_kk.F+eps) +
-           mcp_d(v_kk.F,aa,lambda_3,TRUE)/tau/(v_kk.F+eps))
-      diff_w_est[((ikk-1)*q+1):(ikk*q)] <- w_kk2/
-        (1+mcp_d(u_kk.F,aa,lambda_2,TRUE)/tau/(u_kk.F+eps))
-      
-      # 假设总是 case 1
-      # diff_v_est[((ikk-1)*p+1):(ikk*p)] <- v_kk2
-      # diff_w_est[((ikk-1)*q+1):(ikk*q)] <- w_kk2
-      
-      # if(case_kk == 1){
-      #   diff_v_est[((ikk-1)*p+1):(ikk*p)] <- v_kk2
-      #   diff_w_est[((ikk-1)*q+1):(ikk*q)] <- w_kk2
-      # }else if(case_kk == 2){
-      #   diff_v_est[((ikk-1)*p+1):(ikk*p)] <- cu*v_kk2
-      #   diff_w_est[((ikk-1)*q+1):(ikk*q)] <- cu*w_kk2
-      # }else if(case_kk == 3){
-      #   diff_v_est[((ikk-1)*p+1):(ikk*p)] <- cv*v_kk2
-      #   diff_w_est[((ikk-1)*q+1):(ikk*q)] <- w_kk2
-      # }else{
-      #   diff_v_est[((ikk-1)*p+1):(ikk*p)] <- v_kk2/
-      #     (1+mcp_d(u_kk.F,aa,lambda_2,TRUE)/tau/(u_kk.F+eps) +
-      #        mcp_d(v_kk.F,aa,lambda_3,TRUE)/tau/(v_kk.F+eps))
-      #   diff_w_est[((ikk-1)*q+1):(ikk*q)] <- w_kk2/
-      #     (1+mcp_d(u_kk.F,aa,lambda_2,TRUE)/tau/(u_kk.F+eps))
-      #   # 用 0 初始化时以下不合适，会总被压缩为 0
-      #   # print(paste("case 4: ", sum(diff_v_est < 1e-9), sum(diff_w_est < 1e-9)))
-      #   # diff_v_est[diff_v_est < 1e-9] <- 0
-      #   # diff_w_est[diff_w_est < 1e-9] <- 0
-      # }
+      if(case_kk == 1){
+        diff_v_est[((ikk-1)*p+1):(ikk*p)] <- v_kk2
+        diff_w_est[((ikk-1)*q+1):(ikk*q)] <- w_kk2
+      }else if(case_kk == 2){
+        diff_v_est[((ikk-1)*p+1):(ikk*p)] <- cu*v_kk2
+        diff_w_est[((ikk-1)*q+1):(ikk*q)] <- cu*w_kk2
+      }else if(case_kk == 3){
+        diff_v_est[((ikk-1)*p+1):(ikk*p)] <- cv*v_kk2
+        diff_w_est[((ikk-1)*q+1):(ikk*q)] <- w_kk2
+      }else{
+        diff_v_est[((ikk-1)*p+1):(ikk*p)] <- v_kk2/
+          (1+mcp_d(u_kk.F,aa,lambda_2,TRUE)/tau/(u_kk.F+eps) +
+             mcp_d(v_kk.F,aa,lambda_3,TRUE)/tau/(v_kk.F+eps))
+        diff_w_est[((ikk-1)*q+1):(ikk*q)] <- w_kk2/
+          (1+mcp_d(u_kk.F,aa,lambda_2,TRUE)/tau/(u_kk.F+eps))
+        # 用 0 初始化时以下不合适，会总被压缩为 0
+        # print(paste("case 4: ", sum(diff_v_est < 1e-9), sum(diff_w_est < 1e-9)))
+        # diff_v_est[diff_v_est < 1e-9] <- 0
+        # diff_w_est[diff_w_est < 1e-9] <- 0
+      }
     }
   }
   diff_v_list[[iter]] <- diff_v_est
@@ -693,31 +728,24 @@ for(iter in 2:200){
   
   # xi,zeta 的更新
   dual_xi_list[[iter]] <- dual_xi_list[[iter-1]] +
-    tau*(matrix(H_p%*%as.vector(coef_beta_est),ncol=1) - diff_v_list[[iter]])
+    (matrix(H_p%*%as.vector(coef_beta_est),ncol=1) - diff_v_list[[iter]])
   dual_zeta_list[[iter]] <- dual_zeta_list[[iter-1]] +
-    tau*(matrix(H_q%*%as.vector(coef_alpha_est),ncol=1) - diff_w_list[[iter]])
-  
-  # diff_v_list[[iter]] <- matrix(H_p%*%as.vector(coef_beta_est),ncol=1) + dual_xi_est/tau
-  # diff_w_list[[iter]] <- matrix(H_q%*%as.vector(coef_alpha_est),ncol=1) + dual_zeta_est/tau
-  # dual_xi_list[[iter]] <- dual_xi_list[[iter-1]] +
-  #   tau*(matrix(H_p%*%as.vector(coef_beta_est),ncol=1) - diff_v_list[[iter]])
-  # dual_zeta_list[[iter]] <- dual_zeta_list[[iter-1]] +
-  #   tau*(matrix(H_q%*%as.vector(coef_alpha_est),ncol=1) - diff_w_list[[iter]])
+    (matrix(H_q%*%as.vector(coef_alpha_est),ncol=1) - diff_w_list[[iter]])
   
   pi_est <- apply(q_c_matrix, 2, sum)/n
   pi_list[[iter]] <- pi_est
   
   # update q_c matrix
   # 用没有重参数化的形式
-  q_c_matrix_back <- q_c_matrix
-  q_c_matrix <- dnorm(y,
-                      mean = data%*%coef_full_ori_list[[iter]],
-                      sd = 1/extend_x_to_row(rho_est, n)) *
-    extend_x_to_row(pi_list[[iter-1]], n)
-  nan_id <- which(apply(q_c_matrix, 1, sum) == 0)
-  if(length(nan_id == 0) > 0){ print(paste(iter, nan_id)) }
-  q_c_matrix[nan_id,] <- q_c_matrix_back[nan_id,]
-  q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+  # q_c_matrix_back <- q_c_matrix
+  # q_c_matrix <- dnorm(y,
+  #                     mean = data%*%coef_full_ori_list[[iter]],
+  #                     sd = 1/extend_x_to_row(rho_est, n)) *
+  #   extend_x_to_row(pi_list[[iter-1]], n)
+  # nan_id <- which(apply(q_c_matrix, 1, sum) == 0)
+  # if(length(nan_id == 0) > 0){ print(paste(iter, nan_id)) }
+  # q_c_matrix[nan_id,] <- q_c_matrix_back[nan_id,]
+  # q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
   
   
   # coef_diff_std <- (sum(coef_full_list[[iter]]-coef_full_list[[iter-1]])**2)/
@@ -728,7 +756,7 @@ for(iter in 2:200){
 }
 cdist <- coef_dist(coef_full_ori_list[[iter]], coef$coef_full)
 # print(coef_full_list[[iter]])
-# print(coef_full_ori_list[[iter]])
+print(coef_full_ori_list[[iter]])
 print(table(case))
 plot(unlist(lapply(coef_full_ori_list, coef_dist, coef$coef_full)), ylab = "",
      main = paste(q_c_seed, aa, lambda_1, lambda_2, lambda_3, tau))
@@ -743,7 +771,6 @@ sc_score <- sc(ci_est, ci_sim)
 
 print(cdist)
 print(mse)
-
 ```
 
 

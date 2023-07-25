@@ -5,7 +5,7 @@ flexmix_trail <- function(q_c_seed){
   rho_init <- c(1, 1, 1, 1)/1
   q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
   q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
-  m_glm <- flexmix(y~cbind(X, Z)-1, k = K_up, cluster = q_c_matrix,
+  m_glm <- flexmix(y~cbind(X, Z)-1, cluster = q_c_matrix,
                    model = FLXMRglm(),
                    control = list(minprior = 0))
   coef_est <- parameters(m_glm)[1:(p+q),] *
@@ -68,7 +68,7 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
   cu_tracker <- NULL
   cv_tracker <- NULL
   
-  for(iter in 2:200){
+  for(iter in 2:100){
     rho_est <- rho_list[[iter-1]]
     coef_full_est <- coef_full_list[[iter-1]]
     coef_beta_est <- coef_full_est[1:p,]
@@ -90,7 +90,7 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
         # lower_2 <- 0
         Lower <- lower_1/n + tau*lower_2
         upper_1 <- t(X[,j]) %*% W_k %*% (rho_est[k]*y - X[,-j]%*%(coef_beta_est[-j,k]) - Z%*%coef_alpha_est[,k])
-        upper_2 <- (t(H_p)%*%(diff_v_est-dual_xi_est/tau))[kj(p)] - 
+        upper_2 <- (t(H_p)%*%(diff_v_est-dual_xi_est))[kj(p)] - 
           as.vector(coef_beta_est)[-kj(p)]%*%((t(H_p)%*%H_p)[kj(p),-kj(p)])
         # upper_2 <- 0
         Upper <- upper_1/n + tau*upper_2
@@ -104,7 +104,7 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
         # lower_2 <- 0
         Lower <- lower_1/n + tau*lower_2
         upper_1 <- t(rho_est[k]*y - Z[,-s]%*%(coef_alpha_est[-s,k]) - X%*%coef_beta_est[,k]) %*% W_k %*% Z[,s]
-        upper_2 <- (t(H_q)%*%(diff_w_est-dual_zeta_est/tau))[ks(q)] - 
+        upper_2 <- (t(H_q)%*%(diff_w_est-dual_zeta_est))[ks(q)] - 
           as.vector(coef_alpha_est)[-ks(q)]%*%((t(H_q)%*%H_q)[ks(q),-ks(q)])
         # upper_2 <- 0
         Upper <- upper_1/n + tau*upper_2
@@ -131,8 +131,8 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
     diff_w_last <- diff_w_list[[iter-1]]
     
     # v,w 的更新 2 means prime
-    diff_v2_est <- H_p%*%as.vector(coef_beta_est) + 1/tau*dual_xi_est
-    diff_w2_est <- H_q%*%as.vector(coef_alpha_est) + 1/tau*dual_zeta_est
+    diff_v2_est <- H_p%*%as.vector(coef_beta_est) + dual_xi_est
+    diff_w2_est <- H_q%*%as.vector(coef_alpha_est) + dual_zeta_est
     
     for(k1 in 1:(K_up-1)){
       for(k2 in (k1+1):K_up){
@@ -202,9 +202,9 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
     
     # xi,zeta 的更新
     dual_xi_list[[iter]] <- dual_xi_list[[iter-1]] +
-      tau*(matrix(H_p%*%as.vector(coef_beta_est),ncol=1) - diff_v_list[[iter]])
+      (matrix(H_p%*%as.vector(coef_beta_est),ncol=1) - diff_v_list[[iter]])
     dual_zeta_list[[iter]] <- dual_zeta_list[[iter-1]] +
-      tau*(matrix(H_q%*%as.vector(coef_alpha_est),ncol=1) - diff_w_list[[iter]])
+      (matrix(H_q%*%as.vector(coef_alpha_est),ncol=1) - diff_w_list[[iter]])
     
     # diff_v_list[[iter]] <- matrix(H_p%*%as.vector(coef_beta_est),ncol=1) + dual_xi_est/tau
     # diff_w_list[[iter]] <- matrix(H_q%*%as.vector(coef_alpha_est),ncol=1) + dual_zeta_est/tau
@@ -237,7 +237,7 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
   }
   cdist <- coef_dist(coef_full_ori_list[[iter]], coef$coef_full)
   # print(coef_full_list[[iter]])
-  # print(coef_full_ori_list[[iter]])
+  print(coef_full_ori_list[[iter]])
   print(table(case))
   plot(unlist(lapply(coef_full_ori_list, coef_dist, coef$coef_full)), ylab = "",
        main = paste(q_c_seed, aa, lambda_1, lambda_2, lambda_3, tau))
@@ -260,6 +260,3 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
               mse = mse,
               sc_score = sc_score))
 }
-
-
-
