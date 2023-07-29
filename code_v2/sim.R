@@ -90,11 +90,12 @@ ci_generate <- function(n, pr_sub = pr_sub, hier_struc = hier_struc){
 }
 
 # generate_all_data
-generate_all_data <- function(n, p, q, prob_sub, hier_struc, 
+generate_all_data <- function(data_seed, n, p, q, prob_sub, hier_struc, 
                               beta_nonzero, alpha_nonzero, 
                               beta_vlen, alpha_vlen,
                               cotype_x, cotype_z, epsilon_sd,
                               reverse = FALSE){
+  set.seed(data_seed)
   ci_sim <- ci_generate(n, prob_sub, hier_struc)$ci_sim
   data <- generate_data_beta_alpha(n, p, q, cotype_x, cotype_z)
   coef <- generate_coef(p, q, beta_nonzero, alpha_nonzero, beta_vlen, alpha_vlen, reverse)

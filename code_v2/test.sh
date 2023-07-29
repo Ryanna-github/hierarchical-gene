@@ -1,0 +1,10 @@
+Rscript test.R -n 200 --dt_seed 9 -p 40 -q 4 -e 0.5 --path 2023-07-29_eps05_fminit.csv >log.out
+Rscript test.R -n 200 --dt_seed 19 -p 40 -q 4 -e 0.5 --path 2023-07-29_eps05_fminit.csv >log.out
+Rscript test.R -n 200 --dt_seed 29 -p 40 -q 4 -e 0.5 --path 2023-07-29_eps05_fminit.csv >log.out
+Rscript test.R -n 200 --dt_seed 39 -p 40 -q 4 -e 0.5 --path 2023-07-29_eps05_fminit.csv >log.out
+Rscript test.R -n 200 --dt_seed 49 -p 40 -q 4 -e 0.5 --path 2023-07-29_eps05_fminit.csv >log.out
+Rscript test.R -n 200 --dt_seed 59 -p 40 -q 4 -e 0.5 --path 2023-07-29_eps05_fminit.csv >log2.out
+Rscript test.R -n 200 --dt_seed 69 -p 40 -q 4 -e 0.5 --path 2023-07-29_eps05_fminit.csv >log2.out
+Rscript test.R -n 200 --dt_seed 79 -p 40 -q 4 -e 0.5 --path 2023-07-29_eps05_fminit.csv >log2.out
+Rscript test.R -n 200 --dt_seed 89 -p 40 -q 4 -e 0.5 --path 2023-07-29_eps05_fminit.csv >log2.out
+Rscript test.R -n 200 --dt_seed 99 -p 40 -q 4 -e 0.5 --path 2023-07-29_eps05_fminit.csv >log2.out

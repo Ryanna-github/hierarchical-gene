@@ -533,15 +533,15 @@ ADMM_trail(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed, coef$coef_full-coef$
 
 ```{r}
 aa = 1.2
-tau = 1
+tau = 0.5
 lambda_1 = 0.3
-lambda_2 = 0.0
-lambda_3 = 0.0
+lambda_2 = 0.1
+lambda_3 = 2
 q_c_seed = 1
 eps <- 1e-7
 set.seed(99)
-coef_full_init <- coef$coef_full - coef$coef_full
-# coef_full_init <- coef$coef_full - coef$coef_full  + rnorm(length(coef$coef_full), 0, 1)
+# coef_full_init <- coef$coef_full - coef$coef_full
+coef_full_init <- coef$coef_full - coef$coef_full  + rnorm(length(coef$coef_full), 0, 1)
 
 tau <- ifelse(tau == 0, 1e-4, tau) # 防止 tau == 0 导致分母为0情况
 rho_init <- c(1, 1, 1, 1)/1
@@ -552,11 +552,11 @@ rho_list <- list(rho_init)
 pi_init <- rep(1/K_up, K_up)
 pi_list <- list(pi_init)
 set.seed(q_c_seed)
-q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
+# q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
 # 真值附近
 # q_c_matrix <- abs(get_q_c_matrix(n, K_up, ci_sim) + rnorm(n*K_up, mean = 1, sd = .1))
 # 全随机
-# q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
+q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
 q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
 
 # coef full
@@ -695,11 +695,6 @@ for(iter in 2:100){
       cu_tracker <- c(cu_tracker, cu)
       cv_tracker <- c(cv_tracker, cv)
     
-      # diff_v_est[((ikk-1)*p+1):(ikk*p)] <- v_kk2/
-      #   (1+mcp_d(u_kk.F,aa,lambda_2,TRUE)/tau/(u_kk.F+eps) +
-      #      mcp_d(v_kk.F,aa,lambda_3,TRUE)/tau/(v_kk.F+eps))
-      # diff_w_est[((ikk-1)*q+1):(ikk*q)] <- w_kk2/
-      #   (1+mcp_d(u_kk.F,aa,lambda_2,TRUE)/tau/(u_kk.F+eps))
       
       if(case_kk == 1){
         diff_v_est[((ikk-1)*p+1):(ikk*p)] <- v_kk2
@@ -732,20 +727,27 @@ for(iter in 2:100){
   dual_zeta_list[[iter]] <- dual_zeta_list[[iter-1]] +
     (matrix(H_q%*%as.vector(coef_alpha_est),ncol=1) - diff_w_list[[iter]])
   
+  # diff_v_list[[iter]] <- matrix(H_p%*%as.vector(coef_beta_est),ncol=1) + dual_xi_est/tau
+  # diff_w_list[[iter]] <- matrix(H_q%*%as.vector(coef_alpha_est),ncol=1) + dual_zeta_est/tau
+  # dual_xi_list[[iter]] <- dual_xi_list[[iter-1]] +
+  #   tau*(matrix(H_p%*%as.vector(coef_beta_est),ncol=1) - diff_v_list[[iter]])
+  # dual_zeta_list[[iter]] <- dual_zeta_list[[iter-1]] +
+  #   tau*(matrix(H_q%*%as.vector(coef_alpha_est),ncol=1) - diff_w_list[[iter]])
+  
   pi_est <- apply(q_c_matrix, 2, sum)/n
   pi_list[[iter]] <- pi_est
   
   # update q_c matrix
   # 用没有重参数化的形式
-  # q_c_matrix_back <- q_c_matrix
-  # q_c_matrix <- dnorm(y,
-  #                     mean = data%*%coef_full_ori_list[[iter]],
-  #                     sd = 1/extend_x_to_row(rho_est, n)) *
-  #   extend_x_to_row(pi_list[[iter-1]], n)
-  # nan_id <- which(apply(q_c_matrix, 1, sum) == 0)
-  # if(length(nan_id == 0) > 0){ print(paste(iter, nan_id)) }
-  # q_c_matrix[nan_id,] <- q_c_matrix_back[nan_id,]
-  # q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+  q_c_matrix_back <- q_c_matrix
+  q_c_matrix <- dnorm(y,
+                      mean = data%*%coef_full_ori_list[[iter]],
+                      sd = 1/extend_x_to_row(rho_est, n)) *
+    extend_x_to_row(pi_list[[iter-1]], n)
+  nan_id <- which(apply(q_c_matrix, 1, sum) == 0)
+  if(length(nan_id == 0) > 0){ print(paste(iter, nan_id)) }
+  q_c_matrix[nan_id,] <- q_c_matrix_back[nan_id,]
+  q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
   
   
   # coef_diff_std <- (sum(coef_full_list[[iter]]-coef_full_list[[iter-1]])**2)/

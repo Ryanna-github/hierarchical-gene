@@ -24,6 +24,7 @@ alpha_nonzero <- c(-3, -1, 1, 3)
 # alpha_nonzero <- c(0, 0, 0, 0) # 验证最简单情况不需要 alpha
 beta_vlen <- 3
 alpha_vlen <- 2
+dt_seed <- 9
 
 K_up <- 4  # 估计时的最大类别，应该不少于 group_num_sub
 group_num_main <- 2                    
@@ -35,8 +36,8 @@ reverse <- FALSE
 aa <- 1.2
 lambda_1 <- 0.2
 
-set.seed(9)
-whole.data <- generate_all_data(n, p, q, prob_sub, hier_struc, 
+# set.seed(9)
+whole.data <- generate_all_data(dt_seed, n, p, q, prob_sub, hier_struc, 
                                 beta_nonzero, alpha_nonzero, beta_vlen, alpha_vlen, 
                                 cotype_x, cotype_z, epsilon_sd, reverse)
 X <- whole.data$data$X
@@ -57,11 +58,40 @@ H_q <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
 
 para_set <- expand.grid(list(q_c_seed = 1,
                              lambda_1 = 0.3,
-                             lambda_2 = c(0.1, 0.2, 0.5, 1, 2, 3, 4, 5),
-                             lambda_3 = c(2, 4, 6, 8, 10),
+                             lambda_2 = c(0.1, 0.2, 0.5),
+                             lambda_3 = 2,
                              aa = 1.2,
-                             tau = c(0, 0.5, 1))) %>% 
+                             tau = 0.5)) %>% 
   filter(lambda_2 < lambda_3)
+
+
+result <- NULL
+for(i in 1:nrow(para_set[,])){
+  para <- para_set[i,]
+  # fmres <- flexmix_trail(para$q_c_seed)
+  # 改初始化
+  # set.seed(99)
+  coef_full_init <- fmres[[para$q_c_seed]]$coef_full_ori
+  # coef_full_init <- coef$coef_full + rnorm(length(coef$coef_full), 0, 0.5)
+  td <- ADMM_trail(aa = para$aa,
+                   tau = para$tau,
+                   lambda_1 = para$lambda_1,
+                   lambda_2 = para$lambda_2,
+                   lambda_3 = para$lambda_3,
+                   q_c_seed = para$q_c_seed,
+                   coef_full_init = coef_full_init)
+  result <- rbind(result, c(para$dt_seed,
+                            para$q_c_seed,
+                            para$aa,
+                            para$tau,
+                            para$lambda_1,
+                            para$lambda_2,
+                            para$lambda_3,
+                            td$cdist, 
+                            td$ci_prob_mean, 
+                            td$mse, 
+                            td$sc_score))
+}
 
 
 # df <- read.csv("2023-07-24_nonepsilon_around.csv")
@@ -76,6 +106,8 @@ fmres <- list()
 for(q_c_seed in 1:5){
   fmres[[q_c_seed]] <- flexmix_trail(q_c_seed)
 }
+
+
 
 # fmres <- flexmix_trail(1)
 # coef_full_init <- fmres$coef_full_ori
@@ -97,7 +129,8 @@ for(i in 1:nrow(para_set[,])){
                    lambda_3 = para$lambda_3,
                    q_c_seed = para$q_c_seed,
                    coef_full_init = coef_full_init)
-  result <- rbind(result, c(para$q_c_seed,
+  result <- rbind(result, c(para$dt_seed,
+                            para$q_c_seed,
                             para$aa,
                             para$tau,
                             para$lambda_1,
@@ -109,7 +142,7 @@ for(i in 1:nrow(para_set[,])){
                             td$sc_score))
   if(i%%5 == 0){
     print(paste(i, "**********************************"))
-    colnames(result) <- c("q_c_seed", "aa", "tau", "l1", "l2", "l3",
+    colnames(result) <- c("dt_seed", "q_c_seed", "aa", "tau", "l1", "l2", "l3",
                           "cdist", "ci_prob_mean", "mse", "sc")
     write_csv(data.frame(result), file=save_path, col_names=first_time_write, append=TRUE)
     first_time_write <- FALSE
