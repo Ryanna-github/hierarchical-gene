@@ -1,0 +1,108 @@
+---
+title: "结果分析"
+author: "Yan Ren"
+date: "2023-07-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# terminal generator
+
+```{r}
+library(glue)
+n <- 200
+p <- 40
+q <- 10
+epsilon_sd <- 0.5
+signal_size <- 1
+beta_vlen <- 10
+alpha_vlen <- 2
+dt_seed <- 9
+for(dt_seed in seq(9, 99, 10)){
+    path_pre <- glue("{Sys.Date()}_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_fminit")
+  # path_pre <- glue("2023-07-31_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_fminit")
+  cmd <- glue("Rscript test.R -n {n} --dt_seed {dt_seed} -p {p} -q {q} -e {epsilon_sd} --beta_vlen {beta_vlen} --alpha_vlen {alpha_vlen} --path {path_pre}.csv >{path_pre}_log.out")
+  print(cmd)
+}
+```
+
+
+
+## log.out
+
+```{r}
+# 提取分析 .out 文件
+# out <- read.delim("main_test2.out")
+# library(stringr)
+# info_qc <- str_extract_all(out, '(?<=q_c_seed )\\d')
+# info_aa <- str_extract_all(out, '(?<= a )[\\d\\.]*')
+# info_l1 <- str_extract_all(out, '(?<= l1 )[\\d\\.]*')
+# info_l2 <- str_extract_all(out, '(?<= l2 )[\\d\\.]*')
+# info_l3 <- str_extract_all(out, '(?<= l3 )[\\d\\.]*')
+# info_tau <- str_extract_all(out, '(?<= tau )[\\d\\.e-]*')
+# info_sc <- str_extract_all(out, '(?<=\\[1\\] )[\\d]*[\\.]+[\\d]*')
+# 
+# 
+# 
+# outres <- cbind(data.frame(q_c_seed = info_qc[[1]], 
+#                            aa = info_aa[[1]],
+#                            l1 = info_l1[[1]],
+#                            l2 = info_l2[[1]],
+#                            l3 = info_l3[[1]],
+#                            tau = info_tau[[1]]), t(matrix(info_sc[[1]], nrow = 2)))
+# colnames(outres) <- c("q_c_seed", 'aa', "l1", "l2", "l3", "tau", "cdist", "mse")
+# write.csv(outres, file = "out.csv", row.names = F)
+# 
+# 
+# plot(outres$mse, outres$cdist)
+# par(mfrow = c(2,5))
+# plot(outres$aa, outres$mse)
+# plot(outres$l1, outres$mse)
+# plot(outres$l2, outres$mse)
+# plot(outres$l3, outres$mse)
+# plot(outres$tau, outres$mse)
+# 
+# plot(outres$aa, outres$cdist)
+# plot(outres$l1, outres$cdist)
+# plot(outres$l2, outres$cdist)
+# plot(outres$l3, outres$cdist)
+# plot(outres$tau, outres$cdist)
+```
+
+
+
+# csv result
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(plotly)
+df <- read.csv("2023-07-29_n200_p40_q4_nz32_eps05_fminit.csv")
+df$method <- factor(as.integer(df$q_c_seed %in% c(111, 999)), levels = c(0,1), labels = c("our method", "flemix or random"))
+```
+
+```{r}
+df$dt_seed <- factor(df$dt_seed)
+df_tmp <- df %>% filter(l3 %in% c(4, 111, 999),
+                        l2 %in% c(0.5, 111, 999),
+                        tau %in% c(0.5, 111, 999))
+p <- ggplot(df_tmp, aes(x = cdist, y = sc, color = method)) +
+  geom_point(alpha = 0.4) +
+  theme_bw() +
+  facet_wrap(~ dt_seed)
+ggplotly(p)
+
+p <- ggplot(df, aes(x = cdist, y = sc, color = method)) +
+  geom_point(alpha = 0.4) +
+  theme_bw() +
+  facet_wrap(~ dt_seed)
+ggplotly(p)
+```
+
+```{r}
+df_our <- df_tmp %>% filter(l1 < 100)
+```
+

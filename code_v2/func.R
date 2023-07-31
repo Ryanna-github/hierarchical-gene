@@ -1,13 +1,21 @@
 
-flexmix_trail <- function(q_c_seed){
+flexmix_init <- function(q_c_seed){
   set.seed(q_c_seed)
   pi_init <- rep(1/K_up, K_up)
   rho_init <- c(1, 1, 1, 1)/1
   q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
   q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
-  m_glm <- flexmix(y~cbind(X, Z)-1, cluster = q_c_matrix,
-                   model = FLXMRglm(),
-                   control = list(minprior = 0))
+  
+  result <- tryCatch({
+    m_glm <- flexmix(y~cbind(X, Z)-1, cluster = q_c_matrix,
+            model = FLXMRglm(),
+            control = list(minprior = 0))
+  }, error = function(err) {
+    cat("Error occurred:", conditionMessage(err), "\n")
+    m_glm <- flexmix(y~cbind(X, Z)-1, k = K_up,
+                     model = FLXMRglm(),
+                     control = list(minprior = 0))
+  })
   coef_est <- parameters(m_glm)[1:(p+q),] *
     t(kronecker(rho_init, matrix(1, ncol = p+q)))
   row.names(coef_est) <- NULL
@@ -17,6 +25,25 @@ flexmix_trail <- function(q_c_seed){
               ci_prob_mean = 999,
               coef_full_ori = coef_est,
               mse = 999,
+              sc_score = sc_score))
+}
+
+random_init <- function(q_c_seed){
+  set.seed(q_c_seed)
+  pi_init <- rep(1/K_up, K_up)
+  rho_init <- c(1, 1, 1, 1)/1
+  q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
+  q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+  coef_est <- coef$coef_full - coef$coef_full + rnorm(K_up*(p+q), 0, 1)
+  cdist <- coef_dist(coef_est, coef$coef_full)
+  print(cdist)
+  ci_est <- apply(q_c_matrix, 1, which.max)
+  ci_prob_mean <- mean(apply(q_c_matrix, 1, max))
+  sc_score <- sc(ci_est, ci_sim)
+  return(list(cdist = cdist,
+              ci_prob_mean = ci_prob_mean,
+              coef_full_ori = coef_est,
+              mse = 111,
               sc_score = sc_score))
 }
 

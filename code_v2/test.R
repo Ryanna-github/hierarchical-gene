@@ -40,14 +40,15 @@ alpha_vlen <- as.numeric(args$alpha_vlen)
 save_path <- args$path
 dt_seed <- as.numeric(args$dt_seed)
 
-# n <- 120
-# p <- 8
-# q <- 4
-# epsilon_sd <- 0.5
-# signal_size <- 1
-# beta_vlen <- 3
-# alpha_vlen <- 2
-# save_path <- "temp.csv"
+n <- 200
+p <- 40
+q <- 10
+epsilon_sd <- 0.5
+signal_size <- 1
+beta_vlen <- 3
+alpha_vlen <- 2
+save_path <- "temp.csv"
+dt_seed <- 9
 
 
 # 超参数设定
@@ -99,8 +100,8 @@ H_q <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
 para_set <- expand.grid(list(dt_seed = dt_seed,
                              q_c_seed = 1:q_c_seed_max,
                              lambda_1 = 0.3,
-                             lambda_2 = c(0.1, 0.2, 0.5, 1),
-                             lambda_3 = c(1, 2, 4),
+                             lambda_2 = c(0.2, 0.5, 1),
+                             lambda_3 = c(2, 4),
                              aa = 1.2,
                              tau = c(0.5, 1))) %>% 
   filter(lambda_2 < lambda_3)
@@ -110,15 +111,23 @@ print(paste("====================  dim of test set:", dim(para_set)))
 # 先计算 flexmix 结果
 fmres <- list()
 for(q_c_seed in 1:q_c_seed_max){
-  fmres[[q_c_seed]] <- flexmix_trail(q_c_seed)
+  fmres[[q_c_seed]] <- random_init(q_c_seed)
+  tryCatch({
+    fmres[[q_c_seed]] <- flexmix_init(q_c_seed)
+  }, error = function(err) {
+    cat("Random Init\n")
+  })
 }
 
+coef_dist(fmres[[1]]$coef_full_ori, coef$coef_full)
 
 result <- as.data.frame(matrix(999, nrow = length(unique(para_set$q_c_seed)), ncol = 11))
 colnames(result) <- c("dt_seed", "q_c_seed", "aa", "tau", "l1", "l2", "l3",
                       "cdist", "ci_prob_mean", "mse", "sc")
-result$dt_seed <- unlist(lapply(fmres, function(x){x$dt_seed}))
 result$cdist <- unlist(lapply(fmres, function(x){x$cdist}))
+result$dt_seed <- dt_seed
+result$ci_prob_mean <- unlist(lapply(fmres, function(x){x$ci_prob_mean}))
+result$mse <- unlist(lapply(fmres, function(x){x$mse}))
 result$sc <- unlist(lapply(fmres, function(x){x$sc}))
 write_csv(result, file=save_path, col_names=TRUE, append=TRUE)
 

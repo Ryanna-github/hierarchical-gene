@@ -80,7 +80,7 @@ coef_dist <- function(coef_est, coef_true){
     return(sum((coef_true - coef_est)**2)/length(coef_true))
   }
   allposs <- permutations(n = K_up, r = K_up)
-  miniest <- 100
+  miniest <- 1000 * prod(dim(coef_true))
   for(id_pos in 1:nrow(allposs)){
     mini <- sum((coef_true[,allposs[id_pos,]] - coef_est)**2)
     miniest <- ifelse(mini < miniest, mini, miniest)

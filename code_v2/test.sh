@@ -1,10 +1,32 @@
-Rscript test.R -n 200 --dt_seed 9 -p 40 -q 4 -e 0.5 --path 2023-07-29_eps05_fminit.csv >log.out
-Rscript test.R -n 200 --dt_seed 19 -p 40 -q 4 -e 0.5 --path 2023-07-29_eps05_fminit.csv >log.out
-Rscript test.R -n 200 --dt_seed 29 -p 40 -q 4 -e 0.5 --path 2023-07-29_eps05_fminit.csv >log.out
-Rscript test.R -n 200 --dt_seed 39 -p 40 -q 4 -e 0.5 --path 2023-07-29_eps05_fminit.csv >log.out
-Rscript test.R -n 200 --dt_seed 49 -p 40 -q 4 -e 0.5 --path 2023-07-29_eps05_fminit.csv >log.out
-Rscript test.R -n 200 --dt_seed 59 -p 40 -q 4 -e 0.5 --path 2023-07-29_eps05_fminit.csv >log2.out
-Rscript test.R -n 200 --dt_seed 69 -p 40 -q 4 -e 0.5 --path 2023-07-29_eps05_fminit.csv >log2.out
-Rscript test.R -n 200 --dt_seed 79 -p 40 -q 4 -e 0.5 --path 2023-07-29_eps05_fminit.csv >log2.out
-Rscript test.R -n 200 --dt_seed 89 -p 40 -q 4 -e 0.5 --path 2023-07-29_eps05_fminit.csv >log2.out
-Rscript test.R -n 200 --dt_seed 99 -p 40 -q 4 -e 0.5 --path 2023-07-29_eps05_fminit.csv >log2.out
+Rscript test.R -n 200 --dt_seed 9 -p 40 -q 10 -e 0.5 --beta_vlen 3 --alpha_vlen 2 --path 2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit.csv >2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 19 -p 40 -q 10 -e 0.5 --beta_vlen 3 --alpha_vlen 2 --path 2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit.csv >2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 29 -p 40 -q 10 -e 0.5 --beta_vlen 3 --alpha_vlen 2 --path 2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit.csv >2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 39 -p 40 -q 10 -e 0.5 --beta_vlen 3 --alpha_vlen 2 --path 2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit.csv >2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 49 -p 40 -q 10 -e 0.5 --beta_vlen 3 --alpha_vlen 2 --path 2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit.csv >2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 59 -p 40 -q 10 -e 0.5 --beta_vlen 3 --alpha_vlen 2 --path 2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit.csv >2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 69 -p 40 -q 10 -e 0.5 --beta_vlen 3 --alpha_vlen 2 --path 2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit.csv >2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 79 -p 40 -q 10 -e 0.5 --beta_vlen 3 --alpha_vlen 2 --path 2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit.csv >2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 89 -p 40 -q 10 -e 0.5 --beta_vlen 3 --alpha_vlen 2 --path 2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit.csv >2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 99 -p 40 -q 10 -e 0.5 --beta_vlen 3 --alpha_vlen 2 --path 2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit.csv >2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit_log.out
+
+Rscript test.R -n 200 --dt_seed 9 -p 80 -q 10 -e 0.5 --beta_vlen 3 --alpha_vlen 2 --path 2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit.csv >2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 19 -p 80 -q 10 -e 0.5 --beta_vlen 3 --alpha_vlen 2 --path 2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit.csv >2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 29 -p 80 -q 10 -e 0.5 --beta_vlen 3 --alpha_vlen 2 --path 2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit.csv >2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 39 -p 80 -q 10 -e 0.5 --beta_vlen 3 --alpha_vlen 2 --path 2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit.csv >2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 49 -p 80 -q 10 -e 0.5 --beta_vlen 3 --alpha_vlen 2 --path 2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit.csv >2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 59 -p 80 -q 10 -e 0.5 --beta_vlen 3 --alpha_vlen 2 --path 2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit.csv >2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 69 -p 80 -q 10 -e 0.5 --beta_vlen 3 --alpha_vlen 2 --path 2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit.csv >2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 79 -p 80 -q 10 -e 0.5 --beta_vlen 3 --alpha_vlen 2 --path 2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit.csv >2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 89 -p 80 -q 10 -e 0.5 --beta_vlen 3 --alpha_vlen 2 --path 2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit.csv >2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 99 -p 80 -q 10 -e 0.5 --beta_vlen 3 --alpha_vlen 2 --path 2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit.csv >2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit_log.out
+
+Rscript test.R -n 200 --dt_seed 9 -p 40 -q 10 -e 0.5 --beta_vlen 10 --alpha_vlen 2 --path 2023-07-31_n200_p40_q10_bl10_al2_eps0.5_fminit.csv >2023-07-31_n200_p40_q10_bl10_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 19 -p 40 -q 10 -e 0.5 --beta_vlen 10 --alpha_vlen 2 --path 2023-07-31_n200_p40_q10_bl10_al2_eps0.5_fminit.csv >2023-07-31_n200_p40_q10_bl10_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 29 -p 40 -q 10 -e 0.5 --beta_vlen 10 --alpha_vlen 2 --path 2023-07-31_n200_p40_q10_bl10_al2_eps0.5_fminit.csv >2023-07-31_n200_p40_q10_bl10_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 39 -p 40 -q 10 -e 0.5 --beta_vlen 10 --alpha_vlen 2 --path 2023-07-31_n200_p40_q10_bl10_al2_eps0.5_fminit.csv >2023-07-31_n200_p40_q10_bl10_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 49 -p 40 -q 10 -e 0.5 --beta_vlen 10 --alpha_vlen 2 --path 2023-07-31_n200_p40_q10_bl10_al2_eps0.5_fminit.csv >2023-07-31_n200_p40_q10_bl10_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 59 -p 40 -q 10 -e 0.5 --beta_vlen 10 --alpha_vlen 2 --path 2023-07-31_n200_p40_q10_bl10_al2_eps0.5_fminit.csv >2023-07-31_n200_p40_q10_bl10_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 69 -p 40 -q 10 -e 0.5 --beta_vlen 10 --alpha_vlen 2 --path 2023-07-31_n200_p40_q10_bl10_al2_eps0.5_fminit.csv >2023-07-31_n200_p40_q10_bl10_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 79 -p 40 -q 10 -e 0.5 --beta_vlen 10 --alpha_vlen 2 --path 2023-07-31_n200_p40_q10_bl10_al2_eps0.5_fminit.csv >2023-07-31_n200_p40_q10_bl10_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 89 -p 40 -q 10 -e 0.5 --beta_vlen 10 --alpha_vlen 2 --path 2023-07-31_n200_p40_q10_bl10_al2_eps0.5_fminit.csv >2023-07-31_n200_p40_q10_bl10_al2_eps0.5_fminit_log.out
+Rscript test.R -n 200 --dt_seed 99 -p 40 -q 10 -e 0.5 --beta_vlen 10 --alpha_vlen 2 --path 2023-07-31_n200_p40_q10_bl10_al2_eps0.5_fminit.csv >2023-07-31_n200_p40_q10_bl10_al2_eps0.5_fminit_log.out
