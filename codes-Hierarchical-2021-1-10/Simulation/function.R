@@ -189,8 +189,8 @@ ADMM<-function(n, q, p, data.total, beta.init, lambda1, lambda2, p_y=1,
   rm(gamma.est.list)
   gc()
   ###################
-  num.main <- get.gr.num(n, b.main,eta.main, q, merge.all=merge.all)
-  num.GE <- get.gr.num(n, b.GE,eta.GE, p, merge.all=merge.all)
+  num.main <- get.gr.num(n, b.main, eta.main, q, merge.all=merge.all)
+  num.GE <- get.gr.num(n, b.GE, eta.GE, p, merge.all=merge.all)
   gr.main.est<-num.main$gr.num
   gr.GE.est<-num.GE$gr.num
   residual <- log(sum((data.response-cova_diag%*%beta.gfl)^2/n))
@@ -370,7 +370,7 @@ mcp_d <- function(x,lambda,a=3){
 }
 
 
-get.gr.num<-function(size, beta.gfl,eta.gfl, q, merge.all=F){
+get.gr.num<-function(size, beta.gfl, eta.gfl, q, merge.all=F){
   
   ## -----------------------------------------------------------------------------------------------------------------
   ## The name of the function: get.gr.num

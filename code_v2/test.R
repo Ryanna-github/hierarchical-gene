@@ -22,6 +22,7 @@ parser$add_argument("-ss", "--signal_size", default = 1, help = "signal size")
 parser$add_argument("-bl", "--beta_vlen", default = 3, help = "nonzero length of beta")
 parser$add_argument("-al", "--alpha_vlen", default = 2, help = "nonzero length of alpha")
 parser$add_argument("--path", default="temp.csv",  help="csv result save path")
+parser$add_argument("--K_up", default=4,  help="Upper class number")
 # parser$add_argument("-a", "--aa", default = 1.2, help = "penalty para in MCP")
 # parser$add_argument("--lambda_1", default = 0.3, help = "lambda 1")
 # parser$add_argument("--lambda_2", default = 2, help = "lambda 2")
@@ -40,15 +41,19 @@ alpha_vlen <- as.numeric(args$alpha_vlen)
 save_path <- args$path
 dt_seed <- as.numeric(args$dt_seed)
 
-n <- 200
-p <- 40
-q <- 10
-epsilon_sd <- 0.5
-signal_size <- 1
-beta_vlen <- 3
-alpha_vlen <- 2
-save_path <- "temp.csv"
-dt_seed <- 9
+if(0){
+  n <- 500
+  p <- 40
+  q <- 10
+  epsilon_sd <- 0.5
+  signal_size <- 1
+  beta_vlen <- 3
+  alpha_vlen <- 2
+  save_path <- "temp.csv"
+  dt_seed <- 9
+  print("*")
+}
+
 
 
 # 超参数设定
@@ -100,11 +105,11 @@ H_q <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
 para_set <- expand.grid(list(dt_seed = dt_seed,
                              q_c_seed = 1:q_c_seed_max,
                              lambda_1 = 0.3,
-                             lambda_2 = c(0.2, 0.5, 1),
-                             lambda_3 = c(2, 4),
+                             lambda_2 = c(0, 1, 2, 4),
+                             lambda_3 = c(0, 1, 2, 4),
                              aa = 1.2,
-                             tau = c(0.5, 1))) %>% 
-  filter(lambda_2 < lambda_3)
+                             tau = 1)) 
+          # %>% filter(lambda_2 < lambda_3)
 
 print(paste("====================  dim of test set:", dim(para_set)))
 
@@ -134,7 +139,7 @@ write_csv(result, file=save_path, col_names=TRUE, append=TRUE)
 
 result <- NULL
 first_time_write <- FALSE
-for(i in 1:nrow(para_set[,])){
+for(i in 1:nrow(para_set[1:1,])){
   para <- para_set[i,]
   # fmres <- flexmix_trail(para$q_c_seed)
   # 改初始化

@@ -2,7 +2,7 @@
 flexmix_init <- function(q_c_seed){
   set.seed(q_c_seed)
   pi_init <- rep(1/K_up, K_up)
-  rho_init <- c(1, 1, 1, 1)/1
+  rho_init <- c(1, 1, 1, 1)/0.5
   q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
   q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
   
@@ -31,7 +31,7 @@ flexmix_init <- function(q_c_seed){
 random_init <- function(q_c_seed){
   set.seed(q_c_seed)
   pi_init <- rep(1/K_up, K_up)
-  rho_init <- c(1, 1, 1, 1)/1
+  rho_init <- c(1, 1, 1, 1)/0.5
   q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
   q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
   coef_est <- coef$coef_full - coef$coef_full + rnorm(K_up*(p+q), 0, 1)
@@ -50,7 +50,7 @@ random_init <- function(q_c_seed){
 ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed, 
                        coef_full_init, eps =1e-7){
   tau <- ifelse(tau == 0, 1e-4, tau) # 防止 tau == 0 导致分母为0情况
-  rho_init <- c(1, 1, 1, 1)/1
+  rho_init <- c(1, 1, 1, 1)/0.5
   
   kj <- function(dim) {return((k-1)*dim+j)}
   ks <- function(dim) {return((k-1)*dim+s)}

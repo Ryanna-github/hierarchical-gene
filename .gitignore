@@ -1,6 +1,12 @@
 # reference
 /reference/
 
+# data & log
+*.csv
+*.out
+/*.csv
+/*.out
+
 # doc
 doc/*/*[!pdf]
 .DS_Store

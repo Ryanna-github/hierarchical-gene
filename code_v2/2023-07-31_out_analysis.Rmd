@@ -13,18 +13,18 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(glue)
-n <- 200
+n <- 500
 p <- 40
-q <- 10
+q <- 4
 epsilon_sd <- 0.5
 signal_size <- 1
-beta_vlen <- 10
+beta_vlen <- 3
 alpha_vlen <- 2
 dt_seed <- 9
 for(dt_seed in seq(9, 99, 10)){
     path_pre <- glue("{Sys.Date()}_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_fminit")
   # path_pre <- glue("2023-07-31_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_fminit")
-  cmd <- glue("Rscript test.R -n {n} --dt_seed {dt_seed} -p {p} -q {q} -e {epsilon_sd} --beta_vlen {beta_vlen} --alpha_vlen {alpha_vlen} --path {path_pre}.csv >{path_pre}_log.out")
+  cmd <- glue("Rscript test.R -n {n} --dt_seed {dt_seed} -p {p} -q {q} -e {epsilon_sd} --beta_vlen {beta_vlen} --alpha_vlen {alpha_vlen} --path {path_pre}.csv >> {path_pre}_log.out")
   print(cmd)
 }
 ```
@@ -80,7 +80,11 @@ for(dt_seed in seq(9, 99, 10)){
 library(ggplot2)
 library(dplyr)
 library(plotly)
-df <- read.csv("2023-07-29_n200_p40_q4_nz32_eps05_fminit.csv")
+df <- read.csv("2023-07-28_n200_p8_q4_nz32_eps05_fminit.csv")
+# df <- read.csv("2023-07-29_n200_p40_q4_nz32_eps05_fminit.csv")
+# df <- read.csv("2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit.csv")
+# df <- read.csv("2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit.csv")
+# df <- read.csv("2023-07-31_n200_p40_q10_bl10_al2_eps0.5_fminit.csv")
 df$method <- factor(as.integer(df$q_c_seed %in% c(111, 999)), levels = c(0,1), labels = c("our method", "flemix or random"))
 ```
 
