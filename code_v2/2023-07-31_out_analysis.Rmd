@@ -14,17 +14,18 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(glue)
 n <- 500
-p <- 40
+p <- 8
 q <- 4
 epsilon_sd <- 0.5
 signal_size <- 1
 beta_vlen <- 3
 alpha_vlen <- 2
 dt_seed <- 9
+K_up <- 6
 for(dt_seed in seq(9, 99, 10)){
-    path_pre <- glue("{Sys.Date()}_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_fminit")
+    path_pre <- glue("{Sys.Date()}_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_Kup{K_up}_fminit")
   # path_pre <- glue("2023-07-31_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_fminit")
-  cmd <- glue("Rscript test.R -n {n} --dt_seed {dt_seed} -p {p} -q {q} -e {epsilon_sd} --beta_vlen {beta_vlen} --alpha_vlen {alpha_vlen} --path {path_pre}.csv >> {path_pre}_log.out")
+  cmd <- glue("Rscript test.R -n {n} --dt_seed {dt_seed} -p {p} -q {q} -e {epsilon_sd} --beta_vlen {beta_vlen} --alpha_vlen {alpha_vlen} --K_up {K_up} --path {path_pre}.csv >> {path_pre}_log.out")
   print(cmd)
 }
 ```
@@ -80,24 +81,30 @@ for(dt_seed in seq(9, 99, 10)){
 library(ggplot2)
 library(dplyr)
 library(plotly)
-df <- read.csv("2023-07-28_n200_p8_q4_nz32_eps05_fminit.csv")
+df <- read.csv("2023-08-12_n500_p8_q4_bl3_al2_eps0.5_fminit.csv")
 # df <- read.csv("2023-07-29_n200_p40_q4_nz32_eps05_fminit.csv")
 # df <- read.csv("2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit.csv")
 # df <- read.csv("2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit.csv")
 # df <- read.csv("2023-07-31_n200_p40_q10_bl10_al2_eps0.5_fminit.csv")
-df$method <- factor(as.integer(df$q_c_seed %in% c(111, 999)), levels = c(0,1), labels = c("our method", "flemix or random"))
+df <- df %>% mutate(method = ifelse(q_c_seed < 100, 1, 0))
+df$method <- ifelse(df$q_c_seed == 111, -1, df$method)
+df$method <- factor(df$method, levels = c(-1, 0, 1), labels = c("random", "flemix", "out_method"))
+# df %>% mutate(method = vec_case_when(q_c_seed < 100 ~ q_c_seed,
+#                        q_c_seed == 111 ~ -1,
+#                        q_c_seed == 999 ~ 0))
+# df$method <- factor(as.integer(df$q_c_seed %in% c(111, 999)), levels = c(0,1), labels = c("our method", "flemix or random"))
 ```
 
 ```{r}
 df$dt_seed <- factor(df$dt_seed)
-df_tmp <- df %>% filter(l3 %in% c(4, 111, 999),
-                        l2 %in% c(0.5, 111, 999),
-                        tau %in% c(0.5, 111, 999))
-p <- ggplot(df_tmp, aes(x = cdist, y = sc, color = method)) +
-  geom_point(alpha = 0.4) +
-  theme_bw() +
-  facet_wrap(~ dt_seed)
-ggplotly(p)
+# df_tmp <- df %>% filter(l3 %in% c(4, 111, 999),
+#                         l2 %in% c(0.5, 111, 999),
+#                         tau %in% c(0.5, 111, 999))
+# p <- ggplot(df_tmp, aes(x = cdist, y = sc, color = method)) +
+#   geom_point(alpha = 0.4) +
+#   theme_bw() +
+#   facet_wrap(~ dt_seed)
+# ggplotly(p)
 
 p <- ggplot(df, aes(x = cdist, y = sc, color = method)) +
   geom_point(alpha = 0.4) +
@@ -106,7 +113,42 @@ p <- ggplot(df, aes(x = cdist, y = sc, color = method)) +
 ggplotly(p)
 ```
 
+
+
 ```{r}
-df_our <- df_tmp %>% filter(l1 < 100)
+df_our <- df %>% filter(l2 < 100)
+ggplot(df_our, aes(x = l2, y = l3, fill = sc, size = sc)) +
+  geom_point(alpha = 0.01)
 ```
+
+
+
+```{r}
+df_tmp <- df_our %>% group_by(l2, l3) %>% summarise(mean_sc = mean(cdist))
+ggplot(df_tmp, aes(x = l2, y = l3, size = mean_sc)) +
+  geom_point()
+```
+
+
+
+```{r}
+df_our %>% group_by(l2) %>% summarise(mean_sc = mean(cdist))
+df_our %>% group_by(l3) %>% summarise(mean_sc = mean(cdist))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

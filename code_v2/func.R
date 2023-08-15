@@ -2,7 +2,7 @@
 flexmix_init <- function(q_c_seed){
   set.seed(q_c_seed)
   pi_init <- rep(1/K_up, K_up)
-  rho_init <- c(1, 1, 1, 1)/0.5
+  rho_init <- rep(1, K_up)/sigma_est
   q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
   q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
   
@@ -19,7 +19,10 @@ flexmix_init <- function(q_c_seed){
   coef_est <- parameters(m_glm)[1:(p+q),] *
     t(kronecker(rho_init, matrix(1, ncol = p+q)))
   row.names(coef_est) <- NULL
-  cdist <- coef_dist(coef_est, coef$coef_full)
+  cdist <- ifelse(ncol(coef$coef_full) == K_up, 
+                  coef_dist(coef_est, coef$coef_full),
+                  NaN)
+  print(cdist)
   sc_score <- sc(m_glm@cluster, ci_sim)
   return(list(cdist = cdist, 
               ci_prob_mean = 999,
@@ -31,11 +34,15 @@ flexmix_init <- function(q_c_seed){
 random_init <- function(q_c_seed){
   set.seed(q_c_seed)
   pi_init <- rep(1/K_up, K_up)
-  rho_init <- c(1, 1, 1, 1)/0.5
+  rho_init <- rep(1, K_up)/sigma_est
   q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
   q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
-  coef_est <- coef$coef_full - coef$coef_full + rnorm(K_up*(p+q), 0, 1)
-  cdist <- coef_dist(coef_est, coef$coef_full)
+  # coef_est <- coef$coef_full - coef$coef_full + rnorm(prod(dim(coef$coef_full)), 0, 1)
+  # 随机初始化,事先不知道 coef$coef_full,应该用 K_up 初始化
+  coef_est <- matrix(rnorm(K_up*(p+q), 0, 1), ncol = K_up)
+  cdist <- ifelse(ncol(coef$coef_full) == K_up, 
+                  coef_dist(coef_est, coef$coef_full),
+                  NaN)
   print(cdist)
   ci_est <- apply(q_c_matrix, 1, which.max)
   ci_prob_mean <- mean(apply(q_c_matrix, 1, max))
@@ -48,9 +55,9 @@ random_init <- function(q_c_seed){
 }
 
 ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed, 
-                       coef_full_init, eps =1e-7){
+                       coef_full_init, eps = 1e-7){
   tau <- ifelse(tau == 0, 1e-4, tau) # 防止 tau == 0 导致分母为0情况
-  rho_init <- c(1, 1, 1, 1)/0.5
+  rho_init <- rep(1, K_up)/sigma_est
   
   kj <- function(dim) {return((k-1)*dim+j)}
   ks <- function(dim) {return((k-1)*dim+s)}
@@ -262,14 +269,24 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
     #   return()
     # }
   }
-  cdist <- coef_dist(coef_full_ori_list[[iter]], coef$coef_full)
-  # print(coef_full_list[[iter]])
+  # 距离真实参数距离，只有类别数相同才能计算该指标
+  cdist <- ifelse(ncol(coef$coef_full) == K_up, 
+                  coef_dist(coef_full_ori_list[[iter]], coef$coef_full),
+                  NaN)
+  # 参数结果（未压缩）
   print(coef_full_ori_list[[iter]])
-  print(table(case))
-  plot(unlist(lapply(coef_full_ori_list, coef_dist, coef$coef_full)), ylab = "",
-       main = paste(q_c_seed, aa, lambda_1, lambda_2, lambda_3, tau))
+  # case 情况（检查是否落入组别压缩的情况
+  case_table_full <- rep(0, 4) # v,w 更新四种情况落入次数记录
+  case_table <- table(case)
+  for(t in 1:dim(case_table)){
+    case_table_full[as.integer(names(case_table)[t])] <- case_table[names(case_table)[t]]
+  }
+  print(case_table)
+  # 估计参数距离真实参数距离的可视化展示
+  # plot(unlist(lapply(coef_full_ori_list, coef_dist, coef$coef_full)), ylab = "",
+  #      main = paste(q_c_seed, aa, lambda_1, lambda_2, lambda_3, tau))
   cat("q_c_seed", q_c_seed, "a", aa, 
-      "l1", lambda_1, "l2", lambda_2, "l3", lambda_3, "tau", tau)
+      "l1", lambda_1, "l2", lambda_2, "l3", lambda_3, "tau", tau, "\n")
   ci_est <- apply(q_c_matrix, 1, which.max)
   ci_prob <- apply(q_c_matrix, 1, max)
   ci_matrix <- t(apply(q_c_matrix, 1, function(x){as.numeric(x == max(x))}))
@@ -277,13 +294,110 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
   mse <- sum((y-y_hat)^2/n)
   sc_score <- sc(ci_est, ci_sim)
   
+  main_group_info <- get_group_num(K_up, 
+                                  coef_full_ori_list[[iter]][(1:p),], 
+                                  diff_v_list[[iter]], p)
+  sub_group_info <- get_group_num(K_up, 
+                                  coef_full_ori_list[[iter]][(1+p):(p+q),], 
+                                  diff_w_list[[iter]], q)
+  print(main_group_info$capgfl.matrix2)
+  print(sub_group_info$capgfl.matrix2)
+  valid_hier <- ifelse(min(main_group_info$capgfl.matrix2 - sub_group_info$capgfl.matrix2) >= 0,
+                       TRUE, FALSE)
+  print(valid_hier)
+  
   print(cdist)
   print(mse)
+  cat("main_group_num: ", main_group_info$gr.num, "sub_group_num: ", sub_group_info$gr.num, "\n")
   return(list(cdist = cdist, 
               ci_prob_mean = mean(ci_prob),
               # q_c_matrix = q_c_matrix,
               coef_full_ori = coef_full_ori_list[[iter]],
               # coef_full = coef_full_list[[iter]],
               mse = mse,
-              sc_score = sc_score))
+              sc_score = sc_score,
+              case_table_full = case_table_full,
+              est_main_grn = main_group_info$gr.num,
+              est_sub_grn = sub_group_info$gr.num,
+              case_table_full = case_table_full))
+}
+
+# 根据 beta（alpha）v（w）返回组别个数
+get_group_num <- function(K_up, coef, diff_v, len, merge.all = F, threshold = 1e-2){
+  # diff_v <- diff_w_list[[iter]]
+  # coef <- coef_full_ori_list[[iter]][(1+p):(p+q),]
+  # len <- q
+  # diff_v <- diff_v_list[[iter]]
+  # coef <- coef_full_ori_list[[iter]][(1:p),]
+  # len <- p
+  diff.gfl <- apply(matrix(diff_v, nrow = len, ncol = K_up*(K_up-1)/2), 2, sum)
+  squeeze_index <- which(abs(diff.gfl) < threshold)
+  
+  capgfl.matrix <- matrix(0, nrow = K_up, ncol = K_up)
+  if(length(squeeze_index) == 0){
+    capgfl.matrix2 <- capgfl.matrix + t(capgfl.matrix)
+    diag(capgfl.matrix2) <- 1
+    return(list(gr.num = K_up, capgfl.matrix2 = capgfl.matrix2))
+  }
+  if(length(squeeze_index) == K_up*(K_up-1)/2){
+    capgfl.matrix[upper.tri(capgfl.matrix)] <- 1
+    capgfl.matrix2 <- capgfl.matrix + t(capgfl.matrix)
+    diag(capgfl.matrix2) <- 1
+    return(list(gr.num = 1, capgfl.matrix2 = capgfl.matrix2))
+  }else{
+    sample.index.gfl <- comb_pair[,squeeze_index]
+    if(length(which(abs(diff.gfl) < threshold)) == 1){
+      capgfl.matrix[sample.index.gfl[1], sample.index.gfl[2]]<-1
+    }else{
+      for(i in 1:length(squeeze_index)){
+        capgfl.matrix[sample.index.gfl[1,i],sample.index.gfl[2,i]]<-1
+      }
+    }
+    capgfl.matrix2 = capgfl.matrix+t(capgfl.matrix); diag(capgfl.matrix2)=1
+    group.num.gf = nrow(unique(capgfl.matrix2))
+    # 解决如 12 同类 13 同类但 23 不同类的问题
+    if(merge.all){
+      cap <- capgfl.matrix2
+      num_subgroup <- unique(apply(cap, 1, function(a){which(a == 1)}))
+      non_inter_list <- list()
+      vv <- 1
+      non_inter <- c(1:length(num_subgroup))
+      repeat{
+        a <- num_subgroup[[non_inter[1]]]
+        KK_k <- setdiff(non_inter,non_inter[1])
+        non_inter <- c()
+        i=1
+        for (k2 in KK_k) {
+          if(length(intersect(a,num_subgroup[[k2]])) > 0){
+            a <- union(a,num_subgroup[[k2]])
+          } else {
+            non_inter[i] <- k2
+            i=i+1
+          }
+        }
+        non_inter_list[[vv]] <- a
+        vv <- vv+1
+        if(length(non_inter) == 0){break}
+      }
+      
+      for (i in 1:dim(cap)[1]) {
+        for (k in 1:length(non_inter_list)) {
+          if(length(match(cap[i,],non_inter_list[[k]])) > 0){
+            cap[i,non_inter_list[[k]]] <- 1
+          }
+        }
+      }
+      capgfl.matrix2 <- cap
+      group.num.gf = nrow(unique(capgfl.matrix2))
+    }
+    return(list(gr.num=group.num.gf,capgfl.matrix2=capgfl.matrix2))
+  }
+  
+  
+  
+  
+  
+  
+  
+  
 }
