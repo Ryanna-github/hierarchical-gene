@@ -123,12 +123,11 @@ colnames_all <- c("dt_seed", "q_c_seed", "aa", "tau", "l1", "l2", "l3",
 # }
 # 
 
-
-result <- as.data.frame(matrix(NaN, nrow = 2, ncol = length(colnames_all)))
-colnames(result) <- colnames_all
-result$dt_seed <- dt_seed
-
 for(q_c_seed in 1:q_c_seed_max){
+  result <- as.data.frame(matrix(NaN, nrow = 2, ncol = length(colnames_all)))
+  colnames(result) <- colnames_all
+  result$dt_seed <- dt_seed
+  
   # flexmix for initialization
   tryCatch({
     flemix_forinit <- flexmix_init(q_c_seed, 0)
@@ -165,9 +164,8 @@ for(q_c_seed in 1:q_c_seed_max){
                    aa = 1.2, tau = 1)
   result <- rbind(result, 
                   tuning_hyper(l2_seq, l3_seq, fix_para, flemix_forinit$coef_full_ori))
-  # print(result)
+  write_csv(result, file=save_path, col_names=!file.exists(save_path), append=TRUE)
 }
-
 
 
 

@@ -308,7 +308,9 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
   
   cappfl.diff <- main_group_info$capgfl.matrix2 - sub_group_info$capgfl.matrix2
   valid_hier <- ifelse(min(cappfl.diff) >= 0, TRUE, FALSE)
+  diag(cappfl.diff) <- 1
   group_detail <- apply(which((cappfl.diff) > 0, arr.ind = TRUE), 1, function(x){paste0("(",x[1],",",x[2],")")})
+  group_detail <- paste0(group_detail, collapse = "")
   BIC.var <- log(mse) + log(n*(p+q))*log(n)*(est_main_grn*(p)+est_sub_grn*(q))/n
   BIC.o <- log(mse) + log(n)*(est_main_grn*p+est_sub_grn*q)/n
   
