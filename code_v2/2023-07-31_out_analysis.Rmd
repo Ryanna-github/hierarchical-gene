@@ -20,7 +20,7 @@ epsilon_sd <- 0.5
 signal_size <- 1
 beta_vlen <- 3
 alpha_vlen <- 2
-dt_seed <- 9
+# dt_seed <- 9
 K_up <- 6
 for(dt_seed in seq(9, 99, 10)){
     path_pre <- glue("{Sys.Date()}_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_Kup{K_up}_fminit")
@@ -153,14 +153,37 @@ df_new <- df %>% filter(!tau  %in% c(111, 999))
 ```
 
 ```{r}
-df_new %>% group_by(dt_seed) %>%
-  summarise(K_correct_num = (sub_grn == 4))
+t <- df_new %>% 
+  group_by(dt_seed) %>%
+  summarise(count = n(),
+            K_main_correct_num = sum(main_grn == 2),
+            K_sub_correct_num = sum(sub_grn == 4),
+            K_all_correct_num = sum(sub_grn == 4 & main_grn == 2)) %>%
+  mutate(K_main_correct_ratio = K_main_correct_num/count,
+         K_sub_correct_ratio = K_sub_correct_num/count,
+         K_all_correct_ratio = K_all_correct_num/count)
+```
+
+```{r}
+df_new
+```
+
+```{r}
+ggplot(df_new, aes(x = l2, y = l3)) +
+  geom_point(alpha = 0.002, aes(size = sc))
+```
+```{r}
+df_new %>% group_by(l2, l3) %>%
+  summarise(count = n(), mse = mean(mse), sc = mean(sc),
+            k_main = mean(main_grn), k_sub = mean(sub_grn)) %>%
+  arrange(-sc)
 ```
 
 
 
-
-
+```{r}
+hist(df_new$)
+```
 
 
 

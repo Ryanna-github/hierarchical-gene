@@ -9,53 +9,54 @@ source("tools.R")
 source("func.R")
 library(argparse)
 
-# # 创建参数解析对象
-# parser <- ArgumentParser()
-# # Rscript test.R -n 120 --dt_seed 9 -p 8 -q 4 -e 0.5 --path 2023-07-28_eps05_fminit.csv
-# 
-# parser$add_argument("-n", "--num", default=200,  help="sample size")
-# parser$add_argument("--dt_seed", default=9,  help="epsilon seed while generating data")
-# parser$add_argument("-p", default = 8, help = "dim of X")
-# parser$add_argument("-q", default = 4, help = "dim of Z")
-# parser$add_argument("-e", "--epsilon_sd", default = 0.5, help = "error")
-# parser$add_argument("-ss", "--signal_size", default = 1, help = "signal size")
-# parser$add_argument("-bl", "--beta_vlen", default = 3, help = "nonzero length of beta")
-# parser$add_argument("-al", "--alpha_vlen", default = 2, help = "nonzero length of alpha")
-# parser$add_argument("--path", default="temp.csv",  help="csv result save path")
-# parser$add_argument("--K_up", default=4,  help="Upper class number")
-# # parser$add_argument("-a", "--aa", default = 1.2, help = "penalty para in MCP")
-# # parser$add_argument("--lambda_1", default = 0.3, help = "lambda 1")
-# # parser$add_argument("--lambda_2", default = 2, help = "lambda 2")
-# # parser$add_argument("--lambda_3", default = 5, help = "lambda 3")
-# # parser$add_argument("--tau", default = 0.5, help = "ADMM penalty")
-# 
-# args <- parser$parse_args()
-# 
-# n <- as.numeric(args$n)
-# p <- as.numeric(args$p)
-# q <- as.numeric(args$q)
-# epsilon_sd <- as.numeric(args$e)
-# sigma_est <- as.numeric(args$e)
-# signal_size <- as.numeric(args$signal_size)
-# beta_vlen <- as.numeric(args$beta_vlen)
-# alpha_vlen <- as.numeric(args$alpha_vlen)
-# save_path <- args$path
-# dt_seed <- as.numeric(args$dt_seed)
-# K_up <- as.numeric(args$K_up)
+# 创建参数解析对象
+parser <- ArgumentParser()
+# Rscript test.R -n 120 --dt_seed 9 -p 8 -q 4 -e 0.5 --path 2023-07-28_eps05_fminit.csv
 
-if(1){
-  n <- 500
-  p <- 40
-  q <- 10
-  epsilon_sd <- 0.5
-  signal_size <- 1
-  beta_vlen <- 3
-  alpha_vlen <- 2
-  save_path <- "temp.csv"
-  dt_seed <- 9
-  K_up <- 6  # 估计时的最大类别，应该不少于 group_num_sub
-  print("*")
-}
+parser$add_argument("-n", "--num", default=200,  help="sample size")
+parser$add_argument("--dt_seed", default=9,  help="epsilon seed while generating data")
+parser$add_argument("-p", default = 8, help = "dim of X")
+parser$add_argument("-q", default = 4, help = "dim of Z")
+parser$add_argument("-e", "--epsilon_sd", default = 0.5, help = "error")
+parser$add_argument("-ss", "--signal_size", default = 1, help = "signal size")
+parser$add_argument("-bl", "--beta_vlen", default = 3, help = "nonzero length of beta")
+parser$add_argument("-al", "--alpha_vlen", default = 2, help = "nonzero length of alpha")
+parser$add_argument("--path", default="temp.csv",  help="csv result save path")
+parser$add_argument("--K_up", default=4,  help="Upper class number")
+# parser$add_argument("-a", "--aa", default = 1.2, help = "penalty para in MCP")
+# parser$add_argument("--lambda_1", default = 0.3, help = "lambda 1")
+# parser$add_argument("--lambda_2", default = 2, help = "lambda 2")
+# parser$add_argument("--lambda_3", default = 5, help = "lambda 3")
+# parser$add_argument("--tau", default = 0.5, help = "ADMM penalty")
+
+args <- parser$parse_args()
+
+n <- as.numeric(args$n)
+p <- as.numeric(args$p)
+q <- as.numeric(args$q)
+epsilon_sd <- as.numeric(args$e)
+sigma_est <- as.numeric(args$e)
+signal_size <- as.numeric(args$signal_size)
+beta_vlen <- as.numeric(args$beta_vlen)
+alpha_vlen <- as.numeric(args$alpha_vlen)
+save_path <- args$path
+dt_seed <- as.numeric(args$dt_seed)
+K_up <- as.numeric(args$K_up)
+
+# if(1){
+#   n <- 500
+#   p <- 8
+#   q <- 4
+#   epsilon_sd <- 0.5
+#   sigma_est <- as.numeric(epsilon_sd)
+#   signal_size <- 1
+#   beta_vlen <- 3
+#   alpha_vlen <- 2
+#   save_path <- "temp.csv"
+#   dt_seed <- 9
+#   K_up <- 4  # 估计时的最大类别，应该不少于 group_num_sub
+#   print("*")
+# }
 
 
 
@@ -74,7 +75,7 @@ alpha_nonzero <- c(-3, -1, 1, 3)*signal_size
 # beta_vlen <- 3
 # alpha_vlen <- 2
 
-q_c_seed_max <- 5
+q_c_seed_max <- 20
 group_num_main <- 2                    
 group_num_sub <- 4    
 hier_struc <- list(c(1,2),c(3,4))
@@ -92,7 +93,7 @@ X <- whole.data$data$X
 Z <- whole.data$data$Z
 data <- whole.data$data$data_full
 coef <- whole.data$coef
-coefv <- lapply(coef, as.vector) # 按照类别拉长
+# coefv <- lapply(coef, as.vector) # 按照类别拉长
 ci_sim <- whole.data$ci_sim
 y <- matrix(whole.data$y, ncol=1)
 
@@ -110,18 +111,6 @@ colnames_all <- c("dt_seed", "q_c_seed", "aa", "tau", "l1", "l2", "l3",
                   "main_grn", "sub_grn", "valid_hier", 
                   "group_detail", paste0("case_", 1:4), "tag")
 
-
-# 先计算 flexmix 结果
-# fmres <- list()
-# for(q_c_seed in 1:q_c_seed_max){
-#   tryCatch({
-#     fmres[[q_c_seed]] <- flexmix_init(q_c_seed)
-#   }, error = function(err) {
-#     cat("Random Init\n")
-#     fmres[[q_c_seed]] <- random_init(q_c_seed)
-#   })
-# }
-# 
 
 for(q_c_seed in 1:q_c_seed_max){
   result <- as.data.frame(matrix(NaN, nrow = 2, ncol = length(colnames_all)))
@@ -156,85 +145,14 @@ for(q_c_seed in 1:q_c_seed_max){
 
   
   # our method
-  # l2_seq <- c(0, 1, 2, 4)
-  l2_seq <- c(0)
-  # l3_seq <- c(0, 1, 2, 4)
-  l3_seq <- c(0)
+  l2_seq <- c(0, 1, 2, 4, 6)
+  l3_seq <- c(0, 1, 2, 4, 6)
   fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
                    aa = 1.2, tau = 1)
   result <- rbind(result, 
                   tuning_hyper(l2_seq, l3_seq, fix_para, flemix_forinit$coef_full_ori))
-  write_csv(result, file=save_path, col_names=!file.exists(save_path), append=TRUE)
 }
+write_csv(result, file=save_path, col_names=!file.exists(save_path), append=TRUE)
 
-
-
-# 
-# 
-# result <- as.data.frame(matrix(999, nrow = length(unique(para_set$q_c_seed)), ncol = 17))
-# colnames(result) <- colnames_all
-# result$cdist <- unlist(lapply(fmres, function(x){x$cdist}))
-# result$dt_seed <- dt_seed
-# result$ci_prob_mean <- unlist(lapply(fmres, function(x){x$ci_prob_mean}))
-# result$mse <- unlist(lapply(fmres, function(x){x$mse}))
-# result$sc <- unlist(lapply(fmres, function(x){x$sc}))
-# write_csv(result, file=save_path, col_names=!file.exists(save_path), append=TRUE)
-# 
-# 
-# result <- NULL
-# first_time_write <- FALSE
-# for(i in 1:nrow(para_set[,])){
-#   para <- para_set[i,]
-#   # fmres <- flexmix_trail(para$q_c_seed)
-#   # 改初始化
-#   # set.seed(99)
-#   coef_full_init <- fmres[[para$q_c_seed]]$coef_full_ori
-#   # coef_full_init <- coef$coef_full + rnorm(length(coef$coef_full), 0, 0.5)
-#   
-#   # aa = para$aa
-#   # tau = para$tau
-#   # lambda_1 = para$lambda_1
-#   # lambda_2 = para$lambda_2
-#   # lambda_3 = para$lambda_3
-#   # q_c_seed = para$q_c_seed
-#   # coef_full_init = coef_full_init
-#   # eps = 1e-7
-#   
-#   td <- ADMM_trail(aa = para$aa,
-#                    tau = para$tau,
-#                    lambda_1 = para$lambda_1,
-#                    lambda_2 = para$lambda_2,
-#                    lambda_3 = para$lambda_3,
-#                    q_c_seed = para$q_c_seed,
-#                    coef_full_init = coef_full_init)
-#   result <- rbind(result, c(para$dt_seed,
-#                             para$q_c_seed,
-#                             para$aa,
-#                             para$tau,
-#                             para$lambda_1,
-#                             para$lambda_2,
-#                             para$lambda_3,
-#                             td$cdist,
-#                             td$ci_prob_mean,
-#                             td$mse,
-#                             td$sc_score,
-#                             td$est_main_grn,
-#                             td$est_sub_grn,
-#                             td$case_table_full))
-#   if(i%%5 == 0){
-#     print(paste(i, "**********************************"))
-#     colnames(result) <- colnames_all
-#     write_csv(data.frame(result), file=save_path, col_names=FALSE, append=TRUE)
-#     first_time_write <- FALSE
-#     result <- NULL
-#   }
-# }
-# if(! is.null(result)){
-#   print(paste(i, "**********************************"))
-#   colnames(result) <- colnames_all
-#   write_csv(data.frame(result), file=save_path, col_names=FALSE, append=TRUE)
-#   first_time_write <- FALSE
-#   result <- NULL
-# }
 
 
