@@ -105,6 +105,17 @@ para_set <- expand.grid(list(dt_seed = dt_seed,
 ```
 
 ```{r}
+pi_init <- rep(1/K_up, K_up)
+rho_init <- rep(1, K_up)/sigma_est
+q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
+q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+m_glm <- flexmix(y~cbind(X, Z)-1, cluster = q_c_matrix,
+            model = FLXMRglm(),
+            control = list(minprior = 0.1))
+```
+
+
+```{r}
 fmres <- list()
 for(q_c_seed in 1:q_c_seed_max){
   tryCatch({

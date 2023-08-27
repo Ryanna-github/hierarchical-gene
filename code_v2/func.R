@@ -1,5 +1,5 @@
 
-flexmix_init <- function(q_c_seed){
+flexmix_init <- function(q_c_seed, minprior_value = 0, tag = "flexmix"){
   set.seed(q_c_seed)
   pi_init <- rep(1/K_up, K_up)
   rho_init <- rep(1, K_up)/sigma_est
@@ -9,29 +9,29 @@ flexmix_init <- function(q_c_seed){
   result <- tryCatch({
     m_glm <- flexmix(y~cbind(X, Z)-1, cluster = q_c_matrix,
             model = FLXMRglm(),
-            control = list(minprior = 0))
+            control = list(minprior = minprior_value))
   }, error = function(err) {
     cat("Error occurred:", conditionMessage(err), "\n")
     m_glm <- flexmix(y~cbind(X, Z)-1, k = K_up,
                      model = FLXMRglm(),
-                     control = list(minprior = 0))
+                     control = list(minprior = minprior_value))
   })
-  coef_est <- parameters(m_glm)[1:(p+q),] *
-    t(kronecker(rho_init, matrix(1, ncol = p+q)))
+  K_est <- m_glm@k
+  coef_est <- parameters(m_glm)[1:(p+q),]
   row.names(coef_est) <- NULL
-  cdist <- ifelse(ncol(coef$coef_full) == K_up, 
+  cdist <- ifelse(ncol(coef$coef_full) == ncol(coef_est), 
                   coef_dist(coef_est, coef$coef_full),
                   NaN)
-  print(cdist)
   sc_score <- sc(m_glm@cluster, ci_sim)
+  print(coef_est)
   return(list(cdist = cdist, 
-              ci_prob_mean = 999,
               coef_full_ori = coef_est,
-              mse = 999,
-              sc_score = sc_score))
+              est_sub_grn = K_est,
+              sc_score = sc_score,
+              tag = tag))
 }
 
-random_init <- function(q_c_seed){
+random_init <- function(q_c_seed, tag = "random"){
   set.seed(q_c_seed)
   pi_init <- rep(1/K_up, K_up)
   rho_init <- rep(1, K_up)/sigma_est
@@ -40,18 +40,20 @@ random_init <- function(q_c_seed){
   # coef_est <- coef$coef_full - coef$coef_full + rnorm(prod(dim(coef$coef_full)), 0, 1)
   # 随机初始化,事先不知道 coef$coef_full,应该用 K_up 初始化
   coef_est <- matrix(rnorm(K_up*(p+q), 0, 1), ncol = K_up)
-  cdist <- ifelse(ncol(coef$coef_full) == K_up, 
+  cdist <- ifelse(ncol(coef$coef_full) == col(coef_est), 
                   coef_dist(coef_est, coef$coef_full),
                   NaN)
   print(cdist)
   ci_est <- apply(q_c_matrix, 1, which.max)
   ci_prob_mean <- mean(apply(q_c_matrix, 1, max))
   sc_score <- sc(ci_est, ci_sim)
+  print(coef_est)
   return(list(cdist = cdist,
               ci_prob_mean = ci_prob_mean,
               coef_full_ori = coef_est,
-              mse = 111,
-              sc_score = sc_score))
+              est_sub_grn = K_up,
+              sc_score = sc_score,
+              tag = tag))
 }
 
 ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed, 
@@ -270,10 +272,11 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
     # }
   }
   # 距离真实参数距离，只有类别数相同才能计算该指标
-  cdist <- ifelse(ncol(coef$coef_full) == K_up, 
+  cdist <- ifelse(ncol(coef$coef_full) == ncol(coef_full_ori_list[[iter]]), 
                   coef_dist(coef_full_ori_list[[iter]], coef$coef_full),
                   NaN)
   # 参数结果（未压缩）
+  cat(paste0("****[unsqueezed coef]****:\n"))
   print(coef_full_ori_list[[iter]])
   # case 情况（检查是否落入组别压缩的情况
   case_table_full <- rep(0, 4) # v,w 更新四种情况落入次数记录
@@ -281,45 +284,57 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
   for(t in 1:dim(case_table)){
     case_table_full[as.integer(names(case_table)[t])] <- case_table[names(case_table)[t]]
   }
-  print(case_table)
   # 估计参数距离真实参数距离的可视化展示
   # plot(unlist(lapply(coef_full_ori_list, coef_dist, coef$coef_full)), ylab = "",
   #      main = paste(q_c_seed, aa, lambda_1, lambda_2, lambda_3, tau))
-  cat("q_c_seed", q_c_seed, "a", aa, 
-      "l1", lambda_1, "l2", lambda_2, "l3", lambda_3, "tau", tau, "\n")
   ci_est <- apply(q_c_matrix, 1, which.max)
+  sc_score <- sc(ci_est, ci_sim)
   ci_prob <- apply(q_c_matrix, 1, max)
   ci_matrix <- t(apply(q_c_matrix, 1, function(x){as.numeric(x == max(x))}))
   y_hat <- rowSums(ci_matrix * data%*%coef_full_list[[iter]])
   mse <- sum((y-y_hat)^2/n)
-  sc_score <- sc(ci_est, ci_sim)
   
+  # group result
   main_group_info <- get_group_num(K_up, 
                                   coef_full_ori_list[[iter]][(1:p),], 
                                   diff_v_list[[iter]], p)
   sub_group_info <- get_group_num(K_up, 
                                   coef_full_ori_list[[iter]][(1+p):(p+q),], 
                                   diff_w_list[[iter]], q)
-  print(main_group_info$capgfl.matrix2)
-  print(sub_group_info$capgfl.matrix2)
-  valid_hier <- ifelse(min(main_group_info$capgfl.matrix2 - sub_group_info$capgfl.matrix2) >= 0,
-                       TRUE, FALSE)
-  print(valid_hier)
+  # print(main_group_info$capgfl.matrix2)
+  # print(sub_group_info$capgfl.matrix2)
+  est_main_grn <- main_group_info$gr.num
+  est_sub_grn <- sub_group_info$gr.num
   
-  print(cdist)
-  print(mse)
-  cat("main_group_num: ", main_group_info$gr.num, "sub_group_num: ", sub_group_info$gr.num, "\n")
+  cappfl.diff <- main_group_info$capgfl.matrix2 - sub_group_info$capgfl.matrix2
+  valid_hier <- ifelse(min(cappfl.diff) >= 0, TRUE, FALSE)
+  group_detail <- apply(which((cappfl.diff) > 0, arr.ind = TRUE), 1, function(x){paste0("(",x[1],",",x[2],")")})
+  BIC.var <- log(mse) + log(n*(p+q))*log(n)*(est_main_grn*(p)+est_sub_grn*(q))/n
+  BIC.o <- log(mse) + log(n)*(est_main_grn*p+est_sub_grn*q)/n
+  
+  cat(paste("**** hypter parameter:", "dt_seed", dt_seed, "q_c_seed", q_c_seed, 
+            "l1", lambda_1, "l2", lambda_1, "l3", lambda_1, "tau", tau, "a", aa, "\n"))
+  cat(paste("**** result:", "est_main_grn", est_main_grn, "est_sub_grn", est_sub_grn,
+            "mse", mse, "sc", sc_score, "BIC.var", BIC.var, "BIC.o", BIC.o, 
+            "valid_hier", valid_hier, "group_detail", group_detail, "\n"))
+  print(case_table_full)
+  print(coef_full_ori_list[[iter]])
+  
   return(list(cdist = cdist, 
               ci_prob_mean = mean(ci_prob),
               # q_c_matrix = q_c_matrix,
               coef_full_ori = coef_full_ori_list[[iter]],
               # coef_full = coef_full_list[[iter]],
               mse = mse,
+              BIC.var = BIC.var,
+              BIC.o = BIC.o,
               sc_score = sc_score,
               case_table_full = case_table_full,
               est_main_grn = main_group_info$gr.num,
               est_sub_grn = sub_group_info$gr.num,
-              case_table_full = case_table_full))
+              case_table_full = case_table_full,
+              valid_hier = valid_hier,
+              group_detail = group_detail))
 }
 
 # 根据 beta（alpha）v（w）返回组别个数
@@ -392,12 +407,57 @@ get_group_num <- function(K_up, coef, diff_v, len, merge.all = F, threshold = 1e
     }
     return(list(gr.num=group.num.gf,capgfl.matrix2=capgfl.matrix2))
   }
-  
-  
-  
-  
-  
-  
-  
-  
 }
+
+# tune l3 first then l2
+tuning_hyper <- function(l2_seq, l3_seq, fix_para, coef_full_init){
+  trail_set <- expand.grid(list(l3 = l3_seq, l2 = l2_seq))
+  trail_num <- nrow(trail_set)
+  bic_record <- rep(-Inf, trail_num)
+  trail_record <- vector(mode = "list",length = trail_num)
+  for(trail_idx in 1:trail_num){
+    lambda_2 <- trail_set$l2[trail_idx]
+    lambda_3 <- trail_set$l3[trail_idx]
+    
+    trail <- ADMM_trail(aa = fix_para$aa,
+                         tau = fix_para$tau,
+                         lambda_1 = fix_para$lambda_1,
+                         lambda_2 = lambda_2,
+                         lambda_3 = lambda_3,
+                         q_c_seed = fix_para$q_c_seed,
+                         coef_full_init = coef_full_init)
+    trail_record[[trail_idx]] <- trail
+    bic_record[trail_idx] <- trail$BIC.var
+  }
+  best_idx <- which(bic_record == min(bic_record))
+  trail <- trail_record[[best_idx]]
+  lambda_2 <- trail_set$l2[best_idx]
+  lambda_3 <- trail_set$l3[best_idx]
+  result <- c(fix_para$dt_seed,
+              fix_para$q_c_seed,
+              fix_para$aa,
+              fix_para$tau,
+              fix_para$lambda_1,
+              lambda_2,
+              lambda_3,
+              trail$cdist,
+              trail$ci_prob_mean,
+              trail$mse,
+              trail$sc_score,
+              trail$BIC.var,
+              trail$est_main_grn,
+              trail$est_sub_grn,
+              trail$valid_hier,
+              trail$group_detail,
+              trail$case_table_full,
+              "hier")
+  return(result)
+}
+
+
+
+
+
+
+
+

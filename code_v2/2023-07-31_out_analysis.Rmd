@@ -136,9 +136,26 @@ df_our %>% group_by(l2) %>% summarise(mean_sc = mean(cdist))
 df_our %>% group_by(l3) %>% summarise(mean_sc = mean(cdist))
 ```
 
+# K
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(plotly)
+```
 
 
+```{r}
+df <- read.csv("2023-08-15_n500_p8_q4_bl3_al2_eps0.5_Kup6_fminit.csv")
+df_flx <- df %>% filter(tau == 999)
+df_ran <- df %>% filter(tau == 111)
+df_new <- df %>% filter(!tau  %in% c(111, 999))
+```
 
+```{r}
+df_new %>% group_by(dt_seed) %>%
+  summarise(K_correct_num = (sub_grn == 4))
+```
 
 
 
