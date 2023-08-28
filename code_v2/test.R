@@ -112,10 +112,12 @@ colnames_all <- c("dt_seed", "q_c_seed", "aa", "tau", "l1", "l2", "l3",
                   "group_detail", paste0("case_", 1:4), "tag")
 
 
+result <- as.data.frame(matrix(NaN, nrow = 2, ncol = length(colnames_all)))
+colnames(result) <- colnames_all
+result$dt_seed <- dt_seed
+
+
 for(q_c_seed in 1:q_c_seed_max){
-  result <- as.data.frame(matrix(NaN, nrow = 2, ncol = length(colnames_all)))
-  colnames(result) <- colnames_all
-  result$dt_seed <- dt_seed
   
   # flexmix for initialization
   tryCatch({
