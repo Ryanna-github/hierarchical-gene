@@ -103,15 +103,23 @@ result[2,'tag'] <- flemix_best$tag
 ```
 
 ```{r}
-l2_seq <- c(0, 1, 2, 4, 6)
-l3_seq <- c(0, 1, 2, 4, 6)
+# l2_seq <- c(0, 1, 2, 4, 6)
+# l3_seq <- c(0, 1, 2, 4, 6)
+l2_seq <- c(0, 1, 2)
+l3_seq <- c(0, 1, 2)
 fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
                  aa = 1.2, tau = 1)
 # fix_para <- expand.grid(list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
 #                  aa = 1.2, tau = 1, lambda_2 = l2_seq, lambda_3 = l3_seq))
-temp <- tuning_hyper(l2_seq, l3_seq, fix_para, flemix_forinit$coef_full_ori)
+temp <- tuning_hyper(l2_seq, l3_seq, fix_para, flemix_forinit$coef_full_ori, save_all = TRUE)
 # result <- rbind(result, 
 #                 tuning_hyper(l2_seq, l3_seq, fix_para, flemix_forinit$coef_full_ori))
+```
+
+
+```{r}
+tt <- as.data.frame(temp)
+colnames(tt) <- colnames_all
 ```
 
 
