@@ -21,27 +21,19 @@ source("func.R")
 ```
 
 ```{r}
-if(1){
-  n <- 500
-  p <- 8
-  q <- 4
-  epsilon_sd <- 0.5
-  sigma_est <- 0.5
-  signal_size <- 1
-  beta_vlen <- 3
-  alpha_vlen <- 2
-  save_path <- "temp.csv"
-  dt_seed <- 9
-  print("*")
-}
-```
+n <- 500
+p <- 8
+q <- 4
+epsilon_sd <- 0.5
+sigma_est <- as.numeric(epsilon_sd)
+signal_size <- 1
+beta_vlen <- 3
+alpha_vlen <- 2
+save_path <- "temp.csv"
+dt_seed <- 9
+K_up <- 6  # 估计时的最大类别，应该不少于 group_num_sub
+print("*")
 
-
-```{r}
-# 超参数设定
-# n <- 200
-# p <- 8
-# q <- 4
 cotype_x <- "En"
 cotype_z <- "En"
 # epsilon_sd <- 0.5
@@ -53,21 +45,15 @@ alpha_nonzero <- c(-3, -1, 1, 3)*signal_size
 # beta_vlen <- 3
 # alpha_vlen <- 2
 
-q_c_seed_max <- 10
-K_up <- 6  # 估计时的最大类别，应该不少于 group_num_sub
+q_c_seed_max <- 20
 group_num_main <- 2                    
 group_num_sub <- 4    
 hier_struc <- list(c(1,2),c(3,4))
 prob_sub <- rep(1/group_num_sub, group_num_sub)  
 reverse <- FALSE
-
-aa <- 1.2
-lambda_1 <- 0.2
 ```
 
-
 ```{r}
-# set.seed(9)
 whole.data <- generate_all_data(dt_seed, n, p, q, prob_sub, hier_struc, 
                                 beta_nonzero, alpha_nonzero, beta_vlen, alpha_vlen, 
                                 cotype_x, cotype_z, epsilon_sd, reverse)
@@ -75,133 +61,95 @@ X <- whole.data$data$X
 Z <- whole.data$data$Z
 data <- whole.data$data$data_full
 coef <- whole.data$coef
-coefv <- lapply(coef, as.vector) # 按照类别拉长
+# coefv <- lapply(coef, as.vector) # 按照类别拉长
 ci_sim <- whole.data$ci_sim
 y <- matrix(whole.data$y, ncol=1)
+
+# =============================== prepare =================================
 comb_pair <- combn(K_up, 2)
 H_p <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
                  diag(p)) %>% Matrix(sparse = TRUE)
 H_q <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
                  diag(q)) %>% Matrix(sparse = TRUE)
-```
 
 
-```{r}
-para_set <- expand.grid(list(dt_seed = dt_seed,
-                             q_c_seed = 1:q_c_seed_max,
-                             lambda_1 = 0.3,
-                             lambda_2 = c(0, 1, 2, 4),
-                             lambda_3 = c(0, 1, 2, 4),
-                             aa = 1.2,
-                             tau = 1)) 
-          # %>% filter(lambda_2 < lambda_3)
-para_set <- expand.grid(list(dt_seed = dt_seed,
-                             q_c_seed = 1,
-                             lambda_1 = 0.3,
-                             lambda_2 = 1,
-                             lambda_3 = 2,
-                             aa = 1.2,
-                             tau = 1)) 
+# =============================== result =================================
+colnames_all <- c("dt_seed", "q_c_seed", "aa", "tau", "l1", "l2", "l3",
+                  "cdist", "ci_prob_mean", "mse", "sc", "BIC.var",
+                  "main_grn", "sub_grn", "valid_hier", 
+                  "group_detail", paste0("case_", 1:4), "tag")
+
+
+result <- as.data.frame(matrix(NaN, nrow = 2, ncol = length(colnames_all)))
+colnames(result) <- colnames_all
+result$dt_seed <- dt_seed
 ```
 
 ```{r}
-pi_init <- rep(1/K_up, K_up)
-rho_init <- rep(1, K_up)/sigma_est
-q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
-q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
-m_glm <- flexmix(y~cbind(X, Z)-1, cluster = q_c_matrix,
-            model = FLXMRglm(),
-            control = list(minprior = 0.1))
+q_c_seed <- 1
+flemix_forinit <- flexmix_init(q_c_seed, 0)
+result[1,'q_c_seed'] <- q_c_seed
+result[1,'sub_grn'] <- flemix_forinit$est_sub_grn
+result[1,'sc'] <- flemix_forinit$sc_score
+result[1,'cdist'] <- flemix_forinit$cdist
+result[1,'tag'] <- flemix_forinit$tag
+
+flemix_best <- flexmix_init(q_c_seed, 0.1)
+result[2,'q_c_seed'] <- q_c_seed
+result[2,'sub_grn'] <- flemix_best$est_sub_grn
+result[2,'sc'] <- flemix_best$sc_score
+result[2,'cdist'] <- flemix_best$cdist
+result[2,'tag'] <- flemix_best$tag
+```
+
+```{r}
+l2_seq <- c(0, 1, 2, 4, 6)
+l3_seq <- c(0, 1, 2, 4, 6)
+fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
+                 aa = 1.2, tau = 1)
+# fix_para <- expand.grid(list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
+#                  aa = 1.2, tau = 1, lambda_2 = l2_seq, lambda_3 = l3_seq))
+temp <- tuning_hyper(l2_seq, l3_seq, fix_para, flemix_forinit$coef_full_ori)
+# result <- rbind(result, 
+#                 tuning_hyper(l2_seq, l3_seq, fix_para, flemix_forinit$coef_full_ori))
 ```
 
 
-```{r}
-fmres <- list()
 for(q_c_seed in 1:q_c_seed_max){
+  
+  # flexmix for initialization
   tryCatch({
-    fmres[[q_c_seed]] <- flexmix_init(q_c_seed)
+    flemix_forinit <- flexmix_init(q_c_seed, 0)
   }, error = function(err) {
     cat("Random Init\n")
-    fmres[[q_c_seed]] <- random_init(q_c_seed)
+    flemix_forinit <- random_init(q_c_seed)
   })
-}
-fmres[[q_c_seed]]
-```
-```{r}
-# coef_dist(fmres[[1]]$coef_full_ori, coef$coef_full)
+  result[1,'q_c_seed'] <- q_c_seed
+  result[1,'sub_grn'] <- flemix_forinit$est_sub_grn
+  result[1,'sc'] <- flemix_forinit$sc_score
+  result[1,'cdist'] <- flemix_forinit$cdist
+  result[1,'tag'] <- flemix_forinit$tag
+  
+  # flexmix best result (K squeezed)
+  tryCatch({
+    flemix_best <- flexmix_init(q_c_seed, 0.1)
+  }, error = function(err) {
+    cat("Random Init\n")
+    flemix_best <- random_init(q_c_seed)
+  })
+  result[2,'q_c_seed'] <- q_c_seed
+  result[2,'sub_grn'] <- flemix_best$est_sub_grn
+  result[2,'sc'] <- flemix_best$sc_score
+  result[2,'cdist'] <- flemix_best$cdist
+  result[2,'tag'] <- flemix_best$tag
 
-colnames_all <- c("dt_seed", "q_c_seed", "aa", "tau", "l1", "l2", "l3",
-                      "cdist", "ci_prob_mean", "mse", "sc", 
-                      "main_grn", "sub_grn", paste0("case_", 1:4))
-result <- as.data.frame(matrix(999, nrow = length(unique(para_set$q_c_seed)), ncol = 17))
-colnames(result) <- colnames_all
-result$cdist <- unlist(lapply(fmres, function(x){x$cdist}))
-result$dt_seed <- dt_seed
-result$ci_prob_mean <- unlist(lapply(fmres, function(x){x$ci_prob_mean}))
-result$mse <- unlist(lapply(fmres, function(x){x$mse}))
-result$sc <- unlist(lapply(fmres, function(x){x$sc}))
+  
+  # our method
+ 
+}
 write_csv(result, file=save_path, col_names=!file.exists(save_path), append=TRUE)
 
-result <- NULL
-first_time_write <- FALSE
-for(i in 1:nrow(para_set[1:2,])){
-  para <- para_set[i,]
-  # fmres <- flexmix_trail(para$q_c_seed)
-  # 改初始化
-  # set.seed(99)
-  coef_full_init <- fmres[[para$q_c_seed]]$coef_full_ori
-  # coef_full_init <- coef$coef_full + rnorm(length(coef$coef_full), 0, 0.5)
-  
-  # aa = para$aa
-  # tau = para$tau
-  # lambda_1 = para$lambda_1
-  # lambda_2 = para$lambda_2
-  # lambda_3 = para$lambda_3
-  # q_c_seed = para$q_c_seed
-  # coef_full_init = coef_full_init
-  # eps = 1e-7
-  
-  td <- ADMM_trail(aa = para$aa,
-                   tau = para$tau,
-                   lambda_1 = para$lambda_1,
-                   lambda_2 = para$lambda_2,
-                   lambda_3 = para$lambda_3,
-                   q_c_seed = para$q_c_seed,
-                   coef_full_init = coef_full_init)
-  result <- rbind(result, c(para$dt_seed,
-                            para$q_c_seed,
-                            para$aa,
-                            para$tau,
-                            para$lambda_1,
-                            para$lambda_2,
-                            para$lambda_3,
-                            td$cdist,
-                            td$ci_prob_mean,
-                            td$mse,
-                            td$sc_score,
-                            td$est_main_grn,
-                            td$est_sub_grn,
-                            td$case_table_full))
-  if(i%%5 == 0){
-    print(paste(i, "**********************************"))
-    colnames(result) <- colnames_all
-    write_csv(data.frame(result), file=save_path, col_names=FALSE, append=TRUE)
-    first_time_write <- FALSE
-    result <- NULL
-  }
-}
-if(! is.null(result)){
-  print(paste(i, "**********************************"))
-  colnames(result) <- colnames_all
-  write_csv(data.frame(result), file=save_path, col_names=FALSE, append=TRUE)
-  first_time_write <- FALSE
-  result <- NULL
-}
 
-```
 
-```{r}
-
-```
 
 

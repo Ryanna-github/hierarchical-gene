@@ -412,29 +412,118 @@ get_group_num <- function(K_up, coef, diff_v, len, merge.all = F, threshold = 1e
 }
 
 # tune l3 first then l2
-tuning_hyper <- function(l2_seq, l3_seq, fix_para, coef_full_init){
-  trail_set <- expand.grid(list(l3 = l3_seq, l2 = l2_seq))
-  trail_num <- nrow(trail_set)
-  bic_record <- rep(-Inf, trail_num)
-  trail_record <- vector(mode = "list",length = trail_num)
-  for(trail_idx in 1:trail_num){
-    lambda_2 <- trail_set$l2[trail_idx]
-    lambda_3 <- trail_set$l3[trail_idx]
-    
-    trail <- ADMM_trail(aa = fix_para$aa,
-                         tau = fix_para$tau,
-                         lambda_1 = fix_para$lambda_1,
-                         lambda_2 = lambda_2,
-                         lambda_3 = lambda_3,
-                         q_c_seed = fix_para$q_c_seed,
-                         coef_full_init = coef_full_init)
-    trail_record[[trail_idx]] <- trail
-    bic_record[trail_idx] <- trail$BIC.var
+tuning_hyper <- function(l2_seq, l3_seq, fix_para, coef_full_init, grid = TRUE, save_all = FALSE){
+  if(save_all){
+    result <- NULL
+    trail_set <- expand.grid(list(l3 = l3_seq, l2 = l2_seq))
+    trail_num <- nrow(trail_set)
+    bic_record <- rep(-Inf, trail_num)
+    trail_record <- vector(mode = "list",length = trail_num)
+    for(trail_idx in 1:trail_num){
+      lambda_2 <- trail_set$l2[trail_idx]
+      lambda_3 <- trail_set$l3[trail_idx]
+      
+      trail <- ADMM_trail(aa = fix_para$aa,
+                          tau = fix_para$tau,
+                          lambda_1 = fix_para$lambda_1,
+                          lambda_2 = lambda_2,
+                          lambda_3 = lambda_3,
+                          q_c_seed = fix_para$q_c_seed,
+                          coef_full_init = coef_full_init)
+      trail_record[[trail_idx]] <- trail
+      bic_record[trail_idx] <- trail$BIC.var
+      
+      result <- rbind(result, c(fix_para$dt_seed,
+                  fix_para$q_c_seed,
+                  fix_para$aa,
+                  fix_para$tau,
+                  fix_para$lambda_1,
+                  lambda_2,
+                  lambda_3,
+                  trail$cdist,
+                  trail$ci_prob_mean,
+                  trail$mse,
+                  trail$sc_score,
+                  trail$BIC.var,
+                  trail$est_main_grn,
+                  trail$est_sub_grn,
+                  trail$valid_hier,
+                  trail$group_detail,
+                  trail$case_table_full,
+                  "hier"))
+    }
+    return(result)
   }
-  best_idx <- which(bic_record == min(bic_record))
-  trail <- trail_record[[best_idx]]
-  lambda_2 <- trail_set$l2[best_idx]
-  lambda_3 <- trail_set$l3[best_idx]
+  else if(grid){
+    trail_set <- expand.grid(list(l3 = l3_seq, l2 = l2_seq))
+    trail_num <- nrow(trail_set)
+    bic_record <- rep(-Inf, trail_num)
+    trail_record <- vector(mode = "list",length = trail_num)
+    for(trail_idx in 1:trail_num){
+      lambda_2 <- trail_set$l2[trail_idx]
+      lambda_3 <- trail_set$l3[trail_idx]
+      
+      trail <- ADMM_trail(aa = fix_para$aa,
+                          tau = fix_para$tau,
+                          lambda_1 = fix_para$lambda_1,
+                          lambda_2 = lambda_2,
+                          lambda_3 = lambda_3,
+                          q_c_seed = fix_para$q_c_seed,
+                          coef_full_init = coef_full_init)
+      trail_record[[trail_idx]] <- trail
+      bic_record[trail_idx] <- trail$BIC.var
+    }
+    best_idx <- which(bic_record == min(bic_record))
+    trail <- trail_record[[best_idx]]
+    lambda_2 <- trail_set$l2[best_idx]
+    lambda_3 <- trail_set$l3[best_idx]
+  }else{
+    # ============================== tune l3 ======================
+    trail_set_step1 <- expand.grid(list(l3 = l3_seq, l2 = 0))
+    trail_num <- nrow(trail_set_step1)
+    bic_record <- rep(-Inf, trail_num)
+    trail_record <- vector(mode = "list",length = trail_num)
+    for(trail_idx in 1:trail_num){
+      lambda_2 <- trail_set_step1$l2[trail_idx]
+      lambda_3 <- trail_set_step1$l3[trail_idx]
+      
+      trail <- ADMM_trail(aa = fix_para$aa,
+                          tau = fix_para$tau,
+                          lambda_1 = fix_para$lambda_1,
+                          lambda_2 = lambda_2,
+                          lambda_3 = lambda_3,
+                          q_c_seed = fix_para$q_c_seed,
+                          coef_full_init = coef_full_init)
+      trail_record[[trail_idx]] <- trail
+      bic_record[trail_idx] <- trail$BIC.var
+    }
+    best_idx <- which(bic_record == min(bic_record))
+    trail <- trail_record[[best_idx]]
+    lambda_3 <- trail_set_step1$l3[best_idx]
+    # ============================== tune l2 ======================
+    trail_set_step2 <- expand.grid(list(l3 = lambda_3, l2 = l2_seq))
+    trail_num <- nrow(trail_set_step2)
+    bic_record <- rep(-Inf, trail_num)
+    trail_record <- vector(mode = "list",length = trail_num)
+    for(trail_idx in 1:trail_num){
+      lambda_2 <- trail_set_step2$l2[trail_idx]
+      lambda_3 <- trail_set_step2$l3[trail_idx]
+      
+      trail <- ADMM_trail(aa = fix_para$aa,
+                          tau = fix_para$tau,
+                          lambda_1 = fix_para$lambda_1,
+                          lambda_2 = lambda_2,
+                          lambda_3 = lambda_3,
+                          q_c_seed = fix_para$q_c_seed,
+                          coef_full_init = coef_full_init)
+      trail_record[[trail_idx]] <- trail
+      bic_record[trail_idx] <- trail$BIC.var
+    }
+    best_idx <- which(bic_record == min(bic_record))
+    trail <- trail_record[[best_idx]]
+    lambda_2 <- trail_set_step2$l2[best_idx]
+    lambda_3 <- trail_set_step2$l3[best_idx]
+  }
   result <- c(fix_para$dt_seed,
               fix_para$q_c_seed,
               fix_para$aa,
