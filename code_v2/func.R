@@ -6,15 +6,15 @@ flexmix_init <- function(q_c_seed, minprior_value = 0, tag = "flexmix"){
   q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
   q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
   
-  result <- tryCatch({
-    m_glm <- flexmix(y~cbind(X, Z)-1, cluster = q_c_matrix,
+  m_glm <- tryCatch({
+    flexmix(y~cbind(X, Z)-1, cluster = q_c_matrix,
             model = FLXMRglm(),
             control = list(minprior = minprior_value))
   }, error = function(err) {
     cat("Error occurred:", conditionMessage(err), "\n")
-    m_glm <- flexmix(y~cbind(X, Z)-1, k = K_up,
-                     model = FLXMRglm(),
-                     control = list(minprior = minprior_value))
+    flexmix(y~cbind(X, Z)-1, k = K_up,
+            model = FLXMRglm(),
+            control = list(minprior = minprior_value))
   })
   K_est <- m_glm@k
   coef_est <- parameters(m_glm)[1:(p+q),]
@@ -59,6 +59,7 @@ random_init <- function(q_c_seed, tag = "random"){
 ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed, 
                        coef_full_init, eps = 1e-7){
   tau <- ifelse(tau == 0, 1e-4, tau) # 防止 tau == 0 导致分母为0情况
+  sigma_est = ifelse(sigma_est == 0, 0.01, sigma_est)
   rho_init <- rep(1, K_up)/sigma_est
   
   kj <- function(dim) {return((k-1)*dim+j)}
@@ -260,7 +261,7 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
                         sd = 1/extend_x_to_row(rho_est, n)) *
       extend_x_to_row(pi_list[[iter-1]], n)
     nan_id <- which(apply(q_c_matrix, 1, sum) == 0)
-    if(length(nan_id == 0) > 0){ print(paste(iter, nan_id)) }
+    if(length(nan_id == 0) > 0){ print(paste("[nan]", iter, nan_id)) }
     q_c_matrix[nan_id,] <- q_c_matrix_back[nan_id,]
     q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
     
@@ -315,7 +316,7 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
   BIC.o <- log(mse) + log(n)*(est_main_grn*p+est_sub_grn*q)/n
   
   cat(paste("**** hypter parameter:", "dt_seed", dt_seed, "q_c_seed", q_c_seed, 
-            "l1", lambda_1, "l2", lambda_1, "l3", lambda_1, "tau", tau, "a", aa, "\n"))
+            "l1", lambda_1, "l2", lambda_2, "l3", lambda_3, "tau", tau, "a", aa, "\n"))
   cat(paste("**** result:", "est_main_grn", est_main_grn, "est_sub_grn", est_sub_grn,
             "mse", mse, "sc", sc_score, "BIC.var", BIC.var, "BIC.o", BIC.o, 
             "valid_hier", valid_hier, "group_detail", group_detail, "\n"))
@@ -419,6 +420,7 @@ tuning_hyper <- function(l2_seq, l3_seq, fix_para, coef_full_init, grid = TRUE, 
     trail_num <- nrow(trail_set)
     bic_record <- rep(-Inf, trail_num)
     trail_record <- vector(mode = "list",length = trail_num)
+    # 分组实验
     for(trail_idx in 1:trail_num){
       lambda_2 <- trail_set$l2[trail_idx]
       lambda_3 <- trail_set$l3[trail_idx]
@@ -469,7 +471,8 @@ tuning_hyper <- function(l2_seq, l3_seq, fix_para, coef_full_init, grid = TRUE, 
                           lambda_2 = lambda_2,
                           lambda_3 = lambda_3,
                           q_c_seed = fix_para$q_c_seed,
-                          coef_full_init = coef_full_init)
+                          coef_full_init = coef_full_init,
+                          sigma_est = )
       trail_record[[trail_idx]] <- trail
       bic_record[trail_idx] <- trail$BIC.var
     }

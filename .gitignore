@@ -1,6 +1,9 @@
 # reference
 /reference/
 
+# kaitibaogao
+kt*
+
 # data & log
 *.csv
 *.out
