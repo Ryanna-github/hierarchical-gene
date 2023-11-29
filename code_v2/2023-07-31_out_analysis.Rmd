@@ -23,7 +23,7 @@ signal_size <- 1
 beta_vlen <- 3
 alpha_vlen <- 2
 # dt_seed <- 9
-K_up <- 6
+K_up <- 4
 for(dt_seed in seq(9, 99, 10)){
     path_pre <- glue("{Sys.Date()}_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_Kup{K_up}_fminit")
   # path_pre <- glue("2023-07-31_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_fminit")

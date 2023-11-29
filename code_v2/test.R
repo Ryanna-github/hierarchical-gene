@@ -4,9 +4,12 @@ library(dplyr)
 library(Matrix)
 library(flexmix)
 library(readr)
-source("sim.R")
-source("tools.R")
-source("func.R")
+# source("sim.R")
+# source("tools.R")
+# source("func.R")
+source("hierarchical-gene/code_v2/sim.R")
+source("hierarchical-gene/code_v2/tools.R")
+source("hierarchical-gene/code_v2/func.R")
 library(argparse)
 
 # 创建参数解析对象
@@ -147,19 +150,15 @@ for(q_c_seed in 1:q_c_seed_max){
 
   
   # our method
-  # l2_seq <- c(0.5, 1, 2, 4)
-  # l3_seq <- c(0.5, 1, 2, 4)
-  l2_seq <- c(0.5)
-  l3_seq <- c(0.5)
+  l2_seq <- c(0, 0.5, 1, 2, 4)
+  l3_seq <- c(0, 0.5, 1, 2, 4)
+  # l2_seq <- c(0.5)
+  # l3_seq <- c(0.5)
   fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
                    aa = 1.2, tau = 1)
-  print(colnames(result))
-  print(dim(result))
   hp <- tuning_hyper(l2_seq, l3_seq, fix_para, flemix_forinit$coef_full_ori,
                      save_all = TRUE)
   colnames(hp) <- colnames_all
-  print(colnames(hp))
-  print(dim(hp))
   result <- rbind(result, hp)
   write_csv(result, file=save_path, col_names=!file.exists(save_path), append=TRUE)
 }

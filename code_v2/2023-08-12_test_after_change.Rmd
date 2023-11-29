@@ -187,10 +187,12 @@ for(trail_idx in 1:trail_num){
               trail$group_detail,
               trail$case_table_full,
               "hier"))
-  break
 }
 ```
 
+```{r}
+
+```
 
 
 
