@@ -325,7 +325,7 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
   
   return(list(cdist = cdist, 
               ci_prob_mean = mean(ci_prob),
-              # q_c_matrix = q_c_matrix,
+              q_c_matrix = q_c_matrix,
               coef_full_ori = coef_full_ori_list[[iter]],
               # coef_full = coef_full_list[[iter]],
               mse = mse,

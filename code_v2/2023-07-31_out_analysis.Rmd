@@ -85,7 +85,7 @@ library(dplyr)
 library(plotly)
 df <- read.csv("2023-08-12_n500_p8_q4_bl3_al2_eps0.5_fminit.csv")
 df <- read.csv("2023-08-15_n500_p8_q4_bl3_al2_eps0.5_Kup6_fminit.csv")
-df <- read.csv("2023-11-27_n500_p8_q4_bl3_al2_eps0.5_Kup4_fminit.csv")
+df <- read.csv("2023-11-28_n500_p8_q4_bl3_al2_eps0.5_Kup4_fminit.csv")
 # df <- read.csv("2023-07-29_n200_p40_q4_nz32_eps05_fminit.csv")
 # df <- read.csv("2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit.csv")
 # df <- read.csv("2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit.csv")
@@ -127,101 +127,17 @@ ggplot(df_report, aes(x = sc, y = cdist, col = method)) +
 ```
 
 
-
-
-
-
-
-```{r}
-df$dt_seed <- factor(df$dt_seed)
-# df_tmp <- df %>% filter(l3 %in% c(4, 111, 999),
-#                         l2 %in% c(0.5, 111, 999),
-#                         tau %in% c(0.5, 111, 999))
-# p <- ggplot(df_tmp, aes(x = cdist, y = sc, color = method)) +
-#   geom_point(alpha = 0.4) +
-#   theme_bw() +
-#   facet_wrap(~ dt_seed)
-# ggplotly(p)
-
-p <- ggplot(df, aes(x = cdist, y = sc, color = method)) +
-  geom_point(alpha = 0.4) +
-  theme_bw() +
-  facet_wrap(~ dt_seed)
-ggplotly(p)
-```
-
-
-
-```{r}
-df_our <- df %>% filter(l2 < 100)
-ggplot(df_our, aes(x = l2, y = l3, fill = sc, size = sc)) +
-  geom_point(alpha = 0.01)
-```
-
-
-
-```{r}
-df_tmp <- df_our %>% group_by(l2, l3) %>% summarise(mean_sc = mean(cdist))
-ggplot(df_tmp, aes(x = l2, y = l3, size = mean_sc)) +
-  geom_point()
-```
-
-
-
-```{r}
-df_our %>% group_by(l2) %>% summarise(mean_sc = mean(cdist))
-df_our %>% group_by(l3) %>% summarise(mean_sc = mean(cdist))
-```
-
-# K
+# score
 
 ```{r}
 library(ggplot2)
 library(dplyr)
 library(plotly)
+df <- read.csv("2023-11-28_n500_p8_q4_bl3_al2_eps0.5_Kup4_fminit.csv")
+df <- df %>% mutate(method = ifelse(q_c_seed < 100, 1, 0))
+df$method <- ifelse(df$q_c_seed == 111, -1, df$method)
+df$method <- factor(df$method, levels = c(-1, 0, 1), labels = c("random", "flexmix", "our_method"))
 ```
-
-
-```{r}
-df <- read.csv("2023-08-15_n500_p8_q4_bl3_al2_eps0.5_Kup6_fminit.csv")
-df_flx <- df %>% filter(tau == 999)
-df_ran <- df %>% filter(tau == 111)
-df_new <- df %>% filter(!tau  %in% c(111, 999))
-```
-
-```{r}
-t <- df_new %>% 
-  group_by(dt_seed) %>%
-  summarise(count = n(),
-            K_main_correct_num = sum(main_grn == 2),
-            K_sub_correct_num = sum(sub_grn == 4),
-            K_all_correct_num = sum(sub_grn == 4 & main_grn == 2)) %>%
-  mutate(K_main_correct_ratio = K_main_correct_num/count,
-         K_sub_correct_ratio = K_sub_correct_num/count,
-         K_all_correct_ratio = K_all_correct_num/count)
-```
-
-```{r}
-df_new
-```
-
-```{r}
-ggplot(df_new, aes(x = l2, y = l3)) +
-  geom_point(alpha = 0.002, aes(size = sc))
-```
-```{r}
-df_new %>% group_by(l2, l3) %>%
-  summarise(count = n(), mse = mean(mse), sc = mean(sc),
-            k_main = mean(main_grn), k_sub = mean(sub_grn)) %>%
-  arrange(-sc)
-```
-
-
-
-```{r}
-hist(df_new$)
-```
-
 
 
 

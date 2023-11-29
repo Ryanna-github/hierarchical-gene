@@ -143,8 +143,8 @@ dt_seed 9 q_c_seed 1 l1 0.3 l2 0.3 l3 0.3 tau 1 a 1.2
 # result <- NULL
 fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
                  aa = 1.2, tau = 1)
-l2_seq <- c(0, 1, 2, 4)
-l3_seq <- c(0, 1, 2, 4)
+l2_seq <- c(0.5)
+l3_seq <- c(1)
 trail_set <- expand.grid(list(l3 = l3_seq, l2 = l2_seq))
 
 trail_num <- nrow(trail_set)
