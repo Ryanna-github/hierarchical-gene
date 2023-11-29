@@ -145,6 +145,9 @@ fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
                  aa = 1.2, tau = 1)
 l2_seq <- c(0.5)
 l3_seq <- c(1)
+
+# l2_seq <- c(4)
+# l3_seq <- c(1)
 trail_set <- expand.grid(list(l3 = l3_seq, l2 = l2_seq))
 
 trail_num <- nrow(trail_set)
@@ -153,6 +156,7 @@ bico_record <- rep(-Inf, trail_num)
 trail_record <- vector(mode = "list",length = trail_num)
 coef_full_init <- flemix_forinit$coef_full_ori
 
+trail_idx <- 1
 for(trail_idx in 1:trail_num){
   lambda_2 <- trail_set$l2[trail_idx]
   lambda_3 <- trail_set$l3[trail_idx]
@@ -163,8 +167,7 @@ for(trail_idx in 1:trail_num){
                       lambda_2 = lambda_2,
                       lambda_3 = lambda_3,
                       q_c_seed = fix_para$q_c_seed,
-                      coef_full_init = coef_full_init,
-                      sigma_est = sigma_est)
+                      coef_full_init = coef_full_init)
   trail_record[[trail_idx]] <- trail
   bic_record[trail_idx] <- trail$BIC.var
   bico_record[trail_idx] <- trail$BIC.o
@@ -191,7 +194,43 @@ for(trail_idx in 1:trail_num){
 ```
 
 ```{r}
+Cn <- log(n*(p+q))
+q_c_matrix <- trail$q_c_matrix
+coef_est <- trail$coef_full_ori
+K_main <- trail$est_main_grn
+K_sub <- trail$est_sub_grn
+rho_est <- trail$rho_est
+y <- whole.data$y
 
+fit_error_mat = matrix(0, n, K_sub)
+pi_est <- apply(q_c_matrix, 2, sum)/n
+fit_matrix <- dnorm(y, mean = data%*%coef_est, sd = 1/extend_x_to_row(rho_est, n)) *
+      extend_x_to_row(pi_est, n)
+fit_prob <- apply(fit_matrix, 1, sum)
+fit_error <- -2 * sum(log(fit_prob + min(fit_prob[fit_prob>0])))
+bic_sum <- fit_error + Cn*log(n)/n*(K_main*p+K_sub*q)
+bic_mean <- fit_error/n + Cn*log(n)/n*(K_main*p+K_sub*q)
+```
+
+```{r}
+fit_error
+fit_error/n
+bic_sum
+bic_mean
+```
+
+
+```{r}
+fit_error
+fit_error/n
+bic_sum
+bic_mean
+```
+
+
+
+```{r}
+data %*% trail$coef_full_ori
 ```
 
 

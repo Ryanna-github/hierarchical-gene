@@ -56,6 +56,24 @@ random_init <- function(q_c_seed, tag = "random"){
               tag = tag))
 }
 
+bic_score <- function(q_c_matrix, coef_est, est_main_grn, est_sub_grn, rho_est){
+  Cn <- log(n*(p+q))
+  pi_est <- apply(q_c_matrix, 2, sum)/n
+  fit_matrix <- dnorm(y, mean = data%*%coef_est, sd = 1/extend_x_to_row(rho_est, n)) *
+    extend_x_to_row(pi_est, n)
+  fit_prob <- apply(fit_matrix, 1, sum)
+  fit_sum <- -2 * sum(log(fit_prob + min(fit_prob[fit_prob>0])))
+  fit_mean <- fit_sum/n
+  penal <- Cn*log(n)/n*(est_main_grn*p+est_sub_grn*q)
+  bic_sum <- fit_sum + penal
+  bic_mean <- fit_mean + penal
+  return(list(fit_sum = fit_sum,
+              fit_mean = fit_mean,
+              penal = penal,
+              bic_sum = bic_sum,
+              bic_mean = bic_mean))
+}
+
 ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed, 
                        coef_full_init, eps = 1e-7){
   tau <- ifelse(tau == 0, 1e-4, tau) # 防止 tau == 0 导致分母为0情况
@@ -312,13 +330,16 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
   diag(cappfl.diff) <- 1
   group_detail <- apply(which((cappfl.diff) > 0, arr.ind = TRUE), 1, function(x){paste0("(",x[1],",",x[2],")")})
   group_detail <- paste0(group_detail, collapse = "")
-  BIC.var <- log(mse) + log(n*(p+q))*log(n)*(est_main_grn*(p)+est_sub_grn*(q))/n
-  BIC.o <- log(mse) + log(n)*(est_main_grn*p+est_sub_grn*q)/n
+  # BIC.var <- log(mse) + log(n*(p+q))*log(n)*(est_main_grn*(p)+est_sub_grn*(q))/n
+  # BIC.o <- log(mse) + log(n)*(est_main_grn*p+est_sub_grn*q)/n
+  
+  bic_info <- bic_score(q_c_matrix, coef_full_ori_list[[iter]], 
+                        est_main_grn, est_sub_grn, rho_est)
   
   cat(paste("**** hypter parameter:", "dt_seed", dt_seed, "q_c_seed", q_c_seed, 
             "l1", lambda_1, "l2", lambda_2, "l3", lambda_3, "tau", tau, "a", aa, "\n"))
   cat(paste("**** result:", "est_main_grn", est_main_grn, "est_sub_grn", est_sub_grn,
-            "mse", mse, "sc", sc_score, "BIC.var", BIC.var, "BIC.o", BIC.o, 
+            "mse", mse, "sc", sc_score, "bic_sum", bic_info$bic_sum, "bic_mean", bic_info$bic_mean, 
             "valid_hier", valid_hier, "group_detail", group_detail, "\n"))
   print(case_table_full)
   print(coef_full_ori_list[[iter]])
@@ -327,10 +348,16 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
               ci_prob_mean = mean(ci_prob),
               q_c_matrix = q_c_matrix,
               coef_full_ori = coef_full_ori_list[[iter]],
+              rho_est = rho_list[[iter]],
               # coef_full = coef_full_list[[iter]],
               mse = mse,
-              BIC.var = BIC.var,
-              BIC.o = BIC.o,
+              # BIC.var = BIC.var,
+              # BIC.o = BIC.o,
+              fit_sum = bic_info$fit_sum,
+              fit_mean = bic_info$fit_mean,
+              penal = bic_info$penal,
+              bic_sum = bic_info$bic_sum,
+              bic_mean = bic_info$bic_mean,
               sc_score = sc_score,
               case_table_full = case_table_full,
               est_main_grn = main_group_info$gr.num,
@@ -418,7 +445,7 @@ tuning_hyper <- function(l2_seq, l3_seq, fix_para, coef_full_init, grid = TRUE, 
     result <- NULL
     trail_set <- expand.grid(list(l3 = l3_seq, l2 = l2_seq))
     trail_num <- nrow(trail_set)
-    bic_record <- rep(-Inf, trail_num)
+    # bic_record <- rep(-Inf, trail_num)
     trail_record <- vector(mode = "list",length = trail_num)
     # 分组实验
     for(trail_idx in 1:trail_num){
@@ -433,7 +460,7 @@ tuning_hyper <- function(l2_seq, l3_seq, fix_para, coef_full_init, grid = TRUE, 
                           q_c_seed = fix_para$q_c_seed,
                           coef_full_init = coef_full_init)
       trail_record[[trail_idx]] <- trail
-      bic_record[trail_idx] <- trail$BIC.var
+      # bic_record[trail_idx] <- trail$BIC.var
       
       result <- rbind(result, c(fix_para$dt_seed,
                   fix_para$q_c_seed,
@@ -446,7 +473,12 @@ tuning_hyper <- function(l2_seq, l3_seq, fix_para, coef_full_init, grid = TRUE, 
                   trail$ci_prob_mean,
                   trail$mse,
                   trail$sc_score,
-                  trail$BIC.var,
+                  # trail$BIC.var,
+                  trail$fit_sum,
+                  trail$fit_mean,
+                  trail$penal,
+                  trail$bic_sum,
+                  trail$bic_mean,
                   trail$est_main_grn,
                   trail$est_sub_grn,
                   trail$valid_hier,
@@ -538,7 +570,12 @@ tuning_hyper <- function(l2_seq, l3_seq, fix_para, coef_full_init, grid = TRUE, 
               trail$ci_prob_mean,
               trail$mse,
               trail$sc_score,
-              trail$BIC.var,
+              # trail$BIC.var,
+              trail$fit_sum,
+              trail$fit_mean,
+              trail$penal,
+              trail$bic_sum,
+              trail$bic_mean,
               trail$est_main_grn,
               trail$est_sub_grn,
               trail$valid_hier,

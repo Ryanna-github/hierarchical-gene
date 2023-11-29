@@ -24,10 +24,11 @@ beta_vlen <- 3
 alpha_vlen <- 2
 # dt_seed <- 9
 K_up <- 4
-for(dt_seed in seq(9, 99, 10)){
-    path_pre <- glue("{Sys.Date()}_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_Kup{K_up}_fminit")
+for(dt_seed in seq(9, 49, 10)){
+    path_pre <- glue("hierarchical-gene/code_v2/{Sys.Date()}_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_Kup{K_up}_fminit")
+  path_pre <- glue("{Sys.Date()}_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_Kup{K_up}_fminit")
   # path_pre <- glue("2023-07-31_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_fminit")
-  cmd <- glue("Rscript test.R -n {n} --dt_seed {dt_seed} -p {p} -q {q} -e {epsilon_sd} --beta_vlen {beta_vlen} --alpha_vlen {alpha_vlen} --K_up {K_up} --path {path_pre}.csv >> {path_pre}_log.out")
+  cmd <- glue("Rscript --verbose test.R -n {n} --dt_seed {dt_seed} -p {p} -q {q} -e {epsilon_sd} --beta_vlen {beta_vlen} --alpha_vlen {alpha_vlen} --K_up {K_up} --path {path_pre}.csv >> {path_pre}_log.out")
   print(cmd)
 }
 ```
@@ -138,6 +139,9 @@ df <- df %>% mutate(method = ifelse(q_c_seed < 100, 1, 0))
 df$method <- ifelse(df$q_c_seed == 111, -1, df$method)
 df$method <- factor(df$method, levels = c(-1, 0, 1), labels = c("random", "flexmix", "our_method"))
 ```
+
+先按照原文的准则进行判断
+
 
 
 
