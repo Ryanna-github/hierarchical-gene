@@ -23,12 +23,13 @@ signal_size <- 1
 beta_vlen <- 3
 alpha_vlen <- 2
 # dt_seed <- 9
-K_up <- 4
+K_up <- 6
 for(dt_seed in seq(9, 49, 10)){
-    path_pre <- glue("hierarchical-gene/code_v2/{Sys.Date()}_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_Kup{K_up}_fminit")
-  path_pre <- glue("{Sys.Date()}_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_Kup{K_up}_fminit")
+  prefix <- "hierarchical-gene/code_v2/"
+  # prefix <- ""
+    path_pre <- glue("{prefix}{Sys.Date()}_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_Kup{K_up}_fminit")
   # path_pre <- glue("2023-07-31_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_fminit")
-  cmd <- glue("Rscript --verbose test.R -n {n} --dt_seed {dt_seed} -p {p} -q {q} -e {epsilon_sd} --beta_vlen {beta_vlen} --alpha_vlen {alpha_vlen} --K_up {K_up} --path {path_pre}.csv >> {path_pre}_log.out")
+  cmd <- glue("Rscript --verbose {prefix}test.R -n {n} --dt_seed {dt_seed} -p {p} -q {q} -e {epsilon_sd} --beta_vlen {beta_vlen} --alpha_vlen {alpha_vlen} --K_up {K_up} --path {path_pre}.csv >> {path_pre}_log.out")
   print(cmd)
 }
 ```
@@ -134,14 +135,42 @@ ggplot(df_report, aes(x = sc, y = cdist, col = method)) +
 library(ggplot2)
 library(dplyr)
 library(plotly)
-df <- read.csv("2023-11-28_n500_p8_q4_bl3_al2_eps0.5_Kup4_fminit.csv")
+df <- read.csv("2023-11-30_n500_p8_q4_bl3_al2_eps0.5_Kup4_fminit.csv")
 df <- df %>% mutate(method = ifelse(q_c_seed < 100, 1, 0))
 df$method <- ifelse(df$q_c_seed == 111, -1, df$method)
 df$method <- factor(df$method, levels = c(-1, 0, 1), labels = c("random", "flexmix", "our_method"))
 ```
 
-先按照原文的准则进行判断
 
+```{r}
+df1 <- df %>%
+  group_by(q_c_seed) %>%
+  filter(fit_sum == min(fit_sum, na.rm = TRUE)) %>%
+  mutate(filter_type = "fit_sum")
+df2 <- df %>%
+  group_by(q_c_seed) %>%
+  filter(fit_mean == min(fit_mean, na.rm = TRUE)) %>%
+  mutate(filter_type = "fit_mean")
+df3 <- df %>%
+  group_by(q_c_seed) %>%
+  filter(bic_sum == min(bic_sum, na.rm = TRUE)) %>%
+  mutate(filter_type = "bic_sum")
+df4 <- df %>%
+  group_by(q_c_seed) %>%
+  filter(bic_mean == min(bic_mean, na.rm = TRUE)) %>%
+  mutate(filter_type = "bic_mean")
+df_tmp <- rbind(df1, df2, df3, df4)
+```
+
+
+```{r}
+df$q_c_seed <- factor(df$q_c_seed)
+df_tmp$q_c_seed <- factor(df_tmp$q_c_seed)
+ggplot(df, aes(x = cdist, y = fit_sum)) +
+  geom_point(aes(alpha = 0.4)) +
+  theme_bw() +
+  facet_wrap(~ q_c_seed)
+```
 
 
 
