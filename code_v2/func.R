@@ -40,10 +40,10 @@ random_init <- function(q_c_seed, tag = "random"){
   # coef_est <- coef$coef_full - coef$coef_full + rnorm(prod(dim(coef$coef_full)), 0, 1)
   # 随机初始化,事先不知道 coef$coef_full,应该用 K_up 初始化
   coef_est <- matrix(rnorm(K_up*(p+q), 0, 1), ncol = K_up)
-  cdist <- ifelse(ncol(coef$coef_full) == col(coef_est), 
+  
+  cdist <- ifelse(ncol(coef$coef_full) == ncol(coef_est), 
                   coef_dist(coef_est, coef$coef_full),
                   NaN)
-  print(cdist)
   ci_est <- apply(q_c_matrix, 1, which.max)
   ci_prob_mean <- mean(apply(q_c_matrix, 1, max))
   sc_score <- sc(ci_est, ci_sim)
