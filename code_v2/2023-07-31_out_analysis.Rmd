@@ -16,7 +16,7 @@ Rscript --verbose test.R -n 500 --dt_seed 9 -p 8 -q 4 -e 0.5 --beta_vlen 3 --alp
 ```{r}
 library(glue)
 n <- 500
-p <- 40
+p <- 80
 q <- 4
 epsilon_sd <- 0.5
 signal_size <- 1
@@ -137,7 +137,7 @@ library(dplyr)
 library(plotly)
 df <- read.csv("2023-11-30_n500_p8_q4_bl3_al2_eps0.5_Kup4_fminit.csv")
 # df <- read.csv("2023-12-01_n500_p8_q4_bl3_al2_eps0.5_Kup6_fminit.csv")
-# df <- read.csv("2023-12-02_n500_p80_q4_bl3_al2_eps0.5_Kup4_fminit.csv")
+df <- read.csv("2023-12-07_n500_p40_q4_bl3_al2_eps0.5_Kup6_fminit.csv")
 df <- df %>% mutate(method = ifelse(q_c_seed < 100, 1, 0))
 df$method <- ifelse(df$q_c_seed == 111, -1, df$method)
 df$method <- factor(df$method, levels = c(-1, 0, 1), labels = c("random", "flexmix", "hier"))
