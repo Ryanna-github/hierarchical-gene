@@ -23,10 +23,10 @@ signal_size <- 1
 beta_vlen <- 3
 alpha_vlen <- 2
 # dt_seed <- 9
-K_up <- 4
+K_up <- 6
 for(dt_seed in seq(9, 49, 10)){
   prefix <- "hierarchical-gene/code_v2/"
-  # prefix <- ""
+  prefix <- ""
     path_pre <- glue("{prefix}{Sys.Date()}_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_Kup{K_up}_fminit")
   # path_pre <- glue("2023-07-31_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_fminit")
   cmd <- glue("Rscript --verbose {prefix}test.R -n {n} --dt_seed {dt_seed} -p {p} -q {q} -e {epsilon_sd} --beta_vlen {beta_vlen} --alpha_vlen {alpha_vlen} --K_up {K_up} --path {path_pre}.csv >> {path_pre}_log.out")
@@ -135,12 +135,17 @@ ggplot(df_report, aes(x = sc, y = cdist, col = method)) +
 library(ggplot2)
 library(dplyr)
 library(plotly)
-df <- read.csv("2023-11-30_n500_p8_q4_bl3_al2_eps0.5_Kup4_fminit.csv")
+library(simplermarkdown)
+
+# df <- read.csv("2023-11-30_n500_p8_q4_bl3_al2_eps0.5_Kup4_fminit.csv")
 # df <- read.csv("2023-12-01_n500_p8_q4_bl3_al2_eps0.5_Kup6_fminit.csv")
-df <- read.csv("2023-12-07_n500_p40_q4_bl3_al2_eps0.5_Kup6_fminit.csv")
-df <- df %>% mutate(method = ifelse(q_c_seed < 100, 1, 0))
-df$method <- ifelse(df$q_c_seed == 111, -1, df$method)
-df$method <- factor(df$method, levels = c(-1, 0, 1), labels = c("random", "flexmix", "hier"))
+# df <- read.csv("2023-12-06_n500_p40_q4_bl3_al2_eps0.5_Kup4_fminit.csv")
+# df <- read.csv("2023-12-10_n500_p40_q4_bl3_al2_eps0.5_Kup6_fminit.csv")
+df <- read.csv("2023-12-12_n500_p80_q4_bl3_al2_eps0.5_Kup4_fminit.csv")
+# 以下废弃，仅针对很久版本的数据记录样式
+# df <- df %>% mutate(method = ifelse(q_c_seed < 100, 1, 0))
+# df$method <- ifelse(df$q_c_seed == 111, -1, df$method)
+# df$method <- factor(df$method, levels = c(-1, 0, 1), labels = c("random", "flexmix", "hier"))
 ```
 
 ```{r}
@@ -148,8 +153,32 @@ df_tmp <- df %>%
   # group_by(dt_seed, q_c_seed) %>%
   group_by(dt_seed) %>%
   filter(bic_mean == min(bic_mean, na.rm = TRUE)) %>%
-  mutate(filter_type = "bic_sum")
+  mutate(filter_type = "bic_mean")
+
+df_compare <- df %>%
+  filter(tag == 'flexmix') %>%
+  group_by(dt_seed) %>%
+  filter(sc == min(sc)) %>%
+  mutate(filter_type = "bic_mean") %>%
+  select(dt_seed, sc) %>%
+  rename(sc_flexmix = sc) %>%
+  filter(row_number() == 1)
 ```
+
+```{r}
+df_report <- df_tmp %>% 
+  select(dt_seed, q_c_seed, aa, tau, l1, l2, l3, cdist, sc, bic_mean, main_grn, sub_grn) %>%
+  group_by(dt_seed) %>%
+  filter(row_number() == 1) 
+
+df_report <- merge(df_report, df_compare) %>%
+  mutate(sc = round(sc, 3),
+         sc_flexmix = round(sc_flexmix, 3),
+         bic_mean = round(bic_mean, 3)) %>%
+  rename(bic = bic_mean)
+md_table(df_report)
+```
+
 
 
 
