@@ -5,6 +5,8 @@
 kt*
 
 # data & log
+data*
+/data/
 *.csv
 *.out
 /*.csv

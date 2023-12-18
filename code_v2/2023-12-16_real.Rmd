@@ -1,0 +1,164 @@
+---
+title: "实例数据"
+author: "Yan Ren"
+date: "2023-12-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(dplyr)
+library(tidyverse)
+```
+
+# 数据概览
+
+- LUAD_data_RNA_Seq_v2_mRNA_median_Zscores.txt
+  - 20440*519
+  - 2095 行数据除了前两列都缺失，即缺失 517 行（占10%），其余数据完全
+  
+- data_bcr_clinical_data_patient_match.csv 522*74
+  - 其中 FEV1_PERCENT_REF_PREBRONCHOLIATOR 字段为 reponse variable
+  - FEV1_PERCENT_REF_PREBRONCHOLIATOR 有 285(55%) 行缺失
+  - 一秒用力呼气容积（FEV1）
+  
+- data_bcr_clinical_data_sample_match.csv 586*12
+- low_features_LUAD.csv 362*7
+
+```{r}
+gene <- read.csv("../data/LUAD_data_RNA_Seq_v2_mRNA_median_Zscores.txt", sep = "\t")
+```
+
+```{r}
+table(colSums(is.na(gene)))
+table(colSums(is.na(gene))/nrow(gene))
+```
+
+
+```{r}
+bcr1 <- read.csv("../data/data_bcr_clinical_data_patient_match.csv")
+bcr2 <- read.csv("../data/data_bcr_clinical_data_sample_match.csv")
+low <- read.csv("../data/low_features_LUAD.csv")
+dim(bcr1)
+dim(bcr2)
+dim(low)
+```
+
+```{r}
+sum(bcr1$FEV1_PERCENT_REF_PREBRONCHOLIATOR == "[Not Available]")/nrow(bcr1)
+```
+
+```{r}
+intersect(colnames(bcr1), colnames(bcr2))
+```
+
+
+```{r}
+bcr <- merge(bcr1, bcr2, how = "inner") %>% 
+  group_by(PATIENT_ID) %>% filter(row_number() == 1)
+```
+
+```{r}
+# bcr <- merge(bcr1, bcr2, how = "inner") # 时观测到 PATIENT_ID %in% c("TCGA-50-5066", "TCGA-50-5946") 的重复结果
+bcr %>%
+  group_by(PATIENT_ID) %>%
+  summarise(count = n()) %>%
+  arrange(-count)
+
+bcr %>% filter(PATIENT_ID %in% c("TCGA-50-5066", "TCGA-50-5946"))
+```
+
+```{r}
+fev1 <- bcr1$FEV1_PERCENT_REF_PREBRONCHOLIATOR
+fev1 <- scale(as.numeric(fev1[fev1 != "[Not Available]"]))
+fev1 %>% hist(breaks = 50)
+```
+
+# 数据预处理
+
+- 目标：连接成可以直接使用的大数据表
+
+- 连接字段：PATIENT_ID(bcr，如 TCGA-05-4244，以该格式为标准调整其他)，sample_id(low, 如 TCGA.05.4244，注意要去除)，gene 列名（需要进行转换处理，如 TCGA.05.4244.01）
+  - 名称含义：TCGA(project)-组织来源-参与者编号：https://zhuanlan.zhihu.com/p/48326648
+
+```{r}
+low$sample_id <- gsub("\\.", "-", low$sample_id)
+```
+
+
+```{r}
+X <- merge(bcr, low, by.x = "PATIENT_ID", by.y = "sample_id")
+```
+
+```{r}
+gene_colnames <- colnames(gene)[3:length(colnames(gene))] %>%
+  lapply(function(x) substr(x, 1, nchar(x)-3)) %>%
+  unlist()
+# gene_colnames <- gsub("\\.", "-", gene_colnames)
+colnames(gene) <- c(colnames(gene)[1:2], gene_colnames)
+```
+
+
+```{r}
+genet <- rownames_to_column(as.data.frame(t(gene)))[3:ncol(gene),]
+colnames(genet) <- c("Hugo_Symbol", gene$Hugo_Symbol)
+genet <- genet[,colSums(is.na(genet)) != nrow(genet)] # 删除 2085(=20440-18345) 个没有记录的位点
+genet$Hugo_Symbol <- gsub("\\.", "-", genet$Hugo_Symbol)
+Z <- genet
+```
+
+
+
+
+
+```{r}
+dim(X)
+dim(Z)
+```
+
+
+```{r}
+data <- merge(X, Z, by.x = "PATIENT_ID", by.y = "Hugo_Symbol") %>%
+  rename(id = PATIENT_ID) %>%
+  filter(FEV1_PERCENT_REF_PREBRONCHOLIATOR != "[Not Available]")
+dim(data)
+```
+
+直接使用上述 data 实际应该并不方便，替代方法：使用 id 分别 join 得到 X,Z,y
+
+```{r}
+gid <- data$id
+low %>% filter(sample_id %in% gid) %>% arrange(gid)
+```
+
+```{r}
+bcr1 %>% filter(PATIENT_ID %in% gid) %>% arrange(gid) %>% View()
+```
+
+
+
+```{r}
+Z <- as.data.frame(lapply(genet[,2:ncol(genet)], as.numeric))
+```
+
+```{r}
+corm <- cor(Z)
+```
+
+```{r}
+dim(corm)
+```
+```{r}
+hist(eval(corm))
+```
+
+```{r}
+max(eval(corm)[eval(corm)<1])
+```
+
+
+
