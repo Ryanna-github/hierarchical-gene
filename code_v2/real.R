@@ -6,7 +6,7 @@ library(flexmix)
 source("hierarchical-gene/code_v2/tools.R")
 source("hierarchical-gene/code_v2/func.R")
 library(argparse)
-
+parser <- ArgumentParser()
 
 parser$add_argument("-e", "--epsilon_sd", default = 0.5, help = "error")
 parser$add_argument("--path", default="temp.csv",  help="csv result save path")
@@ -22,6 +22,7 @@ K_up <- as.numeric(args$K_up)
 X <- read.csv("../data/realX_image_6.csv") %>% as.matrix()
 Z <- read.csv("../data/realZ_gene_20.csv") %>% as.matrix()
 y <- read.csv("../data/y.csv")$fev1
+data <- cbind(X, Z)
 
 n <- 160
 p <- 6

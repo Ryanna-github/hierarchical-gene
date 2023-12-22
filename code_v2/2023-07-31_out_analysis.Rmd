@@ -39,6 +39,20 @@ for(dt_seed in seq(9, 49, 10)){
 ## real
 
 
+```{r}
+library(glue)
+n <- 160
+p <- 6
+q <- 20
+epsilon_sd <- 0.5
+K_up <- 8
+prefix <- "hierarchical-gene/code_v2/"
+prefix <- ""
+path_pre <- glue("{prefix}{Sys.Date()}_real_n{n}_p{p}_q{q}_eps{epsilon_sd}_Kup{K_up}_fminit")
+# path_pre <- glue("2023-07-31_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_fminit")
+cmd <- glue("Rscript --verbose {prefix}real.R -e {epsilon_sd} --K_up {K_up} --path {path_pre}.csv >> {path_pre}_log.out")
+print(cmd)
+```
 
 
 ## log.out
