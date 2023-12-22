@@ -19,9 +19,12 @@ flexmix_init <- function(q_c_seed, minprior_value = 0, tag = "flexmix"){
   K_est <- m_glm@k
   coef_est <- parameters(m_glm)[1:(p+q),]
   row.names(coef_est) <- NULL
-  cdist <- ifelse(ncol(coef$coef_full) == ncol(coef_est), 
-                  coef_dist(coef_est, coef$coef_full),
-                  NaN)
+  # cdist <- ifelse(ncol(coef$coef_full) == ncol(coef_est), 
+  #                 coef_dist(coef_est, coef$coef_full),
+  #                 NaN)
+  cdist <- tryCatch({
+    coef_dist(coef_est, coef$coef_full)
+  }, error = function(err) {NaN})
   sc_score <- sc(m_glm@cluster, ci_sim)
   print(coef_est)
   return(list(cdist = cdist, 
@@ -41,12 +44,18 @@ random_init <- function(q_c_seed, tag = "random"){
   # 随机初始化,事先不知道 coef$coef_full,应该用 K_up 初始化
   coef_est <- matrix(rnorm(K_up*(p+q), 0, 1), ncol = K_up)
   
-  cdist <- ifelse(ncol(coef$coef_full) == ncol(coef_est), 
-                  coef_dist(coef_est, coef$coef_full),
-                  NaN)
+  # cdist <- ifelse(ncol(coef$coef_full) == ncol(coef_est), 
+  #                 coef_dist(coef_est, coef$coef_full),
+  #                 NaN)
+  cdist <- tryCatch({
+    coef_dist(coef_est, coef$coef_full)
+  }, error = function(err) {NaN})
   ci_est <- apply(q_c_matrix, 1, which.max)
   ci_prob_mean <- mean(apply(q_c_matrix, 1, max))
-  sc_score <- sc(ci_est, ci_sim)
+  # sc_score <- sc(ci_est, ci_sim)
+  sc_score <- tryCatch({
+    sc(ci_est, ci_sim)
+  }, error = function(err) {NaN})
   print(coef_est)
   return(list(cdist = cdist,
               ci_prob_mean = ci_prob_mean,
@@ -291,9 +300,12 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
     # }
   }
   # 距离真实参数距离，只有类别数相同才能计算该指标
-  cdist <- ifelse(ncol(coef$coef_full) == ncol(coef_full_ori_list[[iter]]), 
-                  coef_dist(coef_full_ori_list[[iter]], coef$coef_full),
-                  NaN)
+  # cdist <- ifelse(ncol(coef$coef_full) == ncol(coef_full_ori_list[[iter]]), 
+  #                 coef_dist(coef_full_ori_list[[iter]], coef$coef_full),
+  #                 NaN)
+  cdist <- tryCatch({
+    coef_dist(coef_full_ori_list[[iter]], coef$coef_full)
+  }, error = function(err) {NaN})
   # 参数结果（未压缩）
   cat(paste0("****[unsqueezed coef]****:\n"))
   print(coef_full_ori_list[[iter]])
@@ -307,7 +319,9 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
   # plot(unlist(lapply(coef_full_ori_list, coef_dist, coef$coef_full)), ylab = "",
   #      main = paste(q_c_seed, aa, lambda_1, lambda_2, lambda_3, tau))
   ci_est <- apply(q_c_matrix, 1, which.max)
-  sc_score <- sc(ci_est, ci_sim)
+  sc_score <- tryCatch({
+    sc(ci_est, ci_sim)
+  }, error = function(err) {NaN})
   ci_prob <- apply(q_c_matrix, 1, max)
   ci_matrix <- t(apply(q_c_matrix, 1, function(x){as.numeric(x == max(x))}))
   y_hat <- rowSums(ci_matrix * data%*%coef_full_list[[iter]])

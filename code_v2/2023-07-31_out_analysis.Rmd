@@ -20,7 +20,7 @@ p <- 8
 q <- 40
 epsilon_sd <- 0.5
 signal_size <- 1
-beta_vlen <- 10
+beta_vlen <- 3
 alpha_vlen <- 2
 # dt_seed <- 9
 K_up <- 6
@@ -141,7 +141,9 @@ library(simplermarkdown)
 # df <- read.csv("2023-12-01_n500_p8_q4_bl3_al2_eps0.5_Kup6_fminit.csv")
 # df <- read.csv("2023-12-06_n500_p40_q4_bl3_al2_eps0.5_Kup4_fminit.csv")
 # df <- read.csv("2023-12-10_n500_p40_q4_bl3_al2_eps0.5_Kup6_fminit.csv")
-df <- read.csv("2023-12-12_n500_p80_q4_bl3_al2_eps0.5_Kup4_fminit.csv")
+# df <- read.csv("2023-12-12_n500_p80_q4_bl3_al2_eps0.5_Kup4_fminit.csv")
+# df <- read.csv("2023-12-18_n500_p8_q40_bl3_al2_eps0.5_Kup4_fminit.csv")
+df <- read.csv("2023-12-18_n500_p8_q40_bl3_al2_eps0.5_Kup6_fminit.csv")
 # 以下废弃，仅针对很久版本的数据记录样式
 # df <- df %>% mutate(method = ifelse(q_c_seed < 100, 1, 0))
 # df$method <- ifelse(df$q_c_seed == 111, -1, df$method)

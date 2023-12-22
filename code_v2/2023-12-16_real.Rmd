@@ -160,5 +160,346 @@ hist(eval(corm))
 max(eval(corm)[eval(corm)<1])
 ```
 
+```{r}
+X_genet <- genet[,2:ncol(genet)]
+X_genet <- as.data.frame(lapply(genet[,2:ncol(genet)], as.numeric))
+```
+
+```{r}
+pca <- princomp(cor(X_genet))
+summary(pca)
+```
+
+
+```{r}
+library(irlba)
+```
+
+
+
+```{r}
+pca <- irlba::prcomp_irlba(corm, n=50)
+```
+
+```{r}
+plot(1:50, pca$sdev)
+```
+
+
+```{r}
+cumsum(pca$sdev**2/sum(pca$sdev**2))
+```
+
+按照解释 90% 方差，前 11 个；解释 95% 方差，前 21 个，解释 99% 方差，前 41 个
+
+
+```{r}
+Z_pca <- as.matrix(X_genet) %*% pca$rotation
+```
+```{r}
+dim(as.matrix(X_genet))
+```
+
+
+# 正经整理
+
+< 之前为摸索，从这里开始运行即可
+
+## 数据准备
+
+1. 选择id，后续连接每一次先用该 id join，而后 arrange(id) 保证顺序一样，X,Z 不保留原始 id 列，可以用 X_from, Z_from 保留所选行所有结果，X, Z 再表示真正使用的 x,z
+
+2. 记得进行数据类型的转化 as.numeric
+
+3. X 是 lower 中图像的低维数据，Z 是经过 PCA 降维后的基因数据
+
+
+```{r}
+gene <- read.csv("../data/LUAD_data_RNA_Seq_v2_mRNA_median_Zscores.txt", sep = "\t")
+bcr1 <- read.csv("../data/data_bcr_clinical_data_patient_match.csv")
+bcr2 <- read.csv("../data/data_bcr_clinical_data_sample_match.csv")
+low <- read.csv("../data/low_features_LUAD.csv")
+```
+
+
+```{r}
+df_pivot <- bcr1 %>% 
+  select(PATIENT_ID, FEV1_PERCENT_REF_PREBRONCHOLIATOR) %>%
+  filter(FEV1_PERCENT_REF_PREBRONCHOLIATOR != "[Not Available]") %>%
+  rename(fev1 = FEV1_PERCENT_REF_PREBRONCHOLIATOR)
+dim(df_pivot)
+df_pivot
+```
+
+```{r}
+convert_to_numeric <- function(x) {
+  result <- tryCatch(as.numeric(x), error = function(e) e)
+  return(result)
+}
+```
+
+
+```{r}
+X_from <- low %>% 
+  mutate(sample_id = gsub("\\.", "-", sample_id)) %>%
+  filter(sample_id %in% df_pivot$PATIENT_ID) %>%
+  arrange(sample_id) %>%
+  # convert_to_numeric() %>%
+  as.data.frame()
+dim(X_from)
+```
+
+
+```{r}
+gene_colnames <- colnames(gene)[3:length(colnames(gene))] %>%
+  lapply(function(x) substr(x, 1, nchar(x)-3)) %>%
+  unlist()
+# 如果此步转化，后续会被转置消除掉
+# gene_colnames <- gsub("\\.", "-", gene_colnames)
+colnames(gene) <- c(colnames(gene)[1:2], gene_colnames)
+# 转置
+genet <- rownames_to_column(as.data.frame(t(gene)))[3:ncol(gene),]
+colnames(genet) <- c("Hugo_Symbol", gene$Hugo_Symbol)
+genet <- genet[,colSums(is.na(genet)) != nrow(genet)] # 删除 2085(=20440-18345) 个没有记录的位点
+genet$Hugo_Symbol <- gsub("\\.", "-", genet$Hugo_Symbol)
+Z_from <- genet %>%
+  mutate(Hugo_Symbol = gsub("\\.", "-", Hugo_Symbol)) %>%
+  filter(Hugo_Symbol %in% df_pivot$PATIENT_ID) %>%
+  arrange(Hugo_Symbol) %>%
+  # convert_to_numeric() %>%
+  as.data.frame()
+```
+
+```{r}
+dim(X_from)
+dim(Z_from)
+id_its <- intersect(X_from$sample_id, Z_from$Hugo_Symbol)
+```
+
+```{r}
+df_pivot_use <- df_pivot %>%
+  filter(PATIENT_ID %in% id_its) %>%
+  arrange(PATIENT_ID)
+df_pivot_use
+```
+
+
+```{r}
+X <- X_from %>% 
+  filter(sample_id %in% id_its) %>%
+  select(-sample_id)
+Z <- Z_from %>% 
+  filter(Hugo_Symbol %in% id_its) %>%
+  select(-Hugo_Symbol) %>%
+  mutate(across(.fns=as.numeric)) 
+hist(apply(Z, 2, sd))
+Z <- Z[apply(Z, 2, sd) > 0]
+```
+
+
+```{r}
+corm <- cor(Z)
+```
+
+```{r}
+library(irlba)
+pca <- irlba::prcomp_irlba(corm, n=50)
+```
+
+```{r}
+dim(pca$rotation)
+```
+
+```{r}
+dim(as.matrix(Z))
+```
+
+
+```{r}
+pca$totalvar
+cumsum(pca$sdev**2/sum(pca$sdev**2))
+```
+
+```{r}
+plot(1:50, pca$sdev)
+```
+
+选择前 20，涵盖 90% 方差
+
+```{r}
+Z_pca <- as.matrix(Z) %*% pca$rotation
+```
+
+```{r}
+Z_pca_20 <- Z_pca[,1:20]
+```
+
+
+
+```{r}
+write.csv(X, file = "../data/realX_image_6.csv", row.names = FALSE)
+write.csv(Z_pca_20, file = "../data/realZ_gene_20.csv", row.names = FALSE)
+write.csv(df_pivot_use, file = "../data/y.csv", row.names = FALSE)
+```
+
+
+# 模型
+
+```{r}
+library(dplyr)
+library(Matrix)
+library(flexmix)
+source("tools.R")
+source("func.R")
+```
+
+
+```{r}
+X <- read.csv("../data/realX_image_6.csv") %>% as.matrix()
+Z <- read.csv("../data/realZ_gene_20.csv") %>% as.matrix()
+y <- read.csv("../data/y.csv")$fev1
+```
+
+```{r}
+n <- 160
+K_up <- 8
+p <- 6
+q <- 20
+dt_seed <- 0
+q_c_seed <- 9
+sigma_est <- 3
+```
+
+
+```{r}
+comb_pair <- combn(K_up, 2)
+H_p <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
+                 diag(p)) %>% Matrix(sparse = TRUE)
+H_q <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
+                 diag(q)) %>% Matrix(sparse = TRUE)
+
+
+# =============================== result =================================
+colnames_all <- c("dt_seed", "q_c_seed", "aa", "tau", "l1", "l2", "l3",
+                  "cdist", "ci_prob_mean", "mse", "sc", "fit_sum", "fit_mean",
+                  "penal", "bic_sum", "bic_mean", "main_grn", "sub_grn", "valid_hier", 
+                  "group_detail", paste0("case_", 1:4), "tag")
+```
+
+
+```{r}
+result <- as.data.frame(matrix(NaN, nrow = 2, ncol = length(colnames_all)))
+colnames(result) <- colnames_all
+result$dt_seed <- dt_seed
+
+# flexmix for initialization
+flemix_forinit <- tryCatch({
+  flexmix_init(q_c_seed, 0)
+}, error = function(err) {
+  cat("Random Init\n")
+  random_init(q_c_seed)
+})
+result[1,'q_c_seed'] <- q_c_seed
+result[1,'sub_grn'] <- flemix_forinit$est_sub_grn
+result[1,'sc'] <- flemix_forinit$sc_score
+result[1,'cdist'] <- flemix_forinit$cdist
+result[1,'tag'] <- flemix_forinit$tag
+
+# flexmix best result (K squeezed)
+flemix_best <- tryCatch({
+  flexmix_init(q_c_seed, 0.1)
+}, error = function(err) {
+  cat("Random Init\n")
+  random_init(q_c_seed)
+})
+result[2,'q_c_seed'] <- q_c_seed
+result[2,'sub_grn'] <- flemix_best$est_sub_grn
+result[2,'sc'] <- flemix_best$sc_score
+result[2,'cdist'] <- flemix_best$cdist
+result[2,'tag'] <- flemix_best$tag
+```
+
+```{r}
+# l2_seq <- c(0, 0.5, 1, 2, 4)
+# l3_seq <- c(0, 0.5, 1, 2, 4)
+l2_seq <- c(0.5)
+l3_seq <- c(0.5)
+fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
+                 aa = 1.2, tau = 1)
+hp <- tuning_hyper(l2_seq, l3_seq, fix_para, flemix_forinit$coef_full_ori,
+                   save_all = TRUE)
+```
+
+```{r}
+data <- cbind(X, Z)
+```
+
+
+```{r}
+trail_set <- expand.grid(list(l3 = l3_seq, l2 = l2_seq))
+
+trail_num <- nrow(trail_set)
+bic_record <- rep(-Inf, trail_num)
+bico_record <- rep(-Inf, trail_num)
+trail_record <- vector(mode = "list",length = trail_num)
+coef_full_init <- flemix_forinit$coef_full_ori
+
+trail_idx <- 1
+for(trail_idx in 1:trail_num){
+  lambda_2 <- trail_set$l2[trail_idx]
+  lambda_3 <- trail_set$l3[trail_idx]
+  
+  trail <- ADMM_trail(aa = fix_para$aa,
+                      tau = fix_para$tau,
+                      lambda_1 = fix_para$lambda_1,
+                      lambda_2 = lambda_2,
+                      lambda_3 = lambda_3,
+                      q_c_seed = fix_para$q_c_seed,
+                      coef_full_init = coef_full_init)
+  trail_record[[trail_idx]] <- trail
+  
+  result <- rbind(result, c(fix_para$dt_seed,
+              fix_para$q_c_seed,
+              fix_para$aa,
+              fix_para$tau,
+              fix_para$lambda_1,
+              lambda_2,
+              lambda_3,
+              trail$cdist,
+              trail$ci_prob_mean,
+              trail$mse,
+              trail$sc_score,
+              trail$BIC.var,
+              trail$fit_sum,
+              trail$fit_mean,
+              trail$penal,
+              trail$bic_sum,
+              trail$bic_mean,
+              trail$est_main_grn,
+              trail$est_sub_grn,
+              trail$valid_hier,
+              trail$group_detail,
+              trail$case_table_full,
+              "hier"))
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
