@@ -5,6 +5,18 @@ library(flexmix)
 # source("func.R")
 source("hierarchical-gene/code_v2/tools.R")
 source("hierarchical-gene/code_v2/func.R")
+library(argparse)
+
+
+parser$add_argument("-e", "--epsilon_sd", default = 0.5, help = "error")
+parser$add_argument("--path", default="temp.csv",  help="csv result save path")
+parser$add_argument("--K_up", default=8,  help="Upper class number")
+
+args <- parser$parse_args()
+epsilon_sd <- as.numeric(args$e)
+sigma_est <- as.numeric(args$e)
+save_path <- args$path
+K_up <- as.numeric(args$K_up)
 
 # data
 X <- read.csv("../data/realX_image_6.csv") %>% as.matrix()
@@ -12,18 +24,18 @@ Z <- read.csv("../data/realZ_gene_20.csv") %>% as.matrix()
 y <- read.csv("../data/y.csv")$fev1
 
 n <- 160
-K_up <- 8
 p <- 6
 q <- 20
 dt_seed <- NaN
-q_c_seed <- 9
-sigma_est <- 3
-
-epsilon_sd <- 0.4
-sigma_est <- as.numeric(epsilon_sd)
-save_path <- "temp.csv"
 q_c_seed_max <- 10
 
+if(0){
+  K_up <- 8
+  save_path <- "temp.csv"
+  epsilon_sd <- 0.4
+  sigma_est <- as.numeric(epsilon_sd)
+  q_c_seed <- 9
+}
 
 
 comb_pair <- combn(K_up, 2)
