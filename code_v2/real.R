@@ -19,9 +19,13 @@ save_path <- args$path
 K_up <- as.numeric(args$K_up)
 
 # data
-X <- read.csv("../data/realX_image_6.csv") %>% as.matrix()
-Z <- read.csv("../data/realZ_gene_20.csv") %>% as.matrix()
-y <- read.csv("../data/y.csv")$fev1
+# X <- read.csv("../data/realX_image_6.csv") %>% as.matrix()
+# Z <- read.csv("../data/realZ_gene_20.csv") %>% as.matrix()
+# y <- read.csv("../data/y.csv")$fev1
+
+X <- read.csv("hierarchical-gene/data/realX_image_6.csv") %>% as.matrix()
+Z <- read.csv("hierarchical-gene/data/realZ_gene_20.csv") %>% as.matrix()
+y <- read.csv("hierarchical-gene/data/y.csv")$fev1
 data <- cbind(X, Z)
 
 n <- 160
