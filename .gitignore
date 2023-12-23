@@ -8,7 +8,7 @@ kt*
 # data & log
 # !real*.csv
 # data*
-# /data/
+/data/
 # *.csv
 # *.out
 code_v2/*.csv
