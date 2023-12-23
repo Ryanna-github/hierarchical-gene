@@ -1,17 +1,18 @@
 # reference
 /reference/
+/GMM/
 
 # kaitibaogao
 kt*
 
 # data & log
-!real*.csv
-data*
-/data/
-*.csv
-*.out
-/*.csv
-/*.out
+# !real*.csv
+# data*
+# /data/
+# *.csv
+# *.out
+code_v2/*.csv
+code_v2/*.out
 # !data/real*.csv
 
 

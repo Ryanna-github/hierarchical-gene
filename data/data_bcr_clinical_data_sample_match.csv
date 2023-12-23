@@ -1,0 +1,587 @@
+PATIENT_ID,DAYS_TO_COLLECTION,SAMPLE_INITIAL_WEIGHT,SPECIMEN_SECOND_LONGEST_DIMENSION,LONGEST_DIMENSION,OCT_EMBEDDED,SAMPLE_TYPE,SAMPLE_TYPE_ID,SHORTEST_DIMENSION,TIME_BETWEEN_CLAMPING_AND_FREEZING,TIME_BETWEEN_EXCISION_AND_FREEZING,VIAL_NUMBER
+TCGA-05-4244,[Not Available],[Not Available],0.9,1.1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-05-4245,[Not Available],[Not Available],0.7,0.9,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-05-4249,[Not Available],[Not Available],0.8,1.4,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-05-4250,[Not Available],[Not Available],0.7,1.2,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-05-4382,[Not Available],[Not Available],0.8,0.9,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-05-4384,[Not Available],[Not Available],0.8,0.8,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-05-4389,[Not Available],[Not Available],0.9,1.3,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-05-4390,[Not Available],[Not Available],0.9,1.8,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-05-4395,[Not Available],[Not Available],0.4,1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-05-4396,[Not Available],[Not Available],0.9,1.6,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-05-4397,[Not Available],[Not Available],0.9,0.9,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-05-4398,[Not Available],[Not Available],0.9,1.5,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-05-4402,[Not Available],[Not Available],0.6,1.6,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-05-4403,[Not Available],[Not Available],1,1.5,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-05-4405,[Not Available],[Not Available],0.7,0.9,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-05-4410,[Not Available],[Not Available],0.8,1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-05-4415,[Not Available],[Not Available],1,1.1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-05-4417,[Not Available],[Not Available],0.8,1.4,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-05-4418,[Not Available],[Not Available],1,1.2,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-05-4420,[Not Available],[Not Available],0.8,0.8,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-05-4422,[Not Available],[Not Available],0.8,1.5,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-05-4424,[Not Available],[Not Available],0.8,1.1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-05-4425,[Not Available],[Not Available],1,1.1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-05-4426,[Not Available],[Not Available],0.9,1.5,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-05-4427,[Not Available],[Not Available],0.6,1.7,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-05-4430,[Not Available],[Not Available],0.8,0.9,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-05-4432,[Not Available],[Not Available],0.7,1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-05-4433,[Not Available],[Not Available],1,1.1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-05-4434,[Not Available],[Not Available],0.8,1.3,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-05-5420,[Not Available],[Not Available],0.9,1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-05-5423,[Not Available],[Not Available],0.8,1.4,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-05-5425,[Not Available],[Not Available],0.9,1.2,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-05-5428,[Not Available],[Not Available],0.8,1,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-05-5429,[Not Available],[Not Available],0.9,1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-05-5715,[Not Available],[Not Available],0.6,0.9,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-17-Z000,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z001,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z002,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z003,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z004,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z005,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z006,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z007,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z008,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z009,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z010,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z011,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z012,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z013,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z014,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z015,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z016,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z017,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z018,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z019,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z020,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z021,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z022,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z023,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z024,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z025,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z026,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z027,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z028,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z029,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z030,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z031,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z032,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z033,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z034,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z035,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z036,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z037,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z038,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z039,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z040,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z041,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z042,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z043,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z044,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z045,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z046,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z047,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z048,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z049,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z050,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z051,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z052,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z053,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z054,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z056,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z058,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z059,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z060,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z061,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-17-Z062,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-35-3615,[Not Available],[Not Available],0.6,1.5,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-35-3621,[Not Available],[Not Available],0.4,0.8,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-35-4122,[Not Available],[Not Available],0.7,1,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-35-4123,[Not Available],[Not Available],0.4,0.9,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-35-5375,[Not Available],[Not Available],1,1.3,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-38-4625,[Not Available],[Not Available],0.6,0.7,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-38-4626,[Not Available],[Not Available],0.9,1,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-38-4627,[Not Available],[Not Available],0.7,1.4,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-38-4628,[Not Available],[Not Available],0.5,0.8,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-38-4629,[Not Available],[Not Available],1,1.3,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-38-4630,[Not Available],[Not Available],0.8,1.6,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-38-4631,[Not Available],[Not Available],0.4,0.7,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-38-4632,[Not Available],[Not Available],0.7,0.8,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-38-6178,[Not Available],[Not Available],0.6,1.5,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-38-7271,[Not Available],[Not Available],0.8,1.1,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-38-A44F,127,580,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-44-2655,[Not Available],[Not Available],0.5,0.5,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-44-2656,[Not Available],50,0.8,0.8,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-44-2657,[Not Available],[Not Available],0.6,1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-44-2659,[Not Available],[Not Available],0.8,1.3,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-44-2661,[Not Available],[Not Available],0.7,1.5,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-44-2662,[Not Available],[Not Available],0.9,1,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-44-2664,[Not Available],[Not Available],0.6,1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-44-2665,[Not Available],[Not Available],0.6,1.1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-44-2666,[Not Available],120,0.7,2,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-44-2668,[Not Available],[Not Available],1,1.2,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-44-3396,[Not Available],[Not Available],1,1.3,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-44-3398,[Not Available],[Not Available],0.9,1.7,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-44-3917,[Not Available],[Not Available],0.6,1.2,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-44-3918,[Not Available],280,0.8,2,[Not Available],Primary,1,0.8,[Not Available],[Not Available],A
+TCGA-44-3919,[Not Available],[Not Available],0.4,0.6,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-44-4112,[Not Available],220,1,2,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-44-5643,[Not Available],[Not Available],0.8,1.2,[Not Available],Primary,1,0.8,[Not Available],[Not Available],A
+TCGA-44-5644,[Not Available],[Not Available],1,1,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-44-5645,[Not Available],140,0.6,1.3,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-44-6144,[Not Available],[Not Available],0.6,0.9,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-44-6145,[Not Available],[Not Available],1,1.5,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-44-6146,[Not Available],420,0.8,2,[Not Available],Primary,1,0.8,[Not Available],[Not Available],A
+TCGA-44-6147,[Not Available],80,0.8,1,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-44-6148,[Not Available],[Not Available],0.8,1.5,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-44-6774,[Not Available],[Not Available],1,1.5,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-44-6775,[Not Available],70,1.1,1.1,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-44-6776,[Not Available],[Not Available],0.7,1.5,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-44-6777,[Not Available],[Not Available],1,1.8,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-44-6778,[Not Available],[Not Available],0.9,1,[Not Available],Primary,1,0.8,[Not Available],[Not Available],A
+TCGA-44-6779,[Not Available],[Not Available],0.7,1,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-44-7659,[Not Available],[Not Available],0.8,1.2,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-44-7660,[Not Available],[Not Available],0.7,1,[Not Available],Primary,1,0.7,[Not Available],[Not Available],A
+TCGA-44-7661,[Not Available],[Not Available],0.8,1.4,[Not Available],Primary,1,0.7,[Not Available],[Not Available],A
+TCGA-44-7662,[Not Available],[Not Available],0.7,1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-44-7667,[Not Available],[Not Available],0.8,1.7,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-44-7669,[Not Available],[Not Available],0.9,1.8,[Not Available],Primary,1,0.7,[Not Available],[Not Available],A
+TCGA-44-7670,[Not Available],[Not Available],0.8,1.5,[Not Available],Primary,1,0.7,[Not Available],[Not Available],A
+TCGA-44-7671,[Not Available],[Not Available],0.6,1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-44-7672,[Not Available],[Not Available],0.9,1.5,[Not Available],Primary,1,0.8,[Not Available],[Not Available],A
+TCGA-44-8117,[Not Available],[Not Available],0.7,1.1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-44-8119,[Not Available],[Not Available],1,2.6,[Not Available],Primary,1,1,[Not Available],[Not Available],A
+TCGA-44-8120,[Not Available],[Not Available],0.9,1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-44-A479,193,280,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-44-A47A,117,290,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-44-A47B,118,80,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-44-A47F,169,370,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-44-A47G,71,170,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-44-A4SS,86,200,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-44-A4SU,55,140,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-49-4486,[Not Available],[Not Available],0.6,1.6,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-49-4487,[Not Available],[Not Available],0.7,0.9,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-49-4488,[Not Available],[Not Available],0.8,2,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-49-4490,[Not Available],[Not Available],0.5,0.5,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-49-4494,[Not Available],[Not Available],1,2.5,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-49-4501,[Not Available],[Not Available],0.6,1.2,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-49-4505,[Not Available],[Not Available],0.7,1.5,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-49-4506,[Not Available],[Not Available],0.4,0.8,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-49-4507,[Not Available],[Not Available],0.7,1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-49-4510,[Not Available],[Not Available],0.7,0.9,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-49-4512,[Not Available],[Not Available],0.8,2.2,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-49-4514,[Not Available],[Not Available],0.8,1.4,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-49-6742,[Not Available],[Not Available],0.8,2.1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-49-6743,[Not Available],[Not Available],0.4,1.2,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-49-6744,[Not Available],[Not Available],0.5,2.1,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-49-6745,[Not Available],[Not Available],0.7,1.1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-49-6761,[Not Available],[Not Available],0.7,2.3,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-49-6767,[Not Available],[Not Available],0.5,1.5,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-49-AAQV,717,160,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-49-AAR0,4298,200,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-49-AAR2,1778,130,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-49-AAR3,1927,140,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-49-AAR4,2842,200,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-49-AAR9,5308,260,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-49-AARE,5455,180,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-49-AARN,4882,210,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-49-AARO,3838,170,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-49-AARQ,6271,60,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-49-AARR,4634,170,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-4B-A93V,84,400,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-50-5044,[Not Available],[Not Available],0.9,1.4,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-50-5045,[Not Available],[Not Available],1.5,1.8,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-50-5049,[Not Available],[Not Available],1.5,2,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-50-5051,[Not Available],[Not Available],1,1.2,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-50-5055,[Not Available],[Not Available],1.5,1.9,[Not Available],Primary,1,0.1,[Not Available],[Not Available],A
+TCGA-50-5066,[Not Available],[Not Available],1,1.5,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-50-5066,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Recurrent,2,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-50-5068,[Not Available],[Not Available],1.3,1.4,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-50-5072,[Not Available],[Not Available],0.9,1.2,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-50-5930,[Not Available],[Not Available],1,1.2,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-50-5931,[Not Available],[Not Available],1,1.7,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-50-5932,[Not Available],[Not Available],1.3,1.4,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-50-5933,[Not Available],[Not Available],1,1.7,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-50-5935,[Not Available],[Not Available],0.8,1.4,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-50-5936,[Not Available],[Not Available],0.8,0.9,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-50-5939,[Not Available],[Not Available],0.8,1.2,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-50-5941,[Not Available],[Not Available],1,1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-50-5942,[Not Available],[Not Available],0.7,1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-50-5944,[Not Available],[Not Available],0.6,0.6,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-50-5946,[Not Available],[Not Available],1.2,1.5,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-50-5946,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Recurrent,2,[Not Available],[Not Available],[Not Available],[Not Available]
+TCGA-50-6590,[Not Available],[Not Available],1,1.6,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-50-6591,[Not Available],[Not Available],0.8,0.9,[Not Available],Primary,1,0.7,[Not Available],[Not Available],A
+TCGA-50-6592,[Not Available],[Not Available],1,2,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-50-6593,[Not Available],[Not Available],1,1.4,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-50-6594,[Not Available],[Not Available],1,1.5,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-50-6595,[Not Available],[Not Available],0.8,1.7,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-50-6597,[Not Available],[Not Available],0.9,2,[Not Available],Primary,1,0.1,[Not Available],[Not Available],A
+TCGA-50-6673,[Not Available],[Not Available],1,1.1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-50-7109,[Not Available],[Not Available],0.9,1.3,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-50-8457,[Not Available],[Not Available],0.9,1.2,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-50-8459,[Not Available],[Not Available],0.7,1.2,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-50-8460,[Not Available],[Not Available],0.9,1.3,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-53-7624,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-53-7626,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-53-7813,[Not Available],[Not Available],0.6,0.8,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-53-A4EZ,163,120,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-55-1592,[Not Available],[Not Available],0.8,1.8,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-55-1594,[Not Available],[Not Available],0.5,2,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-1595,[Not Available],[Not Available],0.5,0.5,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-1596,[Not Available],[Not Available],0.6,0.9,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-55-5899,[Not Available],[Not Available],0.6,1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-55-6543,[Not Available],[Not Available],0.4,1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-55-6642,[Not Available],[Not Available],0.9,1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-55-6712,[Not Available],[Not Available],0.8,0.9,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-55-6968,[Not Available],[Not Available],0.4,0.7,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-6969,[Not Available],[Not Available],0.5,0.9,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-55-6970,[Not Available],[Not Available],0.8,1.1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-55-6971,[Not Available],[Not Available],0.5,1.1,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-6972,[Not Available],[Not Available],0.4,0.6,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-6975,[Not Available],[Not Available],0.2,0.2,[Not Available],Primary,1,0.1,[Not Available],[Not Available],A
+TCGA-55-6978,[Not Available],[Not Available],0.6,0.7,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-6979,[Not Available],[Not Available],0.7,1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-55-6980,[Not Available],[Not Available],0.3,0.7,[Not Available],Primary,1,0.1,[Not Available],[Not Available],A
+TCGA-55-6981,[Not Available],[Not Available],0.6,0.8,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-55-6982,[Not Available],[Not Available],0.3,0.5,[Not Available],Primary,1,0.1,[Not Available],[Not Available],A
+TCGA-55-6983,[Not Available],[Not Available],0.3,0.5,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-6984,[Not Available],[Not Available],0.4,0.6,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-6985,[Not Available],[Not Available],0.1,0.2,[Not Available],Primary,1,0.1,[Not Available],[Not Available],A
+TCGA-55-6986,[Not Available],[Not Available],0.4,0.5,[Not Available],Primary,1,0.1,[Not Available],[Not Available],A
+TCGA-55-6987,[Not Available],[Not Available],0.1,0.2,[Not Available],Primary,1,0.1,[Not Available],[Not Available],A
+TCGA-55-7227,[Not Available],[Not Available],0.3,0.5,[Not Available],Primary,1,0.1,[Not Available],[Not Available],A
+TCGA-55-7281,[Not Available],[Not Available],0.2,0.3,[Not Available],Primary,1,0.1,[Not Available],[Not Available],A
+TCGA-55-7283,[Not Available],[Not Available],0.1,0.1,[Not Available],Primary,1,0.1,[Not Available],[Not Available],A
+TCGA-55-7284,[Not Available],[Not Available],0.5,0.9,[Not Available],Primary,1,0.3,[Not Available],[Not Available],B
+TCGA-55-7570,[Not Available],[Not Available],0.2,0.3,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-7573,[Not Available],[Not Available],0.7,0.9,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-7574,[Not Available],[Not Available],0.7,0.9,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-55-7576,[Not Available],[Not Available],0.5,0.5,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-7724,[Not Available],[Not Available],0.4,0.7,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-7725,[Not Available],[Not Available],0.4,0.5,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-7726,[Not Available],[Not Available],0.3,0.6,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-7727,[Not Available],[Not Available],0.3,0.6,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-7728,[Not Available],[Not Available],0.8,1,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-55-7815,[Not Available],[Not Available],0.7,0.7,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-55-7816,[Not Available],[Not Available],0.3,0.3,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-7903,[Not Available],[Not Available],0.2,0.5,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-7907,[Not Available],[Not Available],0.3,0.3,[Not Available],Primary,1,0.1,[Not Available],[Not Available],A
+TCGA-55-7910,[Not Available],[Not Available],0.6,0.9,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-55-7911,[Not Available],[Not Available],0.5,0.8,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-55-7913,[Not Available],[Not Available],0.4,0.7,[Not Available],Primary,1,0.2,[Not Available],[Not Available],B
+TCGA-55-7914,[Not Available],[Not Available],0.2,0.4,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-7994,[Not Available],[Not Available],0.8,1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-55-7995,[Not Available],[Not Available],0.7,0.8,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-8085,[Not Available],[Not Available],0.5,0.7,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-55-8087,[Not Available],[Not Available],0.8,0.9,[Not Available],Primary,1,0.7,[Not Available],[Not Available],A
+TCGA-55-8089,[Not Available],[Not Available],0.2,0.2,[Not Available],Primary,1,0.1,[Not Available],[Not Available],A
+TCGA-55-8090,[Not Available],[Not Available],0.4,1,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-8091,[Not Available],[Not Available],0.8,1.1,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-55-8092,[Not Available],[Not Available],0.5,0.7,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-55-8094,[Not Available],[Not Available],0.5,0.7,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-8096,[Not Available],[Not Available],0.9,0.9,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-55-8097,[Not Available],[Not Available],0.4,0.5,[Not Available],Primary,1,0.1,[Not Available],[Not Available],A
+TCGA-55-8203,[Not Available],[Not Available],0.3,0.4,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-8204,[Not Available],[Not Available],0.2,0.2,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-8205,[Not Available],[Not Available],1,1.1,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-55-8206,[Not Available],[Not Available],0.8,0.9,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-55-8207,[Not Available],[Not Available],0.5,0.9,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-55-8208,[Not Available],[Not Available],0.6,1.4,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-55-8299,[Not Available],[Not Available],0.3,0.3,[Not Available],Primary,1,0.1,[Not Available],[Not Available],A
+TCGA-55-8301,[Not Available],[Not Available],0.3,0.4,[Not Available],Primary,1,0.1,[Not Available],[Not Available],A
+TCGA-55-8302,[Not Available],[Not Available],0.3,0.3,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-8505,[Not Available],[Not Available],0.7,1.2,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-55-8506,[Not Available],[Not Available],0.7,1.1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-55-8507,[Not Available],[Not Available],0.7,1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-55-8508,[Not Available],[Not Available],0.7,1,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-55-8510,[Not Available],[Not Available],1,1.2,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-55-8511,[Not Available],[Not Available],0.7,1.1,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-55-8512,[Not Available],[Not Available],1,1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-55-8513,[Not Available],[Not Available],0.9,1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-55-8514,[Not Available],[Not Available],0.4,0.5,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-55-8614,[Not Available],[Not Available],0.4,0.7,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-55-8615,[Not Available],[Not Available],0.9,0.9,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-55-8616,[Not Available],[Not Available],0.4,0.5,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-55-8619,[Not Available],[Not Available],0.8,1.2,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-55-8620,[Not Available],[Not Available],0.8,1,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-55-8621,[Not Available],[Not Available],0.6,0.7,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-55-A48X,111,30,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-55-A48Y,107,10,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-55-A48Z,64,70,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-55-A490,77,10,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-55-A491,31,10,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-55-A492,31,50,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-55-A493,77,70,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-55-A494,28,60,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-55-A4DF,113,60,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-55-A4DG,229,50,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-55-A57B,64,70,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-62-8394,[Not Available],[Not Available],0.6,0.7,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-62-8395,[Not Available],[Not Available],0.6,1,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-62-8397,[Not Available],[Not Available],0.5,0.6,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-62-8398,[Not Available],[Not Available],0.6,1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-62-8399,[Not Available],[Not Available],0.6,1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-62-8402,[Not Available],[Not Available],0.6,0.7,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-62-A46O,2349,70,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-62-A46P,2254,90,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-62-A46R,2071,100,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-62-A46S,1936,150,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-62-A46U,1834,70,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-62-A46V,1751,100,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-62-A46Y,1608,80,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-62-A470,1310,80,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-62-A471,951,130,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-62-A472,498,80,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-64-1676,[Not Available],[Not Available],0.5,1.5,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-64-1677,[Not Available],[Not Available],0.5,1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-64-1678,[Not Available],[Not Available],0.8,1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-64-1679,[Not Available],[Not Available],0.5,1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-64-1680,[Not Available],[Not Available],0.4,1.2,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-64-1681,[Not Available],[Not Available],0.4,0.8,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-64-5774,[Not Available],[Not Available],0.6,1.4,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-64-5775,[Not Available],[Not Available],1.2,1.3,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-64-5778,[Not Available],[Not Available],0.4,1.2,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-64-5779,[Not Available],[Not Available],1,1.3,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-64-5781,[Not Available],[Not Available],0.8,1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-64-5815,[Not Available],[Not Available],0.8,0.8,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-67-3770,[Not Available],[Not Available],0.8,0.9,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-67-3771,[Not Available],[Not Available],0.7,1.1,[Not Available],Primary,1,0.7,[Not Available],[Not Available],A
+TCGA-67-3772,[Not Available],[Not Available],0.9,0.9,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-67-3773,[Not Available],[Not Available],0.4,1,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-67-3774,[Not Available],[Not Available],0.4,0.5,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-67-3776,[Not Available],[Not Available],0.5,0.5,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-67-4679,[Not Available],[Not Available],0.5,0.9,[Not Available],Primary,1,0.2,[Not Available],[Not Available],B
+TCGA-67-6215,[Not Available],[Not Available],0.5,0.6,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-67-6216,[Not Available],[Not Available],0.6,1.2,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-67-6217,[Not Available],[Not Available],0.7,1.1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-69-7760,[Not Available],[Not Available],0.7,1.1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-69-7761,[Not Available],[Not Available],0.7,1.3,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-69-7763,[Not Available],[Not Available],0.5,0.9,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-69-7764,[Not Available],[Not Available],0.6,0.6,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-69-7765,[Not Available],[Not Available],1,1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-69-7973,[Not Available],[Not Available],0.6,0.9,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-69-7974,[Not Available],[Not Available],0.6,0.8,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-69-7978,[Not Available],[Not Available],0.8,1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-69-7979,[Not Available],[Not Available],0.6,0.9,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-69-7980,[Not Available],[Not Available],1.2,1.6,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-69-8253,[Not Available],[Not Available],0.6,1.2,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-69-8254,[Not Available],[Not Available],0.7,1.4,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-69-8255,[Not Available],[Not Available],0.8,1,[Not Available],Primary,1,0.7,[Not Available],[Not Available],A
+TCGA-69-8453,[Not Available],[Not Available],0.4,0.6,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-69-A59K,130,140,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-71-6725,[Not Available],[Not Available],1,2,[Not Available],Primary,1,0.8,[Not Available],[Not Available],A
+TCGA-71-8520,[Not Available],[Not Available],0.7,0.9,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-73-4658,[Not Available],[Not Available],1,1.4,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-73-4659,[Not Available],[Not Available],1,1.2,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-73-4662,[Not Available],[Not Available],0.5,0.8,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-73-4666,[Not Available],[Not Available],0.6,0.7,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-73-4668,[Not Available],[Not Available],0.3,0.6,[Not Available],Primary,1,0.1,[Not Available],[Not Available],A
+TCGA-73-4670,[Not Available],[Not Available],1,1.2,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-73-4675,[Not Available],[Not Available],1.1,1.6,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-73-4676,[Not Available],[Not Available],0.7,1.5,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-73-4677,[Not Available],[Not Available],0.7,0.9,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-73-7498,[Not Available],[Not Available],0.6,1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-73-7499,[Not Available],[Not Available],0.9,2.3,[Not Available],Primary,1,0.7,[Not Available],[Not Available],A
+TCGA-73-A9RS,162,160,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-75-5122,[Not Available],[Not Available],0.8,0.8,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-75-5125,[Not Available],[Not Available],0.7,1.6,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-75-5126,[Not Available],[Not Available],0.7,1.2,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-75-5146,[Not Available],[Not Available],0.5,0.8,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-75-5147,[Not Available],[Not Available],0.6,0.7,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-75-6203,[Not Available],[Not Available],0.5,1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-75-6205,[Not Available],[Not Available],0.5,0.7,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-75-6206,[Not Available],[Not Available],0.6,0.7,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-75-6207,[Not Available],[Not Available],0.4,1,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-75-6211,[Not Available],[Not Available],0.6,0.8,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-75-6212,[Not Available],[Not Available],0.8,2.5,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-75-6214,[Not Available],[Not Available],0.8,1.9,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-75-7025,[Not Available],[Not Available],0.5,0.6,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-75-7027,[Not Available],[Not Available],0.7,1.4,[Not Available],Primary,1,0.7,[Not Available],[Not Available],A
+TCGA-75-7030,[Not Available],[Not Available],0.6,0.6,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-75-7031,[Not Available],[Not Available],0.6,0.9,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-78-7143,[Not Available],[Not Available],1,1.1,[Not Available],Primary,1,0.7,[Not Available],[Not Available],A
+TCGA-78-7145,[Not Available],[Not Available],1,1.4,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-78-7146,[Not Available],[Not Available],0.8,0.8,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-78-7147,[Not Available],[Not Available],0.8,0.9,[Not Available],Primary,1,0.8,[Not Available],[Not Available],A
+TCGA-78-7148,[Not Available],[Not Available],0.8,0.9,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-78-7149,[Not Available],[Not Available],0.9,1,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-78-7150,[Not Available],[Not Available],0.8,0.9,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-78-7152,[Not Available],[Not Available],0.7,0.9,[Not Available],Primary,1,0.7,[Not Available],[Not Available],A
+TCGA-78-7153,[Not Available],[Not Available],0.8,1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-78-7154,[Not Available],[Not Available],0.5,0.9,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-78-7155,[Not Available],[Not Available],0.7,0.9,[Not Available],Primary,1,0.7,[Not Available],[Not Available],A
+TCGA-78-7156,[Not Available],[Not Available],0.7,1.1,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-78-7158,[Not Available],[Not Available],0.9,1.1,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-78-7159,[Not Available],[Not Available],1,1.1,[Not Available],Primary,1,0.7,[Not Available],[Not Available],A
+TCGA-78-7160,[Not Available],[Not Available],0.8,0.8,[Not Available],Primary,1,0.7,[Not Available],[Not Available],A
+TCGA-78-7161,[Not Available],[Not Available],0.6,1,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-78-7162,[Not Available],[Not Available],0.6,0.7,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-78-7163,[Not Available],[Not Available],0.7,1.2,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-78-7166,[Not Available],[Not Available],0.6,0.9,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-78-7167,[Not Available],[Not Available],0.6,0.7,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-78-7220,[Not Available],[Not Available],0.6,0.7,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-78-7535,[Not Available],[Not Available],1,1.2,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-78-7536,[Not Available],[Not Available],0.7,1.1,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-78-7537,[Not Available],[Not Available],0.6,0.9,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-78-7539,[Not Available],[Not Available],0.8,0.9,[Not Available],Primary,1,0.7,[Not Available],[Not Available],A
+TCGA-78-7540,[Not Available],[Not Available],0.8,1.3,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-78-7542,[Not Available],[Not Available],0.8,1,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-78-7633,[Not Available],[Not Available],0.9,1,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-78-8640,[Not Available],[Not Available],0.7,0.8,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-78-8648,[Not Available],[Not Available],0.8,1.2,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-78-8655,[Not Available],[Not Available],0.6,0.8,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-78-8660,[Not Available],[Not Available],0.8,1.1,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-78-8662,[Not Available],[Not Available],[Not Available],[Not Available],[Not Available],Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-80-5607,[Not Available],[Not Available],0.8,1.4,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-80-5608,[Not Available],[Not Available],0.7,1.2,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-80-5611,[Not Available],[Not Available],0.8,1.2,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-83-5908,[Not Available],[Not Available],1,1.9,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-86-6562,[Not Available],[Not Available],1.4,1.9,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-86-6851,[Not Available],[Not Available],0.7,1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-86-7701,[Not Available],[Not Available],1.7,1.8,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-86-7711,[Not Available],[Not Available],1.5,1.8,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-86-7713,[Not Available],[Not Available],1.2,3,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-86-7714,[Not Available],[Not Available],1,1.5,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-86-7953,[Not Available],[Not Available],1.2,3,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-86-7954,[Not Available],[Not Available],1,1.1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-86-7955,[Not Available],[Not Available],1.5,2.1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-86-8054,[Not Available],[Not Available],1.1,1.7,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-86-8055,[Not Available],[Not Available],1.3,3.2,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-86-8056,[Not Available],[Not Available],1.1,1.4,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-86-8073,[Not Available],[Not Available],1.5,1.8,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-86-8074,[Not Available],[Not Available],1.3,2.3,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-86-8075,[Not Available],[Not Available],1.6,1.8,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-86-8076,[Not Available],[Not Available],1.2,1.7,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-86-8278,[Not Available],[Not Available],1.2,2,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-86-8279,[Not Available],[Not Available],1.5,1.8,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-86-8280,[Not Available],[Not Available],1.4,2.8,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-86-8281,[Not Available],[Not Available],0.6,1.6,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-86-8358,[Not Available],[Not Available],1.4,1.7,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-86-8359,[Not Available],[Not Available],2,2.5,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-86-8585,[Not Available],[Not Available],2,2.2,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-86-8668,[Not Available],[Not Available],1.6,2,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-86-8669,[Not Available],[Not Available],1.5,2.2,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-86-8671,[Not Available],[Not Available],0.8,0.9,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-86-8672,[Not Available],[Not Available],1.7,2.2,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-86-8673,[Not Available],[Not Available],1.8,2.9,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-86-8674,[Not Available],[Not Available],1.5,2.5,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-86-A456,90,580,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-86-A4D0,133,920,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-86-A4JF,140,940,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-86-A4P7,220,350,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-86-A4P8,98,360,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-91-6828,[Not Available],[Not Available],0.8,1.5,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-91-6829,[Not Available],[Not Available],0.5,0.9,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-91-6830,[Not Available],[Not Available],0.7,1.6,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-91-6831,[Not Available],[Not Available],0.6,0.6,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-91-6835,[Not Available],[Not Available],0.5,1.1,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-91-6836,[Not Available],[Not Available],0.6,0.9,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-91-6840,[Not Available],[Not Available],0.5,0.7,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-91-6847,[Not Available],[Not Available],0.4,1.1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-91-6848,[Not Available],[Not Available],0.8,1.1,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-91-6849,[Not Available],[Not Available],0.5,1.5,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-91-7771,[Not Available],[Not Available],0.9,3,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-91-8496,[Not Available],[Not Available],0.4,2,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-91-8497,[Not Available],[Not Available],0.7,1.8,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-91-8499,[Not Available],[Not Available],0.6,1.2,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-91-A4BC,225,280,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-91-A4BD,162,220,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-93-7347,[Not Available],[Not Available],1,1,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-93-7348,[Not Available],[Not Available],1.2,1.5,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-93-8067,[Not Available],[Not Available],1.4,1.6,[Not Available],Primary,1,0.1,[Not Available],[Not Available],A
+TCGA-93-A4JN,209,330,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-93-A4JO,230,390,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-93-A4JP,72,450,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-93-A4JQ,57,290,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-95-7039,[Not Available],[Not Available],0.8,0.8,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-95-7043,[Not Available],[Not Available],0.6,0.6,[Not Available],Primary,1,0.1,[Not Available],[Not Available],A
+TCGA-95-7562,[Not Available],[Not Available],0.5,0.8,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-95-7567,[Not Available],[Not Available],0.7,1,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-95-7944,[Not Available],[Not Available],0.7,1.3,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-95-7947,[Not Available],[Not Available],0.6,1.2,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-95-7948,[Not Available],[Not Available],0.7,1.3,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-95-8039,[Not Available],[Not Available],0.5,0.9,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-95-8494,[Not Available],[Not Available],1.2,1.4,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-95-A4VK,155,140,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-95-A4VN,23,150,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-95-A4VP,68,640,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-97-7546,[Not Available],[Not Available],0.6,1.2,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-97-7547,[Not Available],[Not Available],0.2,0.7,[Not Available],Primary,1,0.1,[Not Available],[Not Available],A
+TCGA-97-7552,[Not Available],[Not Available],1,2.2,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-97-7553,[Not Available],[Not Available],1,1.5,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-97-7554,[Not Available],[Not Available],1,1.7,[Not Available],Primary,1,0.6,[Not Available],[Not Available],A
+TCGA-97-7937,[Not Available],[Not Available],1.1,1.1,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-97-7938,[Not Available],[Not Available],0.8,1.2,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-97-7941,[Not Available],[Not Available],1,1.3,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-97-8171,[Not Available],[Not Available],0.8,1.9,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-97-8172,[Not Available],[Not Available],1.2,1.7,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-97-8174,[Not Available],[Not Available],1.5,1.5,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-97-8175,[Not Available],[Not Available],1,2,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-97-8176,[Not Available],[Not Available],2,2.1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-97-8177,[Not Available],[Not Available],1.7,2.4,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-97-8179,[Not Available],[Not Available],0.6,0.8,[Not Available],Primary,1,0.2,[Not Available],[Not Available],A
+TCGA-97-8547,[Not Available],[Not Available],1.2,1.9,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-97-8552,[Not Available],[Not Available],1.1,1.6,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-97-A4LX,127,50,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-97-A4M0,136,150,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-97-A4M1,126,70,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-97-A4M2,93,180,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-97-A4M3,99,120,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-97-A4M5,104,200,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-97-A4M6,115,180,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-97-A4M7,132,160,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-99-7458,[Not Available],[Not Available],0.7,1.2,[Not Available],Primary,1,0.7,[Not Available],[Not Available],A
+TCGA-99-8025,[Not Available],[Not Available],0.8,1.2,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-99-8028,[Not Available],[Not Available],0.6,1.3,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-99-8032,[Not Available],[Not Available],0.7,1.3,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-99-8033,[Not Available],[Not Available],0.6,0.6,[Not Available],Primary,1,0.5,[Not Available],[Not Available],A
+TCGA-99-AA5R,323,90,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-J2-8192,[Not Available],[Not Available],0.7,1,[Not Available],Primary,1,0.3,[Not Available],[Not Available],A
+TCGA-J2-8194,[Not Available],[Not Available],0.6,0.8,[Not Available],Primary,1,0.4,[Not Available],[Not Available],A
+TCGA-J2-A4AD,178,110,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-J2-A4AE,177,90,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-J2-A4AG,129,280,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-L4-A4E5,227,160,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-L4-A4E6,22,210,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-L9-A443,50,230,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-L9-A444,8,150,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-L9-A50W,205,240,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-L9-A5IP,94,140,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-L9-A743,97,520,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-L9-A7SV,42,220,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-L9-A8F4,93,190,[Not Available],[Not Available],FALSE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-MN-A4N1,330,140,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-MN-A4N4,664,120,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-MN-A4N5,408,80,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-MP-A4SV,3964,160,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-MP-A4SW,3723,130,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-MP-A4SY,3620,130,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-MP-A4T2,3237,240,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-MP-A4T4,2982,440,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-MP-A4T6,2778,220,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-MP-A4T7,2710,280,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-MP-A4T8,2352,130,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-MP-A4T9,2332,230,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-MP-A4TA,2159,120,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-MP-A4TC,1604,230,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-MP-A4TD,1471,230,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-MP-A4TE,1009,270,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-MP-A4TF,784,240,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-MP-A4TH,78,200,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-MP-A4TI,780,200,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-MP-A4TJ,2204,270,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-MP-A4TK,3744,170,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-MP-A5C7,1555,170,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-NJ-A4YF,1819,90,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-NJ-A4YG,1691,280,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-NJ-A4YI,1385,200,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-NJ-A4YP,615,70,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-NJ-A4YQ,592,80,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-NJ-A55A,1199,160,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-NJ-A55O,428,150,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-NJ-A55R,499,200,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-NJ-A7XG,72,140,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-O1-A52J,2000,50,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
+TCGA-S2-AA1A,95,170,[Not Available],[Not Available],TRUE,Primary,1,[Not Available],[Not Available],[Not Available],A
