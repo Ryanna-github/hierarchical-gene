@@ -5,12 +5,15 @@
 kt*
 
 # data & log
+!real*.csv
 data*
 /data/
 *.csv
 *.out
 /*.csv
 /*.out
+# !data/real*.csv
+
 
 # doc
 doc/*/*[!pdf]
