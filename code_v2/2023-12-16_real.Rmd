@@ -332,6 +332,7 @@ Z_pca <- as.matrix(Z) %*% pca$rotation
 
 ```{r}
 Z_pca_20 <- Z_pca[,1:20]
+Z_pca_30 <- Z_pca[,1:30]
 ```
 
 
@@ -339,6 +340,7 @@ Z_pca_20 <- Z_pca[,1:20]
 ```{r}
 write.csv(X, file = "../data/realX_image_6.csv", row.names = FALSE)
 write.csv(Z_pca_20, file = "../data/realZ_gene_20.csv", row.names = FALSE)
+write.csv(Z_pca_30, file = "../data/realZ_gene_30.csv", row.names = FALSE)
 write.csv(df_pivot_use, file = "../data/y.csv", row.names = FALSE)
 ```
 
@@ -483,7 +485,6 @@ for(trail_idx in 1:trail_num){
               "hier"))
 }
 ```
-
 
 
 

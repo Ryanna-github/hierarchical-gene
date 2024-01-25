@@ -84,7 +84,9 @@ bic_score <- function(q_c_matrix, coef_est, est_main_grn, est_sub_grn, rho_est){
 }
 
 ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed, 
-                       coef_full_init, eps = 1e-7){
+                       coef_full_init, iter_type, iter_max, plot_performance = FALSE,
+                       eps = 1e-7, eps_abs = 1e-2, eps_rel = 1e-3){
+  # iter_type = "fix" 固定迭代轮次, iter_type = "stop" 使用迭代停止准则判断
   tau <- ifelse(tau == 0, 1e-4, tau) # 防止 tau == 0 导致分母为0情况
   sigma_est = ifelse(sigma_est == 0, 0.01, sigma_est)
   rho_init <- rep(1, K_up)/sigma_est
@@ -128,11 +130,16 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
   dual_zeta_init <- matrix(0, nrow = (q)*K_up*(K_up-1)/2, ncol = 1)
   dual_zeta_list <- list(dual_zeta_init)
   
+  resi_dual_list <- list(NULL)
+  resi_prim_list <- list(NULL)
+  eps_dual_list <- list(NULL)
+  eps_prim_list <- list(NULL)
+  
   case <- NULL
   cu_tracker <- NULL
   cv_tracker <- NULL
   
-  for(iter in 2:100){
+  for(iter in 2:iter_max){
     rho_est <- rho_list[[iter-1]]
     coef_full_est <- coef_full_list[[iter-1]]
     coef_beta_est <- coef_full_est[1:p,]
@@ -237,7 +244,6 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
         case <- c(case, case_kk)
         cu_tracker <- c(cu_tracker, cu)
         cv_tracker <- c(cv_tracker, cv)
-      
         
         if(case_kk == 1){
           diff_v_est[((ikk-1)*p+1):(ikk*p)] <- v_kk2
@@ -264,6 +270,7 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
     diff_v_list[[iter]] <- diff_v_est
     diff_w_list[[iter]] <- diff_w_est
     
+    
     # xi,zeta 的更新
     dual_xi_list[[iter]] <- dual_xi_list[[iter-1]] +
       (matrix(H_p%*%as.vector(coef_beta_est),ncol=1) - diff_v_list[[iter]])
@@ -277,6 +284,30 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
     # dual_zeta_list[[iter]] <- dual_zeta_list[[iter-1]] +
     #   tau*(matrix(H_q%*%as.vector(coef_alpha_est),ncol=1) - diff_w_list[[iter]])
     
+    # stopping criteria
+    if(iter_type == "stop"){
+      resi_prim <- rbind(matrix(H_p%*%as.vector(coef_beta_est),ncol=1) - diff_v_list[[iter]],
+                         matrix(H_q%*%as.vector(coef_alpha_est),ncol=1) - diff_w_list[[iter]]) %>%
+        norm(type = '2')
+      resi_dual <- rbind(-tau * t(H_p) %*% (diff_v_list[[iter]] - diff_v_list[[iter-1]]),
+                         -tau * t(H_q) %*% (diff_w_list[[iter]] - diff_w_list[[iter-1]])) %>%
+        norm(type = '2')
+      resi_prim_list[[iter]] <- resi_prim
+      resi_dual_list[[iter]] <- resi_dual
+      
+      eps_prim <- sqrt(K_up*(K_up-1)/2*(p+q))*eps_abs + 
+        eps_rel*max(norm(rbind(H_p%*%as.numeric(coef_beta_est), H_q%*%as.numeric(coef_alpha_est)), type = '2'), 
+                    norm(rbind(diff_v_est, diff_w_est), type = '2'))
+      eps_dual <- sqrt(K_up*(p+q))*eps_abs +
+        eps_rel*norm(rbind(t(H_p)%*%dual_xi_list[[iter]], t(H_q)%*%dual_zeta_list[[iter]]), type = '2')
+      eps_prim_list[[iter]] <- eps_prim
+      eps_dual_list[[iter]] <- eps_dual
+      
+      if((resi_prim < eps_prim) & (resi_dual < eps_dual)){
+        break
+      }
+    }
+
     pi_est <- apply(q_c_matrix, 2, sum)/n
     pi_list[[iter]] <- pi_est
     
@@ -303,6 +334,7 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
   # cdist <- ifelse(ncol(coef$coef_full) == ncol(coef_full_ori_list[[iter]]), 
   #                 coef_dist(coef_full_ori_list[[iter]], coef$coef_full),
   #                 NaN)
+  
   cdist <- tryCatch({
     coef_dist(coef_full_ori_list[[iter]], coef$coef_full)
   }, error = function(err) {NaN})
@@ -315,9 +347,22 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
   for(t in 1:dim(case_table)){
     case_table_full[as.integer(names(case_table)[t])] <- case_table[names(case_table)[t]]
   }
-  # 估计参数距离真实参数距离的可视化展示
-  # plot(unlist(lapply(coef_full_ori_list, coef_dist, coef$coef_full)), ylab = "",
-  #      main = paste(q_c_seed, aa, lambda_1, lambda_2, lambda_3, tau))
+  
+  if(plot_performance){
+    plot(1:iter, c(resi_prim_list[[2]], unlist(resi_prim_list)), col = "Black", main = "primary")
+    points(c(eps_prim_list[[2]], unlist(eps_prim_list)), col = "DeepPink")
+    lines(c(resi_prim_list[[2]], unlist(resi_prim_list)), col = "Black")
+    lines(c(eps_prim_list[[2]], unlist(eps_prim_list)), col = "DeepPink")
+    
+    plot(1:iter, c(resi_dual_list[[2]], unlist(resi_dual_list)), col = "Black", main = "dual")
+    points(c(eps_dual_list[[2]], unlist(eps_dual_list)), col = "DeepPink")
+    lines(c(resi_dual_list[[2]], unlist(resi_dual_list)), col = "Black")
+    lines(c(eps_dual_list[[2]], unlist(eps_dual_list)), col = "DeepPink")
+    # 估计参数距离真实参数距离的可视化展示
+    # plot(unlist(lapply(coef_full_ori_list, coef_dist, coef$coef_full)), ylab = "",
+    #      main = paste(q_c_seed, aa, lambda_1, lambda_2, lambda_3, tau))
+  }
+  
   ci_est <- apply(q_c_matrix, 1, which.max)
   sc_score <- tryCatch({
     sc(ci_est, ci_sim)
@@ -378,7 +423,9 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
               est_sub_grn = sub_group_info$gr.num,
               case_table_full = case_table_full,
               valid_hier = valid_hier,
-              group_detail = group_detail))
+              group_detail = group_detail,
+              iter_total = iter,
+              iter_type = iter_type))
 }
 
 # 根据 beta（alpha）v（w）返回组别个数
@@ -472,7 +519,9 @@ tuning_hyper <- function(l2_seq, l3_seq, fix_para, coef_full_init, grid = TRUE, 
                           lambda_2 = lambda_2,
                           lambda_3 = lambda_3,
                           q_c_seed = fix_para$q_c_seed,
-                          coef_full_init = coef_full_init)
+                          coef_full_init = coef_full_init,
+                          iter_type = 'stop',
+                          iter_max = 200)
       trail_record[[trail_idx]] <- trail
       # bic_record[trail_idx] <- trail$BIC.var
       
@@ -498,6 +547,8 @@ tuning_hyper <- function(l2_seq, l3_seq, fix_para, coef_full_init, grid = TRUE, 
                   trail$valid_hier,
                   trail$group_detail,
                   trail$case_table_full,
+                  trail$iter_total,
+                  trail$iter_type,
                   "hier"))
     }
     return(result)

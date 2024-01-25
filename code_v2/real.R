@@ -1,46 +1,62 @@
 library(dplyr)
 library(Matrix)
+library(readr)
+library(glue)
 library(flexmix)
-# source("tools.R")
-# source("func.R")
-source("hierarchical-gene/code_v2/tools.R")
-source("hierarchical-gene/code_v2/func.R")
+source("tools.R")
+source("func.R")
+# source("hierarchical-gene/code_v2/tools.R")
+# source("hierarchical-gene/code_v2/func.R")
 library(argparse)
-parser <- ArgumentParser()
 
+parser <- ArgumentParser()
+parser$add_argument("-n", default = 160)
+parser$add_argument("-p", default = 6)
+parser$add_argument("-q", default = 30)
 parser$add_argument("-e", "--epsilon_sd", default = 0.5, help = "error")
 parser$add_argument("--path", default="temp.csv",  help="csv result save path")
 parser$add_argument("--K_up", default=8,  help="Upper class number")
 
 args <- parser$parse_args()
+n <- as.numeric(args$n)
+p <- as.numeric(args$p)
+q <- as.numeric(args$q)
 epsilon_sd <- as.numeric(args$e)
 sigma_est <- as.numeric(args$e)
 save_path <- args$path
 K_up <- as.numeric(args$K_up)
 
-# data
-# X <- read.csv("../data/realX_image_6.csv") %>% as.matrix()
-# Z <- read.csv("../data/realZ_gene_20.csv") %>% as.matrix()
-# y <- read.csv("../data/y.csv")$fev1
 
-X <- read.csv("hierarchical-gene/data/realX_image_6.csv") %>% as.matrix()
-Z <- read.csv("hierarchical-gene/data/realZ_gene_20.csv") %>% as.matrix()
-y <- read.csv("hierarchical-gene/data/y.csv")$fev1
-data <- cbind(X, Z)
-
-n <- 160
-p <- 6
-q <- 20
 dt_seed <- NaN
 q_c_seed_max <- 10
 
 if(0){
-  K_up <- 8
+  n <- 160
+  p <- 6
+  q <- 30
+  epsilon_sd <- 0.5
+  sigma_est <- 0.5
   save_path <- "temp.csv"
-  epsilon_sd <- 0.4
-  sigma_est <- as.numeric(epsilon_sd)
-  q_c_seed <- 9
+  K_up <- 8
 }
+
+# data
+X <- read.csv("../data/realX_image_6.csv") %>% as.matrix()
+Z <- read.csv(glue("../data/realZ_gene_{q}.csv")) %>% as.matrix()
+y <- read.csv("../data/y.csv")$fev1
+
+# X <- read.csv("hierarchical-gene/data/realX_image_6.csv") %>% as.matrix()
+# Z <- read.csv("hierarchical-gene/data/realZ_gene_20.csv") %>% as.matrix()
+# y <- read.csv("hierarchical-gene/data/y.csv")$fev1
+data <- cbind(X, Z)
+
+# if(0){
+#   K_up <- 8
+#   save_path <- "temp.csv"
+#   epsilon_sd <- 0.4
+#   sigma_est <- as.numeric(epsilon_sd)
+#   q_c_seed <- 9
+# }
 
 
 comb_pair <- combn(K_up, 2)
@@ -54,7 +70,7 @@ H_q <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
 colnames_all <- c("dt_seed", "q_c_seed", "aa", "tau", "l1", "l2", "l3",
                   "cdist", "ci_prob_mean", "mse", "sc", "fit_sum", "fit_mean",
                   "penal", "bic_sum", "bic_mean", "main_grn", "sub_grn", "valid_hier", 
-                  "group_detail", paste0("case_", 1:4), "tag")
+                  "group_detail", paste0("case_", 1:4), "iter_total", "iter_type","tag")
 
 for(q_c_seed in 1:q_c_seed_max){
   

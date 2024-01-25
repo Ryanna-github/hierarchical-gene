@@ -23,9 +23,9 @@ q <- 40
 epsilon_sd <- 0.5
 signal_size <- 1
 beta_vlen <- 3
-alpha_vlen <- 2
+alpha_vlen <- 10
 # dt_seed <- 9
-K_up <- 6
+K_up <- 4
 for(dt_seed in seq(9, 49, 10)){
   prefix <- "hierarchical-gene/code_v2/"
   # prefix <- ""
@@ -43,14 +43,14 @@ for(dt_seed in seq(9, 49, 10)){
 library(glue)
 n <- 160
 p <- 6
-q <- 20
+q <- 30
 epsilon_sd <- 0.5
 K_up <- 8
 prefix <- "hierarchical-gene/code_v2/"
 prefix <- ""
 path_pre <- glue("{prefix}{Sys.Date()}_real_n{n}_p{p}_q{q}_eps{epsilon_sd}_Kup{K_up}_fminit")
 # path_pre <- glue("2023-07-31_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_fminit")
-cmd <- glue("Rscript --verbose {prefix}real.R -e {epsilon_sd} --K_up {K_up} --path {path_pre}.csv >> {path_pre}_log.out")
+cmd <- glue("Rscript --verbose {prefix}real.R -n {n} -p {p} -q {q} -e {epsilon_sd} --K_up {K_up} --path {path_pre}.csv >> {path_pre}_log.out")
 print(cmd)
 ```
 
@@ -162,7 +162,10 @@ library(simplermarkdown)
 # df <- read.csv("2023-12-10_n500_p40_q4_bl3_al2_eps0.5_Kup6_fminit.csv")
 # df <- read.csv("2023-12-12_n500_p80_q4_bl3_al2_eps0.5_Kup4_fminit.csv")
 # df <- read.csv("2023-12-18_n500_p8_q40_bl3_al2_eps0.5_Kup4_fminit.csv")
-df <- read.csv("2023-12-18_n500_p8_q40_bl3_al2_eps0.5_Kup6_fminit.csv")
+# df <- read.csv("2023-12-18_n500_p8_q40_bl3_al2_eps0.5_Kup6_fminit.csv")
+# df <- read.csv("2023-12-28_n500_p8_q40_bl3_al10_eps0.5_Kup4_fminit.csv")
+
+df <- read.csv("2023-12-29_real_n160_p6_q30_eps0.5_Kup8_fminit.csv")
 # 以下废弃，仅针对很久版本的数据记录样式
 # df <- df %>% mutate(method = ifelse(q_c_seed < 100, 1, 0))
 # df$method <- ifelse(df$q_c_seed == 111, -1, df$method)

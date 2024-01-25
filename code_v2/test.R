@@ -112,7 +112,7 @@ H_q <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
 colnames_all <- c("dt_seed", "q_c_seed", "aa", "tau", "l1", "l2", "l3",
                   "cdist", "ci_prob_mean", "mse", "sc", "fit_sum", "fit_mean",
                   "penal", "bic_sum", "bic_mean", "main_grn", "sub_grn", "valid_hier", 
-                  "group_detail", paste0("case_", 1:4), "tag")
+                  "group_detail", paste0("case_", 1:4), "iter_total", "iter_type","tag")
 
 
 for(q_c_seed in 1:q_c_seed_max){

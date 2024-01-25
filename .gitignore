@@ -2,6 +2,14 @@
 /reference/
 /GGM-PF/
 
+# thesis
+
+# thesis
+thesis/*/
+thesis/*
+!thesis/*.pdf
+!thesis/*.tex
+
 # kaitibaogao
 kt*
 
@@ -13,6 +21,7 @@ kt*
 # *.out
 code_v2/*.csv
 code_v2/*.out
+code_v2/*.pdf
 # !data/real*.csv
 
 
