@@ -56,6 +56,13 @@ sc <- function(ci_est, ci_true){
   return(mean(scs))
 }
 
+ari <- function(ci_est, ci_true){
+  if(length(ci_est) != length(ci_true)){
+    stop("Wrong len of ci's")
+  }
+  return(adjustedRandIndex(ci_est, ci_true))
+}
+
 ## -------------------------------- MSE ----------------------------------
 mse <- function(y_true, y_est){
   return(sum((y_true-y_est)**2))

@@ -26,11 +26,13 @@ flexmix_init <- function(q_c_seed, minprior_value = 0, tag = "flexmix"){
     coef_dist(coef_est, coef$coef_full)
   }, error = function(err) {NaN})
   sc_score <- sc(m_glm@cluster, ci_sim)
+  ari_score <- ari(m_glm@cluster, ci_sim)
   print(coef_est)
   return(list(cdist = cdist, 
               coef_full_ori = coef_est,
               est_sub_grn = K_est,
               sc_score = sc_score,
+              ari_score = ari_score,
               tag = tag))
 }
 
@@ -56,12 +58,16 @@ random_init <- function(q_c_seed, tag = "random"){
   sc_score <- tryCatch({
     sc(ci_est, ci_sim)
   }, error = function(err) {NaN})
+  ari_score <- tryCatch({
+    ari(ci_est, ci_sim)
+  }, error = function(err) {NaN})
   print(coef_est)
   return(list(cdist = cdist,
               ci_prob_mean = ci_prob_mean,
               coef_full_ori = coef_est,
               est_sub_grn = K_up,
               sc_score = sc_score,
+              ari_score = ari_score,
               tag = tag))
 }
 
@@ -84,7 +90,8 @@ bic_score <- function(q_c_matrix, coef_est, est_main_grn, est_sub_grn, rho_est){
 }
 
 ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed, 
-                       coef_full_init, iter_type, iter_max, plot_performance = FALSE,
+                       coef_full_init, iter_type, iter_max, rho_clip = 2,
+                       plot_performance = FALSE,
                        eps = 1e-7, eps_abs = 1e-2, eps_rel = 1e-3){
   # iter_type = "fix" 固定迭代轮次, iter_type = "stop" 使用迭代停止准则判断
   tau <- ifelse(tau == 0, 1e-4, tau) # 防止 tau == 0 导致分母为0情况
@@ -186,14 +193,21 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
     }
     coef_full_est <- rbind(coef_beta_est, coef_alpha_est)
     
+    # rho_k 的更新
+    update_step = ifelse(iter > 10, 0.4, 0)
+    for(k in 1:K_up){
+      W_k <- diag(q_c_matrix[,k])
+      onen <- matrix(1, nrow = n, ncol = 1)
+      AA <- as.numeric(t(y) %*% W_k %*% y)**2
+      BB <- as.numeric(-t(onen) %*% W_k %*% (X%*%coef_beta_est[,k] + Z%*%coef_alpha_est[,k]))
+      CC <- as.numeric(-n*t(onen) %*% W_k %*% onen)
+      rho_k_est <- (-BB+sqrt(BB**2-4*AA*CC))/(2*AA)
+      rho_k_est <- ifelse(rho_k_est <= 1, 1, min(rho_clip, rho_k_est))
+      rho_est[k] <- update_step*rho_k_est + (1-update_step)*rho_est[k]
+    }
     
-    # rho 的更新
-    # rho_list[[iter]] <- rho_list[[iter-1]]
-    # coef_full_list[[iter]] <- coef_full_est
-    # coef_full_ori_list[[iter]] <- coef_full_est/extend_x_to_row(rho_est,p+q)
     rho_list[[iter]] <- rho_est
     coef_full_list[[iter]] <- coef_full_est
-
     coef_full_ori_list[[iter]] <- coef_full_est/extend_x_to_row(rho_est,p+q)
     
     diff_v_est <- matrix(H_p %*% as.vector(coef_beta_est), ncol = 1)
@@ -269,7 +283,6 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
     }
     diff_v_list[[iter]] <- diff_v_est
     diff_w_list[[iter]] <- diff_w_est
-    
     
     # xi,zeta 的更新
     dual_xi_list[[iter]] <- dual_xi_list[[iter-1]] +
@@ -359,14 +372,18 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
     lines(c(resi_dual_list[[2]], unlist(resi_dual_list)), col = "Black")
     lines(c(eps_dual_list[[2]], unlist(eps_dual_list)), col = "DeepPink")
     # 估计参数距离真实参数距离的可视化展示
-    # plot(unlist(lapply(coef_full_ori_list, coef_dist, coef$coef_full)), ylab = "",
-    #      main = paste(q_c_seed, aa, lambda_1, lambda_2, lambda_3, tau))
+    plot(unlist(lapply(coef_full_ori_list, coef_dist, coef$coef_full)), ylab = "",
+         main = paste(q_c_seed, aa, lambda_1, lambda_2, lambda_3, tau))
   }
   
   ci_est <- apply(q_c_matrix, 1, which.max)
   sc_score <- tryCatch({
     sc(ci_est, ci_sim)
   }, error = function(err) {NaN})
+  ari_score <- tryCatch({
+    ari(ci_est, ci_sim)
+  }, error = function(err) {NaN})
+  
   ci_prob <- apply(q_c_matrix, 1, max)
   ci_matrix <- t(apply(q_c_matrix, 1, function(x){as.numeric(x == max(x))}))
   y_hat <- rowSums(ci_matrix * data%*%coef_full_list[[iter]])
@@ -407,7 +424,6 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
               ci_prob_mean = mean(ci_prob),
               q_c_matrix = q_c_matrix,
               coef_full_ori = coef_full_ori_list[[iter]],
-              rho_est = rho_list[[iter]],
               # coef_full = coef_full_list[[iter]],
               mse = mse,
               # BIC.var = BIC.var,
@@ -418,9 +434,12 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
               bic_sum = bic_info$bic_sum,
               bic_mean = bic_info$bic_mean,
               sc_score = sc_score,
+              ari_score = ari_score,
               case_table_full = case_table_full,
               est_main_grn = main_group_info$gr.num,
               est_sub_grn = sub_group_info$gr.num,
+              rho_init = rho_init[1],
+              rho_est = paste0("(", paste(as.character(round(rho_list[[iter]],3)), collapse = ","), ")"),
               case_table_full = case_table_full,
               valid_hier = valid_hier,
               group_detail = group_detail,
@@ -536,6 +555,7 @@ tuning_hyper <- function(l2_seq, l3_seq, fix_para, coef_full_init, grid = TRUE, 
                   trail$ci_prob_mean,
                   trail$mse,
                   trail$sc_score,
+                  trail$ari_score,
                   # trail$BIC.var,
                   trail$fit_sum,
                   trail$fit_mean,
@@ -544,6 +564,8 @@ tuning_hyper <- function(l2_seq, l3_seq, fix_para, coef_full_init, grid = TRUE, 
                   trail$bic_mean,
                   trail$est_main_grn,
                   trail$est_sub_grn,
+                  trail$rho_init,
+                  trail$rho_est,
                   trail$valid_hier,
                   trail$group_detail,
                   trail$case_table_full,

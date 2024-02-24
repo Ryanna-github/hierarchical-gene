@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 > 进行单轮实验，分析封装函数的具体表现
 
 ```{r}
+rm(list = ls(all = TRUE))
 library(ggplot2)
 library(dplyr)
 library(Matrix)
@@ -27,7 +28,8 @@ n <- 500
 p <- 8
 q <- 40
 epsilon_sd <- 0.5
-sigma_est <- as.numeric(epsilon_sd)
+epsilon_sd_init <- 0.5
+sigma_est <- as.numeric(epsilon_sd_init)
 signal_size <- 1
 beta_vlen <- 3
 alpha_vlen <- 2
@@ -76,8 +78,9 @@ H_q <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
 
 # =============================== result =================================
 colnames_all <- c("dt_seed", "q_c_seed", "aa", "tau", "l1", "l2", "l3",
-                  "cdist", "ci_prob_mean", "mse", "sc", "fit_sum", "fit_mean",
-                  "penal", "bic_sum", "bic_mean", "main_grn", "sub_grn", "valid_hier", 
+                  "cdist", "ci_prob_mean", "mse", "sc", "ari", "fit_sum", "fit_mean",
+                  "penal", "bic_sum", "bic_mean", "main_grn", "sub_grn", 
+                  "rho_init", "rho_est", "valid_hier", 
                   "group_detail", paste0("case_", 1:4), 
                   "iter_total", "iter_type", "tag")
 
@@ -90,31 +93,32 @@ result$dt_seed <- dt_seed
 # 初始化
 
 ```{r}
-q_c_seed <- 9
-minprior_value <- 0
-set.seed(q_c_seed)
-pi_init <- rep(1/K_up, K_up)
-rho_init <- rep(1, K_up)/sigma_est
-q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
-q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
-
-tryCatch({
-    flemix_forinit <- flexmix_init(q_c_seed, 0)
-  }, error = function(err) {
-    cat("Random Init\n")
-    flemix_forinit <- random_init(q_c_seed)
-  })
-
-m_glm <- tryCatch({
-  flexmix(y~cbind(X, Z)-1, cluster = q_c_matrix,
-          model = FLXMRglm(),
-          control = list(minprior = minprior_value))
-}, error = function(err) {
-  cat("Error occurred:", conditionMessage(err), "\n")
-  flexmix(y~cbind(X, Z)-1, k = K_up,
-          model = FLXMRglm(),
-          control = list(minprior = minprior_value))
-})
+# 防止初始化有问题，拆开检查
+# q_c_seed <- 9
+# minprior_value <- 0
+# set.seed(q_c_seed)
+# pi_init <- rep(1/K_up, K_up)
+# rho_init <- rep(1, K_up)/sigma_est
+# q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
+# q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+# 
+# tryCatch({
+#     flemix_forinit <- flexmix_init(q_c_seed, 0)
+#   }, error = function(err) {
+#     cat("Random Init\n")
+#     flemix_forinit <- random_init(q_c_seed)
+#   })
+# 
+# m_glm <- tryCatch({
+#   flexmix(y~cbind(X, Z)-1, cluster = q_c_matrix,
+#           model = FLXMRglm(),
+#           control = list(minprior = minprior_value))
+# }, error = function(err) {
+#   cat("Error occurred:", conditionMessage(err), "\n")
+#   flexmix(y~cbind(X, Z)-1, k = K_up,
+#           model = FLXMRglm(),
+#           control = list(minprior = minprior_value))
+# })
 ```
 
 
@@ -159,24 +163,19 @@ result[2,'tag'] <- flemix_best$tag
 
 # 单独实验
 
-
-dt_seed 9 q_c_seed 1 l1 0.3 l2 0.3 l3 0.3 tau 1 a 1.2 
-**** result: est_main_grn 2 est_sub_grn 4 mse 20.6995674980019 sc 0.761370741482966 BIC.var 6.49021359385721 BIC.o 3.42784772453573 valid_hier TRUE group_detail (1,1)(3,1)(4,1)(2,2)(1,3)(3,3)(4,3)(1,4)(3,4)(4,4) 
-
-dt_seed 9 q_c_seed 1 l1 0.3 l2 0.3 l3 0.3 tau 1 a 1.2 
-**** result: est_main_grn 1 est_sub_grn 4 mse 19.2231234115282 sc 0.64910621242485 BIC.var 5.55118948945863 BIC.o 3.25441508746752 valid_hier TRUE group_detail (1,1)(2,1)(3,1)(4,1)(1,2)(2,2)(3,2)(4,2)(1,3)(2,3)(3,3)(4,3)(1,4)(2,4)(3,4)(4,4) 
-
-
-
 ```{r}
+
+epsilon_sd_init <- 1
+sigma_est <- as.numeric(epsilon_sd_init)
+
 # result <- NULL
 fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
                  aa = 1.2, tau = 1)
 # l2_seq <- c(4, 6, 8)
 # l3_seq <- c(4, 5, 6, 7, 8)
 
-l2_seq <- c(2)
-l3_seq <- c(4)
+l2_seq <- c(0.5)
+l3_seq <- c(2)
 trail_set <- expand.grid(list(l3 = l3_seq, l2 = l2_seq))
 
 trail_num <- nrow(trail_set)
@@ -189,6 +188,21 @@ trail_idx <- 1
 for(trail_idx in 1:trail_num){
   lambda_2 <- trail_set$l2[trail_idx]
   lambda_3 <- trail_set$l3[trail_idx]
+  
+  aa = fix_para$aa
+  tau = fix_para$tau
+  lambda_1 = fix_para$lambda_1
+  lambda_2 = lambda_2
+  lambda_3 = lambda_3
+  q_c_seed = fix_para$q_c_seed
+  coef_full_init = coef_full_init
+  iter_type= "stop"
+  iter_max = 200
+  rho_clip = 2
+  plot_performance = TRUE
+  eps = 1e-7
+  eps_abs = 1e-2
+  eps_rel = 1e-3
   
   trail <- ADMM_trail(aa = fix_para$aa,
                       tau = fix_para$tau,
@@ -212,7 +226,8 @@ for(trail_idx in 1:trail_num){
               trail$ci_prob_mean,
               trail$mse,
               trail$sc_score,
-              trail$BIC.var,
+              trail$ari_score,
+              # trail$BIC.var,
               trail$fit_sum,
               trail$fit_mean,
               trail$penal,
@@ -220,6 +235,8 @@ for(trail_idx in 1:trail_num){
               trail$bic_mean,
               trail$est_main_grn,
               trail$est_sub_grn,
+              trail$rho_init,
+              trail$rho_est,
               trail$valid_hier,
               trail$group_detail,
               trail$case_table_full,
@@ -228,59 +245,15 @@ for(trail_idx in 1:trail_num){
               "hier"))
 }
 ```
+
 ```{r}
-source("func.R")
+tt
 ```
 
 
 
 
 
-
-
-
-
-
-
-```{r}
-Cn <- log(n*(p+q))
-q_c_matrix <- trail$q_c_matrix
-coef_est <- trail$coef_full_ori
-K_main <- trail$est_main_grn
-K_sub <- trail$est_sub_grn
-rho_est <- trail$rho_est
-y <- whole.data$y
-
-fit_error_mat = matrix(0, n, K_sub)
-pi_est <- apply(q_c_matrix, 2, sum)/n
-fit_matrix <- dnorm(y, mean = data%*%coef_est, sd = 1/extend_x_to_row(rho_est, n)) *
-      extend_x_to_row(pi_est, n)
-fit_prob <- apply(fit_matrix, 1, sum)
-fit_error <- -2 * sum(log(fit_prob + min(fit_prob[fit_prob>0])))
-bic_sum <- fit_error + Cn*log(n)/n*(K_main*p+K_sub*q)
-bic_mean <- fit_error/n + Cn*log(n)/n*(K_main*p+K_sub*q)
-```
-
-```{r}
-fit_error
-fit_error/n
-bic_sum
-bic_mean
-```
-
-
-```{r}
-fit_error
-fit_error/n
-bic_sum
-bic_mean
-```
-
-
-
-```{r}
-data %*% trail$coef_full_ori
-```
 
 
 

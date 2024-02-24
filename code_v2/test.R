@@ -3,15 +3,16 @@ library(ggplot2)
 library(dplyr)
 library(Matrix)
 library(flexmix)
+library(mclust)
 library(readr)
-# source("sim.R")
-# source("tools.R")
-# source("func.R")
-source("hierarchical-gene/code_v2/sim.R")
-source("hierarchical-gene/code_v2/tools.R")
-source("hierarchical-gene/code_v2/func.R")
+source("sim.R")
+source("tools.R")
+source("func.R")
+# source("hierarchical-gene/code_v2/sim.R")
+# source("hierarchical-gene/code_v2/tools.R")
+# source("hierarchical-gene/code_v2/func.R")
 library(argparse)
-# 
+#
 # 创建参数解析对象
 parser <- ArgumentParser()
 # Rscript test.R -n 120 --dt_seed 9 -p 8 -q 4 -e 0.5 --path 2023-07-28_eps05_fminit.csv
@@ -21,6 +22,7 @@ parser$add_argument("--dt_seed", default=9,  help="epsilon seed while generating
 parser$add_argument("-p", default = 8, help = "dim of X")
 parser$add_argument("-q", default = 4, help = "dim of Z")
 parser$add_argument("-e", "--epsilon_sd", default = 0.5, help = "error")
+parser$add_argument("--epsilon_sd_init", default = 0.5, help = "epsilon_sd initiation for estimating rho")
 parser$add_argument("-ss", "--signal_size", default = 1, help = "signal size")
 parser$add_argument("-bl", "--beta_vlen", default = 3, help = "nonzero length of beta")
 parser$add_argument("-al", "--alpha_vlen", default = 2, help = "nonzero length of alpha")
@@ -32,13 +34,19 @@ parser$add_argument("--K_up", default=4,  help="Upper class number")
 # parser$add_argument("--lambda_3", default = 5, help = "lambda 3")
 # parser$add_argument("--tau", default = 0.5, help = "ADMM penalty")
 
+# Rscript --verbose test.R -n 500 --dt_seed 9 -p 8 -q 4 --epsilon_sd 0.5
+# --epsilon_sd_init 0.5 --beta_vlen 3 --alpha_vlen 2 --K_up 4
+
 args <- parser$parse_args()
+
+print("++++++++++++++++++++++++++")
+print(args)
 
 n <- as.numeric(args$n)
 p <- as.numeric(args$p)
 q <- as.numeric(args$q)
-epsilon_sd <- as.numeric(args$e)
-sigma_est <- as.numeric(args$e)
+epsilon_sd <- as.numeric(args$epsilon_sd)
+sigma_est <- as.numeric(args$epsilon_sd_init)
 signal_size <- as.numeric(args$signal_size)
 beta_vlen <- as.numeric(args$beta_vlen)
 alpha_vlen <- as.numeric(args$alpha_vlen)
@@ -49,9 +57,10 @@ K_up <- as.numeric(args$K_up)
 # if(1){
 #   n <- 500
 #   p <- 8
-#   q <- 40
+#   q <- 4
 #   epsilon_sd <- 0.5
-#   sigma_est <- as.numeric(epsilon_sd)
+#   epsilon_sd_init <- 0.5
+#   sigma_est <- as.numeric(epsilon_sd_init)
 #   signal_size <- 1
 #   beta_vlen <- 3
 #   alpha_vlen <- 2
@@ -79,18 +88,18 @@ alpha_nonzero <- c(-3, -1, 1, 3)*signal_size
 # alpha_vlen <- 2
 
 q_c_seed_max <- 10
-group_num_main <- 2                    
-group_num_sub <- 4    
+group_num_main <- 2
+group_num_sub <- 4
 hier_struc <- list(c(1,2),c(3,4))
-prob_sub <- rep(1/group_num_sub, group_num_sub)  
+prob_sub <- rep(1/group_num_sub, group_num_sub)
 reverse <- FALSE
 
 # aa <- 1.2
 # lambda_1 <- 0.2
 # =============================== data =================================
 # set.seed(9)
-whole.data <- generate_all_data(dt_seed, n, p, q, prob_sub, hier_struc, 
-                                beta_nonzero, alpha_nonzero, beta_vlen, alpha_vlen, 
+whole.data <- generate_all_data(dt_seed, n, p, q, prob_sub, hier_struc,
+                                beta_nonzero, alpha_nonzero, beta_vlen, alpha_vlen,
                                 cotype_x, cotype_z, epsilon_sd, reverse)
 X <- whole.data$data$X
 Z <- whole.data$data$Z
@@ -110,17 +119,25 @@ H_q <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
 
 # =============================== result =================================
 colnames_all <- c("dt_seed", "q_c_seed", "aa", "tau", "l1", "l2", "l3",
-                  "cdist", "ci_prob_mean", "mse", "sc", "fit_sum", "fit_mean",
-                  "penal", "bic_sum", "bic_mean", "main_grn", "sub_grn", "valid_hier", 
-                  "group_detail", paste0("case_", 1:4), "iter_total", "iter_type","tag")
+                  "cdist", "ci_prob_mean", "mse", "sc", "ari", "fit_sum", "fit_mean",
+                  "penal", "bic_sum", "bic_mean", "main_grn", "sub_grn", "valid_hier",
+                  "rho_init", "rho_est",
+                  "group_detail", paste0("case_", 1:4), 
+                  "iter_total", "iter_type","tag")
 
+colnames_all <- c("dt_seed", "q_c_seed", "aa", "tau", "l1", "l2", "l3",
+                  "cdist", "ci_prob_mean", "mse", "sc", "ari", "fit_sum", "fit_mean",
+                  "penal", "bic_sum", "bic_mean", "main_grn", "sub_grn", 
+                  "rho_init", "rho_est", "valid_hier", 
+                  "group_detail", paste0("case_", 1:4), 
+                  "iter_total", "iter_type", "tag")
 
 for(q_c_seed in 1:q_c_seed_max){
-  
+
   result <- as.data.frame(matrix(NaN, nrow = 2, ncol = length(colnames_all)))
   colnames(result) <- colnames_all
   result$dt_seed <- dt_seed
-  
+
   # flexmix for initialization
   flemix_forinit <- tryCatch({
     flexmix_init(q_c_seed, 0)
@@ -131,9 +148,10 @@ for(q_c_seed in 1:q_c_seed_max){
   result[1,'q_c_seed'] <- q_c_seed
   result[1,'sub_grn'] <- flemix_forinit$est_sub_grn
   result[1,'sc'] <- flemix_forinit$sc_score
+  result[1,'ari'] <- flemix_forinit$ari_score
   result[1,'cdist'] <- flemix_forinit$cdist
   result[1,'tag'] <- flemix_forinit$tag
-  
+
   # flexmix best result (K squeezed)
   flemix_best <- tryCatch({
     flexmix_init(q_c_seed, 0.1)
@@ -144,10 +162,11 @@ for(q_c_seed in 1:q_c_seed_max){
   result[2,'q_c_seed'] <- q_c_seed
   result[2,'sub_grn'] <- flemix_best$est_sub_grn
   result[2,'sc'] <- flemix_best$sc_score
+  result[1,'ari'] <- flemix_best$ari_score
   result[2,'cdist'] <- flemix_best$cdist
   result[2,'tag'] <- flemix_best$tag
 
-  
+
   # our method
   l2_seq <- c(0, 0.5, 1, 2, 4)
   l3_seq <- c(0, 0.5, 1, 2, 4)
@@ -164,6 +183,6 @@ for(q_c_seed in 1:q_c_seed_max){
   write_csv(result, file=save_path, col_names=!file.exists(save_path), append=TRUE)
 }
 
-
+print("Done!")
 
 

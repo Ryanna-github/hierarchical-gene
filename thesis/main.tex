@@ -11,41 +11,46 @@
 %自添宏包
 \usepackage{skak}%国际象棋
 \usepackage{subfigure}%子图http://www.ctex.org/documents/latex/graphics/node111.html
-\usepackage{chemfig}%化学式
+%\usepackage{chemfig}%化学式
+\usepackage{ctex}
 \usetikzlibrary{trees}
+\usepackage{amsmath}
+\usepackage[ruled, lined, linesnumbered, commentsnumbered, longend]{algorithm2e}
+
+\newtheorem{definition}{Definition}
 
 
 
 %将封面信息补全，相关专业名称过长的请在文字前添加命令\ziju{-0.15}
 %文头
-\sign{中国人民大学本科毕业论文}
-%\sign{硕士学位论文}
+%\sign{中国人民大学本科毕业论文}
+\sign{硕士学位论文}
 %\sign{博士学位论文}
 
 
 
 %以下信息本科研究生都需要补全
-\title{中国人民大学LaTeX模板}%论文题名
-\author{许白黑}%作者
-\school{}%学院
-\field{\ }%专业
-\studentid{2012202000}%学号
-\advisor{}%指导老师
-\date{2015年12月11日}
+\title{带有嵌套结构的高维数据有限混合回归模型研究}%论文题名
+\author{任焱}%作者
+\school{统计学院}%学院
+\field{统计学}%专业
+\studentid{2021103739}%学号
+\advisor{孙怡帆}%指导老师
+\date{2024年3月1日}
 
 
 %以下本科填写
 \grade{}%年级
-\score{4.0}%成绩
+\score{}%成绩
 \thesiscode{论文编码：RUC-BK-专业代码}%论文编码
 \subtitle{}%论文副题名，没有不填写
 
 
 %以下研究生填写
 \etitle{LaTeX template of Renmin university of China}%英文题目
-\keywords{\TeX{}}%论文主题词
+\keywords{有限混合模型；亚组识别；高维数据}%论文主题词
 %摘要关键词
-\keywordzh{中文摘要关键词}%中文摘要关键词
+\keywordzh{有限混合模型；亚组识别；高维数据}%中文摘要关键词
 \keyworden{English\qquad template}%英文摘要关键词
 
 
@@ -82,7 +87,8 @@
 \include{chap/chapter1}
 \include{chap/chapter2}
 \include{chap/chapter3}
-\input{chap/chapter4}%要插入本科签名的最后一个章节,插入命令使用\input{}
+\include{chap/chapter4}
+%\input{chap/chapter4}%要插入本科签名的最后一个章节,插入命令使用\input{}
 
 %本科签名
 %\autograph
@@ -96,8 +102,8 @@
 \addcontentsline{toc}{chapter}{参考文献}
 
 %附录
-\appendix
-\include{chap/appendix_1}
+%\appendix
+%\include{chap/appendix_1}
 
 %致谢
 \include{format/acknowledge}
