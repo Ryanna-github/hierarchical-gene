@@ -194,7 +194,8 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
     coef_full_est <- rbind(coef_beta_est, coef_alpha_est)
     
     # rho_k 的更新
-    update_step = ifelse(iter > 10, 0.4, 0)
+    # update_step = ifelse(iter > 10, 0.4, 0)
+    update_step = 0
     for(k in 1:K_up){
       W_k <- diag(q_c_matrix[,k])
       onen <- matrix(1, nrow = n, ncol = 1)
