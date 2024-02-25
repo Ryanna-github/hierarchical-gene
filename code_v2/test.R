@@ -38,9 +38,8 @@ parser$add_argument("--K_up", default=4,  help="Upper class number")
 # --epsilon_sd_init 0.5 --beta_vlen 3 --alpha_vlen 2 --K_up 4
 
 args <- parser$parse_args()
-
-print("++++++++++++++++++++++++++")
-print(args)
+# print("++++++++++++++++++++++++++")
+# print(args)
 
 n <- as.numeric(args$n)
 p <- as.numeric(args$p)

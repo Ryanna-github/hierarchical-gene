@@ -22,17 +22,17 @@ p <- 8
 q <- 4
 epsilon_sd <- 0.5
 epsilon_sd_init <- 0.5
-signal_size <- 1
+signal_size <- 2
 beta_vlen <- 3
 alpha_vlen <- 2
 # dt_seed <- 9
 K_up <- 4
-for(dt_seed in seq(59, 99, 10)){
+for(dt_seed in seq(9, 49, 10)){
   prefix <- "hierarchical-gene/code_v2/"
   prefix <- ""
-    path_pre <- glue("{prefix}{Sys.Date()}_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_Kup{K_up}_fminit")
+    path_pre <- glue("{prefix}{Sys.Date()}_n{n}_p{p}_q{q}_ss{signal_size}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_epi{epsilon_sd_init}_Kup{K_up}_fminit")
   # path_pre <- glue("2023-07-31_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_fminit")
-  cmd <- glue("Rscript --verbose {prefix}test.R -n {n} --dt_seed {dt_seed} -p {p} -q {q} -e {epsilon_sd} --epsilon_sd_init {epsilon_sd_init} --beta_vlen {beta_vlen} --alpha_vlen {alpha_vlen} --K_up {K_up} --path {path_pre}.csv >> {path_pre}_log.out")
+  cmd <- glue("Rscript --verbose {prefix}test.R -n {n} --dt_seed {dt_seed} -p {p} -q {q} -e {epsilon_sd} --epsilon_sd_init {epsilon_sd_init} --signal_size {signal_size} --beta_vlen {beta_vlen} --alpha_vlen {alpha_vlen} --K_up {K_up} --path {path_pre}.csv >> {path_pre}_log.out")
   print(cmd)
 }
 ```

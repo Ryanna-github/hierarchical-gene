@@ -90,7 +90,7 @@ bic_score <- function(q_c_matrix, coef_est, est_main_grn, est_sub_grn, rho_est){
 }
 
 ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed, 
-                       coef_full_init, iter_type, iter_max, rho_clip = 2,
+                       coef_full_init, iter_type, iter_max, rho_clip = 4,
                        plot_performance = FALSE,
                        eps = 1e-7, eps_abs = 1e-2, eps_rel = 1e-3){
   # iter_type = "fix" 固定迭代轮次, iter_type = "stop" 使用迭代停止准则判断
@@ -117,9 +117,8 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
   # coef_full_init[(p+1):(p+q),] <- coef$coef_alpha
   # coef_full_init[1:p,] <- coef$coef_beta
   # coef_full_init <- coef$coef_full * t(kronecker(rho_init, matrix(1, ncol = p+q)))
-  coef_full_list <- list(coef_full_init)
-  coef_full_ori_list <- list(coef_full_init/t(kronecker(rho_init, 
-                                                        matrix(1, ncol = p+q))))
+  coef_full_list <- list(coef_full_init*t(kronecker(rho_init, matrix(1, ncol = p+q))))
+  coef_full_ori_list <- list(coef_full_init)
   
   
   
@@ -158,6 +157,22 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
     dual_xi_est <- dual_xi_list[[iter-1]]
     dual_zeta_est <- dual_zeta_list[[iter-1]]
     
+    # rho_k 的更新
+    # update_step = ifelse(iter > 10, 0.4, 0)
+    update_step = 1
+    for(k in 1:K_up){
+      W_k <- diag(q_c_matrix[,k])
+      onen <- matrix(1, nrow = n, ncol = 1)
+      AA <- as.numeric(t(y) %*% W_k %*% y)
+      BB <- as.numeric(-t(y) %*% W_k %*% (X%*%coef_beta_est[,k] + Z%*%coef_alpha_est[,k]))
+      CC <- as.numeric(-t(onen) %*% W_k %*% onen)
+      rho_k_est <- (-BB+sqrt(BB**2-4*AA*CC))/(2*AA)
+      rho_k_est <- ifelse(rho_k_est <= 0.5, 1, min(rho_clip, rho_k_est))
+      rho_est[k] <- update_step*rho_k_est + (1-update_step)*rho_est[k]
+    }
+    
+    rho_list[[iter]] <- rho_est
+    
     # =========================== beta, alpha update =========================
     # beta,alpha （相比矩阵形式，只修改 beta,alpha 更新）
     for(k in 1:K_up){
@@ -192,22 +207,6 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
       }
     }
     coef_full_est <- rbind(coef_beta_est, coef_alpha_est)
-    
-    # rho_k 的更新
-    # update_step = ifelse(iter > 10, 0.4, 0)
-    update_step = 0
-    for(k in 1:K_up){
-      W_k <- diag(q_c_matrix[,k])
-      onen <- matrix(1, nrow = n, ncol = 1)
-      AA <- as.numeric(t(y) %*% W_k %*% y)**2
-      BB <- as.numeric(-t(onen) %*% W_k %*% (X%*%coef_beta_est[,k] + Z%*%coef_alpha_est[,k]))
-      CC <- as.numeric(-n*t(onen) %*% W_k %*% onen)
-      rho_k_est <- (-BB+sqrt(BB**2-4*AA*CC))/(2*AA)
-      rho_k_est <- ifelse(rho_k_est <= 1, 1, min(rho_clip, rho_k_est))
-      rho_est[k] <- update_step*rho_k_est + (1-update_step)*rho_est[k]
-    }
-    
-    rho_list[[iter]] <- rho_est
     coef_full_list[[iter]] <- coef_full_est
     coef_full_ori_list[[iter]] <- coef_full_est/extend_x_to_row(rho_est,p+q)
     
@@ -321,9 +320,6 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
         break
       }
     }
-
-    pi_est <- apply(q_c_matrix, 2, sum)/n
-    pi_list[[iter]] <- pi_est
     
     # update q_c matrix
     # 用没有重参数化的形式
@@ -337,6 +333,8 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
     q_c_matrix[nan_id,] <- q_c_matrix_back[nan_id,]
     q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
     
+    pi_est <- apply(q_c_matrix, 2, sum)/n
+    pi_list[[iter]] <- pi_est
     
     # coef_diff_std <- (sum(coef_full_list[[iter]]-coef_full_list[[iter-1]])**2)/
     #    (sum(coef_full_list[[iter]])**2 + 1e-4)
@@ -416,9 +414,11 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
   cat(paste("**** hypter parameter:", "dt_seed", dt_seed, "q_c_seed", q_c_seed, 
             "l1", lambda_1, "l2", lambda_2, "l3", lambda_3, "tau", tau, "a", aa, "\n"))
   cat(paste("**** result:", "est_main_grn", est_main_grn, "est_sub_grn", est_sub_grn,
-            "mse", mse, "sc", sc_score, "bic_sum", bic_info$bic_sum, "bic_mean", bic_info$bic_mean, 
+            "mse", mse, "sc", sc_score, 'ari', ari_score,
+            "bic_sum", bic_info$bic_sum, "bic_mean", bic_info$bic_mean,
             "valid_hier", valid_hier, "group_detail", group_detail, "\n"))
   print(case_table_full)
+  print(round(rho_list[[iter]], 3))
   print(coef_full_ori_list[[iter]])
   
   return(list(cdist = cdist, 

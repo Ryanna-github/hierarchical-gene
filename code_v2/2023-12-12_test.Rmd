@@ -165,8 +165,8 @@ result[2,'tag'] <- flemix_best$tag
 
 ```{r}
 
-epsilon_sd_init <- 1
-sigma_est <- as.numeric(epsilon_sd_init)
+# epsilon_sd_init <- 1
+# sigma_est <- as.numeric(epsilon_sd_init)
 
 # result <- NULL
 fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
