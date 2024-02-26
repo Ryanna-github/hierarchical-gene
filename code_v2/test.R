@@ -3,7 +3,7 @@ library(ggplot2)
 library(dplyr)
 library(Matrix)
 library(flexmix)
-library(mclust)
+# library(mclust)
 library(readr)
 # source("sim.R")
 # source("tools.R")
@@ -71,8 +71,6 @@ K_up <- as.numeric(args$K_up)
 #   K_up <- 4  # 估计时的最大类别，应该不少于 group_num_sub
 #   print("*")
 # }
-
-
 
 # 超参数设定
 # n <- 200
@@ -178,11 +176,11 @@ for(q_c_seed in 1:q_c_seed_max){
 
   # our method
   l2_seq <- c(0, 0.5, 1, 1.5, 2, 4)
-  l3_seq <- c(0, 0.5, 1, 1.5 2, 4)
+  l3_seq <- c(0, 0.5, 1, 1.5, 2, 4)
   # l2_seq <- c(0, 1, 3, 5, 7)
   # l3_seq <- c(0, 2, 4, 6, 8, 10)
-  # l2_seq <- c(1.2)
-  # l3_seq <- c(1)
+  # l2_seq <- c(0)
+  # l3_seq <- c(0)
   fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
                    aa = 1.2, tau = 1)
   hp <- tuning_hyper(l2_seq, l3_seq, fix_para, flemix_forinit$coef_full_ori,
@@ -194,4 +192,19 @@ for(q_c_seed in 1:q_c_seed_max){
 
 print("Done!")
 
+# aa = fix_para$aa
+# tau = fix_para$tau
+# lambda_1 = fix_para$lambda_1
+# lambda_2 = l2_seq[1]
+# lambda_3 = l3_seq[1]
+# q_c_seed = fix_para$q_c_seed
+# coef_full_init = flemix_forinit$coef_full_ori
+# rho_ratio = 0.2
+# iter_type= "stop"
+# iter_max = 200
+# rho_clip = 2
+# plot_performance = TRUE
+# eps = 1e-7
+# eps_abs = 1e-2
+# eps_rel = 1e-3
 

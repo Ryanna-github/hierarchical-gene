@@ -112,7 +112,7 @@ generate_all_data <- function(data_seed, n, p, q, prob_sub, hier_struc,
   ys <- data$data_full %*% coef$coef_full
   y <- NULL
   for(i in 1:n){
-    y[i] <- ys[i,ci_sim[i]]
+    y[i] <- ys[i,ci$ci_sim[i]]
   }
   y <- y + rnorm(length(y), mean = 0, sd = epsilon_sd)
   # View(data.frame(cbind(ys, ci_sim, y))) # 验证正确性

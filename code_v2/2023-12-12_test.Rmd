@@ -191,21 +191,21 @@ for(trail_idx in 1:trail_num){
   lambda_2 <- trail_set$l2[trail_idx]
   lambda_3 <- trail_set$l3[trail_idx]
   
-  aa = fix_para$aa
-  tau = fix_para$tau
-  lambda_1 = fix_para$lambda_1
-  lambda_2 = lambda_2
-  lambda_3 = lambda_3
-  q_c_seed = fix_para$q_c_seed
-  coef_full_init = coef_full_init
-  rho_ratio = 0.2
-  iter_type= "stop"
-  iter_max = 200
-  rho_clip = 2
-  plot_performance = TRUE
-  eps = 1e-7
-  eps_abs = 1e-2
-  eps_rel = 1e-3
+  # aa = fix_para$aa
+  # tau = fix_para$tau
+  # lambda_1 = fix_para$lambda_1
+  # lambda_2 = lambda_2
+  # lambda_3 = lambda_3
+  # q_c_seed = fix_para$q_c_seed
+  # coef_full_init = coef_full_init
+  # rho_ratio = 0.2
+  # iter_type= "stop"
+  # iter_max = 200
+  # rho_clip = 2
+  # plot_performance = TRUE
+  # eps = 1e-7
+  # eps_abs = 1e-2
+  # eps_rel = 1e-3
   
   trail <- ADMM_trail(aa = fix_para$aa,
                       tau = fix_para$tau,

@@ -430,7 +430,7 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
   # (2) 计算平均的系数，可以根据样本数进行加权，但因为数值非常接近，可以直接求平均
   coef_beta_ori_comp <- matrix(NaN, p, est_main_grn)
   coef_alpha_ori_comp <- matrix(NaN, q, est_sub_grn)
-  # coef_full_ori_comp <- matrix(NaN, p+q, est_sub_grn)
+  coef_full_ori_comp <- matrix(NaN, p+q, est_sub_grn)
   for(k in 1:est_main_grn){
     # 多于两类才需要压缩，否则取原值
     if(length(main_group_info_compact[[k]]) > 1){
@@ -447,10 +447,10 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
       coef_alpha_ori_comp[,k] <- coef_full_ori_list[[iter]][(p+1):(p+q),][,sub_group_info_compact[[k]]]
     }
   }
-  # for(k in 1:K_up){
-  #   coef_full_ori_comp[,which(sapply(sub_group_info_compact, function(x) k %in% x))][(p+1):(p+q)] <- coef_alpha_ori_comp[,which(sapply(sub_group_info_compact, function(x) k %in% x))]
-  #   coef_full_ori_comp[,which(sapply(sub_group_info_compact, function(x) k %in% x))][1:p] <- coef_beta_ori_comp[,which(sapply(main_group_info_compact, function(x) k %in% x))]
-  # }
+  for(k in 1:K_up){
+    coef_full_ori_comp[,which(sapply(sub_group_info_compact, function(x) k %in% x))][(p+1):(p+q)] <- coef_alpha_ori_comp[,which(sapply(sub_group_info_compact, function(x) k %in% x))]
+    coef_full_ori_comp[,which(sapply(sub_group_info_compact, function(x) k %in% x))][1:p] <- coef_beta_ori_comp[,which(sapply(main_group_info_compact, function(x) k %in% x))]
+  }
   ci_est_main <- sapply(ci_est, function(k){which(sapply(main_group_info_compact, function(x) k %in% x))})
   ci_est_sub <- sapply(ci_est, function(k){which(sapply(sub_group_info_compact, function(x) k %in% x))})
   
@@ -459,7 +459,10 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
   ari_score_main <- ari(ci_est_main, ci_sim_main)
   ari_score_sub <- ari(ci_est_sub, ci_sim_sub)
   # per 无法再此处计算，汇总函数中再计算
-  cdist_main <- tryCatch({ coef_dist(coef_beta_ori_comp, coef$coef_beta[, !duplicated(t(coef$coef_beta))]) }, error = function(err) {NaN})
+  cdist_main <- tryCatch({ coef_dist(coef_full_ori_comp[1:p,], coef$coef_beta) }, error = function(err) {NaN})
+  if(is.na(cdist_main)){
+    cdist_main <- tryCatch({ coef_dist(coef_beta_ori_comp, coef$coef_beta[, !duplicated(t(coef$coef_beta))]) }, error = function(err) {NaN})
+  }
   cdist_sub <- tryCatch({ coef_dist(coef_alpha_ori_comp, coef$coef_alpha) }, error = function(err) {NaN})
   # ==========================================================================
   

@@ -30,7 +30,7 @@ rho_ratio <- 0.2
 K_up <- 4
 for(dt_seed in seq(9, 99, 10)){
   prefix <- "hierarchical-gene/code_v2/"
-  # prefix <- ""
+  prefix <- ""
     path_pre <- glue("{prefix}{Sys.Date()}_n{n}_p{p}_q{q}_ss{signal_size}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_epi{epsilon_sd_init}_rr{rho_ratio}_Kup{K_up}_fminit")
   # path_pre <- glue("2023-07-31_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_fminit")
   cmd <- glue("Rscript --verbose {prefix}test.R -n {n} --dt_seed {dt_seed} -p {p} -q {q} -e {epsilon_sd} --epsilon_sd_init {epsilon_sd_init} --rho_ratio {rho_ratio} --signal_size {signal_size} --beta_vlen {beta_vlen} --alpha_vlen {alpha_vlen} --K_up {K_up} --path {path_pre}.csv >> {path_pre}_log.out")
@@ -106,10 +106,7 @@ print(cmd)
 library(ggplot2)
 library(dplyr)
 # library(plotly)
-df <- read.csv("2024-02-24_n500_p8_q4_bl3_al2_eps0.5_Kup4_fminit.csv")
-# df <- read.csv("2024-02-25_n500_p8_q4_ss1_bl3_al2_eps0.5_epi0.5_Kup4_fminit.csv")
-# df <- read.csv("2024-02-24_n500_p8_q4_ss_2_bl3_al2_eps0.5_Kup4_fminit.csv")
-# df <- read.csv("2024-02-24_n500_p8_q4_bl3_al2_eps0.5_Kup6_fminit.csv")
+df <- read.csv("2024-02-26_n500_p8_q4_ss1_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_fminit.csv")
 # 以下方法过期，直接看 tag 列即可
 # df <- df %>% mutate(method = ifelse(q_c_seed < 100, 1, 0))
 # df$method <- ifelse(df$q_c_seed == 111, -1, df$method)
@@ -122,7 +119,9 @@ df <- read.csv("2024-02-24_n500_p8_q4_bl3_al2_eps0.5_Kup4_fminit.csv")
 
 ```{r}
 df_report <- df %>% 
-  select(dt_seed, q_c_seed, mse, sc, ari, tag, main_grn, sub_grn, bic_mean, cdist) %>%
+  select(dt_seed, q_c_seed, mse, 
+         cdist, cdist_main, cdist_sub, sc, sc_main, sc_sub, ari, ari_main, ari_sub,
+         main_grn, sub_grn, bic_mean, tag) %>%
   group_by(dt_seed, q_c_seed, tag) %>% 
   arrange(bic_mean) %>%
   filter(tag == 'hier') %>%
@@ -132,8 +131,15 @@ df_report2 <- df_report %>%
   group_by(dt_seed) %>%
   summarise(per_main = sum(main_grn == 2)/n(),
             per_sub = sum(sub_grn == 4)/n(),
-            sc = max(sc),
-            ari = max(ari))
+            sc = mean(sc),
+            sc_main = mean(sc_main),
+            sc_sub = mean(sc_sub),
+            ari = mean(ari),
+            ari_main = mean(ari_main),
+            ari_sub = mean(ari_sub),
+            cdist = mean(cdist),
+            cdist_main = mean(cdist_main),
+            cdist_sub = mean(cdist_sub))
 colMeans(df_report2)
 ```
 

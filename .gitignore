@@ -22,6 +22,9 @@ kt*
 code_v2/*.csv
 code_v2/*.out
 code_v2/*.pdf
+code_v2/*/*.csv
+code_v2/*/*.out
+code_v2/*/*.pdf
 # !data/real*.csv
 
 
