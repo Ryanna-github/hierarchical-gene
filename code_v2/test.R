@@ -23,6 +23,7 @@ parser$add_argument("-p", default = 8, help = "dim of X")
 parser$add_argument("-q", default = 4, help = "dim of Z")
 parser$add_argument("-e", "--epsilon_sd", default = 0.5, help = "error")
 parser$add_argument("--epsilon_sd_init", default = 0.5, help = "epsilon_sd initiation for estimating rho")
+parser$add_argument("--rho_ratio", default = 0.5, help = "update ratio of rho, rho(t+1)=ratio*rho+(1-ratio)rho(t)")
 parser$add_argument("-ss", "--signal_size", default = 1, help = "signal size")
 parser$add_argument("-bl", "--beta_vlen", default = 3, help = "nonzero length of beta")
 parser$add_argument("-al", "--alpha_vlen", default = 2, help = "nonzero length of alpha")
@@ -46,6 +47,7 @@ p <- as.numeric(args$p)
 q <- as.numeric(args$q)
 epsilon_sd <- as.numeric(args$epsilon_sd)
 sigma_est <- as.numeric(args$epsilon_sd_init)
+rho_ratio <- as.numeric(args$rho_ratio)
 signal_size <- as.numeric(args$signal_size)
 beta_vlen <- as.numeric(args$beta_vlen)
 alpha_vlen <- as.numeric(args$alpha_vlen)
@@ -60,6 +62,7 @@ K_up <- as.numeric(args$K_up)
 #   epsilon_sd <- 0.5
 #   epsilon_sd_init <- 0.5
 #   sigma_est <- as.numeric(epsilon_sd_init)
+#   rho_ratio <- 0.2
 #   signal_size <- 1
 #   beta_vlen <- 3
 #   alpha_vlen <- 2
@@ -106,6 +109,8 @@ data <- whole.data$data$data_full
 coef <- whole.data$coef
 # coefv <- lapply(coef, as.vector) # 按照类别拉长
 ci_sim <- whole.data$ci_sim
+ci_sim_main <- whole.data$ci_sim_main
+ci_sim_sub <- whole.data$ci_sim_sub
 y <- matrix(whole.data$y, ncol=1)
 
 # =============================== prepare =================================
@@ -118,16 +123,11 @@ H_q <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
 
 # =============================== result =================================
 colnames_all <- c("dt_seed", "q_c_seed", "aa", "tau", "l1", "l2", "l3",
-                  "cdist", "ci_prob_mean", "mse", "sc", "ari", "fit_sum", "fit_mean",
-                  "penal", "bic_sum", "bic_mean", "main_grn", "sub_grn", "valid_hier",
-                  "rho_init", "rho_est",
-                  "group_detail", paste0("case_", 1:4), 
-                  "iter_total", "iter_type","tag")
-
-colnames_all <- c("dt_seed", "q_c_seed", "aa", "tau", "l1", "l2", "l3",
-                  "cdist", "ci_prob_mean", "mse", "sc", "ari", "fit_sum", "fit_mean",
+                  "cdist", "cdist_main", "cdist_sub", "ci_prob_mean", "mse", 
+                  "sc", "sc_main", "sc_sub", 
+                  "ari", "ari_main", "ari_sub", "fit_sum", "fit_mean",
                   "penal", "bic_sum", "bic_mean", "main_grn", "sub_grn", 
-                  "rho_init", "rho_est", "valid_hier", 
+                  "rho_init", "rho_est", "rho_ratio", "valid_hier", 
                   "group_detail", paste0("case_", 1:4), 
                   "iter_total", "iter_type", "tag")
 
@@ -147,8 +147,13 @@ for(q_c_seed in 1:q_c_seed_max){
   result[1,'q_c_seed'] <- q_c_seed
   result[1,'sub_grn'] <- flemix_forinit$est_sub_grn
   result[1,'sc'] <- flemix_forinit$sc_score
+  result[1,'sc_sub'] <- flemix_forinit$sc_score
   result[1,'ari'] <- flemix_forinit$ari_score
+  result[1,'ari_sub'] <- flemix_forinit$ari_score
+  result[1,'mse'] <- flemix_forinit$mse
   result[1,'cdist'] <- flemix_forinit$cdist
+  result[1,'cdist_sub'] <- flemix_forinit$cdist_sub
+  result[1,'cdist_main'] <- flemix_forinit$cdist_main
   result[1,'tag'] <- flemix_forinit$tag
 
   # flexmix best result (K squeezed)
@@ -161,18 +166,23 @@ for(q_c_seed in 1:q_c_seed_max){
   result[2,'q_c_seed'] <- q_c_seed
   result[2,'sub_grn'] <- flemix_best$est_sub_grn
   result[2,'sc'] <- flemix_best$sc_score
-  result[1,'ari'] <- flemix_best$ari_score
+  result[2,'sc_sub'] <- flemix_best$sc_score
+  result[2,'ari'] <- flemix_best$ari_score
+  result[2,'ari_sub'] <- flemix_best$ari_score
+  result[2,'mse'] <- flemix_best$mse
   result[2,'cdist'] <- flemix_best$cdist
+  result[2,'cdist_sub'] <- flemix_best$cdist_sub
+  result[2,'cdist_main'] <- flemix_best$cdist_main
   result[2,'tag'] <- flemix_best$tag
 
 
   # our method
-  l2_seq <- c(0, 0.5, 1, 2, 4)
-  l3_seq <- c(0, 0.5, 1, 2, 4)
+  l2_seq <- c(0, 0.5, 1, 1.5, 2, 4)
+  l3_seq <- c(0, 0.5, 1, 1.5 2, 4)
   # l2_seq <- c(0, 1, 3, 5, 7)
   # l3_seq <- c(0, 2, 4, 6, 8, 10)
-  # l2_seq <- c(0.5)
-  # l3_seq <- c(0.5)
+  # l2_seq <- c(1.2)
+  # l3_seq <- c(1)
   fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
                    aa = 1.2, tau = 1)
   hp <- tuning_hyper(l2_seq, l3_seq, fix_para, flemix_forinit$coef_full_ori,

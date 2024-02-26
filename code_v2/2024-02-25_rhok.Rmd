@@ -38,7 +38,7 @@ q <- 4
 epsilon_sd <- 0.5
 epsilon_sd_init <- 0.5
 sigma_est <- as.numeric(epsilon_sd_init)
-signal_size <- 1
+signal_size <- 5
 beta_vlen <- 3
 alpha_vlen <- 2
 save_path <- "temp.csv"
@@ -114,6 +114,7 @@ lambda_1 = fix_para$lambda_1
 lambda_2 = l2_seq[1]
 lambda_3 = l3_seq[1]
 q_c_seed = fix_para$q_c_seed
+rho_init <- rep(1, K_up)/sigma_est
 coef_full_init = whole.data$coef$coef_full*rho_init
 iter_type= "stop"
 iter_max = 200
@@ -123,6 +124,7 @@ eps = 1e-7
 eps_abs = 1e-2
 eps_rel = 1e-3
 ```
+
 
 以下分析 ADMM 函数内部
 

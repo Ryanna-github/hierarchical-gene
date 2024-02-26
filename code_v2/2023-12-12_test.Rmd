@@ -26,7 +26,7 @@ source("func.R")
 ```{r}
 n <- 500
 p <- 8
-q <- 40
+q <- 4
 epsilon_sd <- 0.5
 epsilon_sd_init <- 0.5
 sigma_est <- as.numeric(epsilon_sd_init)
@@ -35,7 +35,7 @@ beta_vlen <- 3
 alpha_vlen <- 2
 save_path <- "temp.csv"
 dt_seed <- 9
-K_up <- 4  # 估计时的最大类别，应该不少于 group_num_sub
+K_up <- 6  # 估计时的最大类别，应该不少于 group_num_sub
 
 cotype_x <- "En"
 cotype_z <- "En"
@@ -129,6 +129,7 @@ flemix_forinit <- flexmix_init(q_c_seed, 0)
 result[1,'q_c_seed'] <- q_c_seed
 result[1,'sub_grn'] <- flemix_forinit$est_sub_grn
 result[1,'sc'] <- flemix_forinit$sc_score
+result[1,'ari'] <- flemix_forinit$ari_score
 result[1,'cdist'] <- flemix_forinit$cdist
 result[1,'tag'] <- flemix_forinit$tag
 
@@ -137,6 +138,7 @@ flemix_best <- flexmix_init(q_c_seed, 0.1)
 result[2,'q_c_seed'] <- q_c_seed
 result[2,'sub_grn'] <- flemix_best$est_sub_grn
 result[2,'sc'] <- flemix_best$sc_score
+result[2,'ari'] <- flemix_best$ari_score
 result[2,'cdist'] <- flemix_best$cdist
 result[2,'tag'] <- flemix_best$tag
 ```
@@ -174,8 +176,8 @@ fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
 # l2_seq <- c(4, 6, 8)
 # l3_seq <- c(4, 5, 6, 7, 8)
 
-l2_seq <- c(0.5)
-l3_seq <- c(2)
+l2_seq <- c(1)
+l3_seq <- c(1)
 trail_set <- expand.grid(list(l3 = l3_seq, l2 = l2_seq))
 
 trail_num <- nrow(trail_set)
@@ -196,6 +198,7 @@ for(trail_idx in 1:trail_num){
   lambda_3 = lambda_3
   q_c_seed = fix_para$q_c_seed
   coef_full_init = coef_full_init
+  rho_ratio = 0.2
   iter_type= "stop"
   iter_max = 200
   rho_clip = 2

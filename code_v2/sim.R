@@ -84,9 +84,19 @@ ci_generate <- function(n, pr_sub = pr_sub, hier_struc = hier_struc){
   for(i in 1:length(pr_sub)){
     ci_sim[ci_sub_list[[i]]] <- i
   }
+  ci_sim_main <- rep(0, n)
+  ci_sim_sub <- rep(0, n)
+  for(k in 1:length(hier_struc)){
+    ci_sim_main[ci_main_list[[k]]] <- k
+  }
+  for(k in 1:length(pr_sub)){
+    ci_sim_sub[ci_sub_list[[k]]] <- k
+  }
   return(list("ci_main" = ci_main_list, 
               "ci_sub" = ci_sub_list,
-              "ci_sim" = ci_sim))
+              "ci_sim" = ci_sim,
+              "ci_sim_main" = ci_sim_main,
+              "ci_sim_sub" = ci_sim_sub))
 }
 
 # generate_all_data
@@ -96,7 +106,7 @@ generate_all_data <- function(data_seed, n, p, q, prob_sub, hier_struc,
                               cotype_x, cotype_z, epsilon_sd,
                               reverse = FALSE){
   set.seed(data_seed)
-  ci_sim <- ci_generate(n, prob_sub, hier_struc)$ci_sim
+  ci <- ci_generate(n, prob_sub, hier_struc)
   data <- generate_data_beta_alpha(n, p, q, cotype_x, cotype_z)
   coef <- generate_coef(p, q, beta_nonzero, alpha_nonzero, beta_vlen, alpha_vlen, reverse)
   ys <- data$data_full %*% coef$coef_full
@@ -109,7 +119,9 @@ generate_all_data <- function(data_seed, n, p, q, prob_sub, hier_struc,
   return(list("data" = data,
               "coef" = coef,
               "y" = y,
-              "ci_sim" = ci_sim))
+              "ci_sim" = ci$ci_sim,
+              "ci_sim_main" = ci$ci_sim_main,
+              "ci_sim_sub" = ci$ci_sim_sub))
 }
 
 # get true q_c matrix

@@ -19,20 +19,26 @@ flexmix_init <- function(q_c_seed, minprior_value = 0, tag = "flexmix"){
   K_est <- m_glm@k
   coef_est <- parameters(m_glm)[1:(p+q),]
   row.names(coef_est) <- NULL
-  # cdist <- ifelse(ncol(coef$coef_full) == ncol(coef_est), 
-  #                 coef_dist(coef_est, coef$coef_full),
-  #                 NaN)
-  cdist <- tryCatch({
-    coef_dist(coef_est, coef$coef_full)
-  }, error = function(err) {NaN})
+  cdist <- tryCatch({ coef_dist(coef_est, coef$coef_full) }, error = function(err) {NaN})
+  cdist_main <- tryCatch({ coef_dist(coef_est[1:p,], coef$coef_beta) }, error = function(err) {NaN})
+  cdist_sub <- tryCatch({ coef_dist(coef_est[(p+1):(p+q),], coef$coef_alpha) }, error = function(err) {NaN})
   sc_score <- sc(m_glm@cluster, ci_sim)
   ari_score <- ari(m_glm@cluster, ci_sim)
-  print(coef_est)
+  
+  ci_matrix <- matrix(0, nrow = n, ncol = K_up)
+  for(i in 1:n){
+    ci_matrix[i,m_glm@cluster[i]] <- 1
+  }
+  y_hat <- rowSums(ci_matrix * data.frame(predict(m_glm)))
+  mse <- sum((y-y_hat)^2/n)
   return(list(cdist = cdist, 
+              cdist_main = cdist_main,
+              cdist_sub = cdist_sub,
               coef_full_ori = coef_est,
               est_sub_grn = K_est,
               sc_score = sc_score,
               ari_score = ari_score,
+              mse = mse,
               tag = tag))
 }
 
@@ -49,9 +55,9 @@ random_init <- function(q_c_seed, tag = "random"){
   # cdist <- ifelse(ncol(coef$coef_full) == ncol(coef_est), 
   #                 coef_dist(coef_est, coef$coef_full),
   #                 NaN)
-  cdist <- tryCatch({
-    coef_dist(coef_est, coef$coef_full)
-  }, error = function(err) {NaN})
+  cdist <- tryCatch({ coef_dist(coef_est, coef$coef_full) }, error = function(err) {NaN})
+  cdist_main <- tryCatch({ coef_dist(coef_est[1:p,], coef$coef_beta) }, error = function(err) {NaN})
+  cdist_sub <- tryCatch({ coef_dist(coef_est[(p+1):(p+q),], coef$coef_alpha) }, error = function(err) {NaN})
   ci_est <- apply(q_c_matrix, 1, which.max)
   ci_prob_mean <- mean(apply(q_c_matrix, 1, max))
   # sc_score <- sc(ci_est, ci_sim)
@@ -61,13 +67,21 @@ random_init <- function(q_c_seed, tag = "random"){
   ari_score <- tryCatch({
     ari(ci_est, ci_sim)
   }, error = function(err) {NaN})
+  
+  ci_matrix <- t(apply(q_c_matrix, 1, function(x){as.numeric(x == max(x))}))
+  y_hat <- rowSums(ci_matrix * data%*%coef_est)
+  mse <- sum((y-y_hat)^2/n)
+  
   print(coef_est)
   return(list(cdist = cdist,
+              cdist_main = cdist_main,
+              cdist_sub = cdist_sub,
               ci_prob_mean = ci_prob_mean,
               coef_full_ori = coef_est,
               est_sub_grn = K_up,
               sc_score = sc_score,
               ari_score = ari_score,
+              mse = mse,
               tag = tag))
 }
 
@@ -90,7 +104,8 @@ bic_score <- function(q_c_matrix, coef_est, est_main_grn, est_sub_grn, rho_est){
 }
 
 ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed, 
-                       coef_full_init, iter_type, iter_max, rho_clip = 4,
+                       coef_full_init, iter_type, iter_max, 
+                       rho_ratio, rho_clip = 4,
                        plot_performance = FALSE,
                        eps = 1e-7, eps_abs = 1e-2, eps_rel = 1e-3){
   # iter_type = "fix" 固定迭代轮次, iter_type = "stop" 使用迭代停止准则判断
@@ -159,7 +174,7 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
     
     # rho_k 的更新
     # update_step = ifelse(iter > 10, 0.4, 0)
-    update_step = 1
+    # rho_ratio = 1
     for(k in 1:K_up){
       W_k <- diag(q_c_matrix[,k])
       onen <- matrix(1, nrow = n, ncol = 1)
@@ -168,7 +183,7 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
       CC <- as.numeric(-t(onen) %*% W_k %*% onen)
       rho_k_est <- (-BB+sqrt(BB**2-4*AA*CC))/(2*AA)
       rho_k_est <- ifelse(rho_k_est <= 0.5, 1, min(rho_clip, rho_k_est))
-      rho_est[k] <- update_step*rho_k_est + (1-update_step)*rho_est[k]
+      rho_est[k] <- rho_ratio*rho_k_est + (1-rho_ratio)*rho_est[k]
     }
     
     rho_list[[iter]] <- rho_est
@@ -350,9 +365,7 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
   cdist <- tryCatch({
     coef_dist(coef_full_ori_list[[iter]], coef$coef_full)
   }, error = function(err) {NaN})
-  # 参数结果（未压缩）
-  cat(paste0("****[unsqueezed coef]****:\n"))
-  print(coef_full_ori_list[[iter]])
+  
   # case 情况（检查是否落入组别压缩的情况
   case_table_full <- rep(0, 4) # v,w 更新四种情况落入次数记录
   case_table <- table(case)
@@ -360,6 +373,7 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
     case_table_full[as.integer(names(case_table)[t])] <- case_table[names(case_table)[t]]
   }
   
+  # 参数距离可视化 & 停止准则和对应临界值
   if(plot_performance){
     plot(1:iter, c(resi_prim_list[[2]], unlist(resi_prim_list)), col = "Black", main = "primary")
     points(c(eps_prim_list[[2]], unlist(eps_prim_list)), col = "DeepPink")
@@ -371,8 +385,11 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
     lines(c(resi_dual_list[[2]], unlist(resi_dual_list)), col = "Black")
     lines(c(eps_dual_list[[2]], unlist(eps_dual_list)), col = "DeepPink")
     # 估计参数距离真实参数距离的可视化展示
-    plot(unlist(lapply(coef_full_ori_list, coef_dist, coef$coef_full)), ylab = "",
-         main = paste(q_c_seed, aa, lambda_1, lambda_2, lambda_3, tau))
+    # 类别个数与真实不相同时，以下可视化会出错
+    tryCatch(
+      plot(unlist(lapply(coef_full_ori_list, coef_dist, coef$coef_full)), ylab = "",
+           main = paste(q_c_seed, aa, lambda_1, lambda_2, lambda_3, tau))
+      , error = function(e) e)
   }
   
   ci_est <- apply(q_c_matrix, 1, which.max)
@@ -403,8 +420,53 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
   cappfl.diff <- main_group_info$capgfl.matrix2 - sub_group_info$capgfl.matrix2
   valid_hier <- ifelse(min(cappfl.diff) >= 0, TRUE, FALSE)
   diag(cappfl.diff) <- 1
-  group_detail <- apply(which((cappfl.diff) > 0, arr.ind = TRUE), 1, function(x){paste0("(",x[1],",",x[2],")")})
-  group_detail <- paste0(group_detail, collapse = "")
+  
+  # ==========================================================================
+  # 压缩到相同类后，再计算 sc，ari d等指标得分
+  # (1) 找到哪些类别为同一大组，小组
+  main_group_info_compact <- find_connected_nodes(main_group_info$capgfl.matrix2)
+  sub_group_info_compact <- find_connected_nodes(sub_group_info$capgfl.matrix2)
+  
+  # (2) 计算平均的系数，可以根据样本数进行加权，但因为数值非常接近，可以直接求平均
+  coef_beta_ori_comp <- matrix(NaN, p, est_main_grn)
+  coef_alpha_ori_comp <- matrix(NaN, q, est_sub_grn)
+  # coef_full_ori_comp <- matrix(NaN, p+q, est_sub_grn)
+  for(k in 1:est_main_grn){
+    # 多于两类才需要压缩，否则取原值
+    if(length(main_group_info_compact[[k]]) > 1){
+      coef_beta_ori_comp[,k] <- rowMeans(coef_full_ori_list[[iter]][1:p,][,main_group_info_compact[[k]]])
+    }else{
+      coef_beta_ori_comp[,k] <- coef_full_ori_list[[iter]][1:p,][,main_group_info_compact[[k]]]
+    }
+  }
+  for(k in 1:est_sub_grn){
+    # 多于两类才需要压缩，否则取原值
+    if(length(sub_group_info_compact[[k]]) > 1){
+      coef_alpha_ori_comp[,k] <- rowMeans(coef_full_ori_list[[iter]][(p+1):(p+q),][,sub_group_info_compact[[k]]])
+    }else{
+      coef_alpha_ori_comp[,k] <- coef_full_ori_list[[iter]][(p+1):(p+q),][,sub_group_info_compact[[k]]]
+    }
+  }
+  # for(k in 1:K_up){
+  #   coef_full_ori_comp[,which(sapply(sub_group_info_compact, function(x) k %in% x))][(p+1):(p+q)] <- coef_alpha_ori_comp[,which(sapply(sub_group_info_compact, function(x) k %in% x))]
+  #   coef_full_ori_comp[,which(sapply(sub_group_info_compact, function(x) k %in% x))][1:p] <- coef_beta_ori_comp[,which(sapply(main_group_info_compact, function(x) k %in% x))]
+  # }
+  ci_est_main <- sapply(ci_est, function(k){which(sapply(main_group_info_compact, function(x) k %in% x))})
+  ci_est_sub <- sapply(ci_est, function(k){which(sapply(sub_group_info_compact, function(x) k %in% x))})
+  
+  sc_score_main <- sc(ci_est_main, ci_sim_main)
+  sc_score_sub <- sc(ci_est_sub, ci_sim_sub)
+  ari_score_main <- ari(ci_est_main, ci_sim_main)
+  ari_score_sub <- ari(ci_est_sub, ci_sim_sub)
+  # per 无法再此处计算，汇总函数中再计算
+  cdist_main <- tryCatch({ coef_dist(coef_beta_ori_comp, coef$coef_beta[, !duplicated(t(coef$coef_beta))]) }, error = function(err) {NaN})
+  cdist_sub <- tryCatch({ coef_dist(coef_alpha_ori_comp, coef$coef_alpha) }, error = function(err) {NaN})
+  # ==========================================================================
+  
+  group_detail <- paste0(convert_to_parentheses(main_group_info_compact), ";",
+                        convert_to_parentheses(sub_group_info_compact))
+  # group_detail <- apply(which((cappfl.diff) > 0, arr.ind = TRUE), 1, function(x){paste0("(",x[1],",",x[2],")")})
+  # group_detail <- paste0(group_detail, collapse = "")
   # BIC.var <- log(mse) + log(n*(p+q))*log(n)*(est_main_grn*(p)+est_sub_grn*(q))/n
   # BIC.o <- log(mse) + log(n)*(est_main_grn*p+est_sub_grn*q)/n
   
@@ -422,6 +484,8 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
   print(coef_full_ori_list[[iter]])
   
   return(list(cdist = cdist, 
+              cdist_main = cdist_main,
+              cdist_sub = cdist_sub,
               ci_prob_mean = mean(ci_prob),
               q_c_matrix = q_c_matrix,
               coef_full_ori = coef_full_ori_list[[iter]],
@@ -435,12 +499,17 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
               bic_sum = bic_info$bic_sum,
               bic_mean = bic_info$bic_mean,
               sc_score = sc_score,
+              sc_score_main = sc_score_main,
+              sc_score_sub = sc_score_sub,
               ari_score = ari_score,
+              ari_score_main = ari_score_main,
+              ari_score_sub = ari_score_sub,
               case_table_full = case_table_full,
               est_main_grn = main_group_info$gr.num,
               est_sub_grn = sub_group_info$gr.num,
               rho_init = rho_init[1],
               rho_est = paste0("(", paste(as.character(round(rho_list[[iter]],3)), collapse = ","), ")"),
+              rho_ratio = rho_ratio,
               case_table_full = case_table_full,
               valid_hier = valid_hier,
               group_detail = group_detail,
@@ -521,7 +590,8 @@ get_group_num <- function(K_up, coef, diff_v, len, merge.all = F, threshold = 1e
 }
 
 # tune l3 first then l2
-tuning_hyper <- function(l2_seq, l3_seq, fix_para, coef_full_init, grid = TRUE, save_all = FALSE){
+tuning_hyper <- function(l2_seq, l3_seq, fix_para, coef_full_init, 
+                         grid = TRUE, save_all = FALSE){
   if(save_all){
     result <- NULL
     trail_set <- expand.grid(list(l3 = l3_seq, l2 = l2_seq))
@@ -541,7 +611,8 @@ tuning_hyper <- function(l2_seq, l3_seq, fix_para, coef_full_init, grid = TRUE, 
                           q_c_seed = fix_para$q_c_seed,
                           coef_full_init = coef_full_init,
                           iter_type = 'stop',
-                          iter_max = 200)
+                          iter_max = 200,
+                          rho_ratio = rho_ratio)
       trail_record[[trail_idx]] <- trail
       # bic_record[trail_idx] <- trail$BIC.var
       
@@ -553,10 +624,16 @@ tuning_hyper <- function(l2_seq, l3_seq, fix_para, coef_full_init, grid = TRUE, 
                   lambda_2,
                   lambda_3,
                   trail$cdist,
+                  trail$cdist_main,
+                  trail$cdist_sub,
                   trail$ci_prob_mean,
                   trail$mse,
                   trail$sc_score,
+                  trail$sc_score_main,
+                  trail$sc_score_sub,
                   trail$ari_score,
+                  trail$ari_score_main,
+                  trail$ari_score_sub,
                   # trail$BIC.var,
                   trail$fit_sum,
                   trail$fit_mean,
@@ -567,6 +644,7 @@ tuning_hyper <- function(l2_seq, l3_seq, fix_para, coef_full_init, grid = TRUE, 
                   trail$est_sub_grn,
                   trail$rho_init,
                   trail$rho_est,
+                  trail$rho_ratio,
                   trail$valid_hier,
                   trail$group_detail,
                   trail$case_table_full,

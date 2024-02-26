@@ -1,6 +1,5 @@
 library(gtools) # for permutation in coef_dist
 
-
 positive_part <- function(x){
   return(ifelse(x>0, x, 0))
 }
@@ -42,25 +41,61 @@ mcp_solution <- function(theta, a, gamma, lambda){
 
 # =============================== 评价指标 ================================
 ## -------------------------------- 分类 ----------------------------------
+# adj.rand.index 为 fossil 包中函数，服务器无法下载
+adj.rand.index <- function (group1, group2) 
+{
+  a <- length(table(group1))
+  N <- length(group1)
+  ctab <- matrix(, a, a)
+  for (j in 1:a) {
+    for (i in 1:a) {
+      ctab[j, i] <- length(which(group2[which(group1 == 
+                                                i)] == j))
+    }
+  }
+  sumnij <- sum(choose(ctab, 2))
+  sumai <- sum(choose(colSums(ctab), 2))
+  sumbj <- sum(choose(rowSums(ctab), 2))
+  Ntwo <- choose(N, 2)
+  ari <- abs((sumnij - (sumai * sumbj)/Ntwo)/(0.5 * (sumai + 
+                                                       sumbj) - (sumai * sumbj)/Ntwo))
+  return(ari)
+}
+
+# rand.index 为 fossil 包中函数，服务器无法下载
+rand.index <- function (group1, group2) 
+{
+  x <- abs(sapply(group1, function(x) x - group1))
+  x[x > 1] <- 1
+  y <- abs(sapply(group2, function(x) x - group2))
+  y[y > 1] <- 1
+  sg <- sum(abs(x - y))/2
+  bc <- choose(dim(x)[1], 2)
+  ri <- 1 - sg/bc
+  return(ri)
+}
+
 sc <- function(ci_est, ci_true){
   if(length(ci_est) != length(ci_true)){
     stop("Wrong len of ci's")
   }
-  n <- length(ci_true)
-  comb_matrix <- combn(n, 2)
-  scs <- NULL
-  for(pair_idx in 1:ncol(comb_matrix)){
-    scs <- c(scs, (ci_est[comb_matrix[,pair_idx]][1] == ci_est[comb_matrix[,pair_idx]][2]) ==
-               (ci_true[comb_matrix[,pair_idx]][1] == ci_true[comb_matrix[,pair_idx]][2]))
-  }
-  return(mean(scs))
+  return(rand.index(ci_est, ci_true))
+  # n <- length(ci_true)
+  # comb_matrix <- combn(n, 2)
+  # scs <- NULL
+  # for(pair_idx in 1:ncol(comb_matrix)){
+  #   scs <- c(scs, (ci_est[comb_matrix[,pair_idx]][1] == ci_est[comb_matrix[,pair_idx]][2]) ==
+  #              (ci_true[comb_matrix[,pair_idx]][1] == ci_true[comb_matrix[,pair_idx]][2]))
+  # }
+  # return(mean(scs))
 }
 
 ari <- function(ci_est, ci_true){
   if(length(ci_est) != length(ci_true)){
     stop("Wrong len of ci's")
   }
-  return(adjustedRandIndex(ci_est, ci_true))
+  # return(adjustedRandIndex(ci_est, ci_true)) # mclust 
+  return(adj.rand.index(ci_est, ci_true))
 }
 
 ## -------------------------------- MSE ----------------------------------
@@ -109,6 +144,51 @@ extend_x_to_row <- function(x, row_to){
   return(matrix(kronecker(x, matrix(1, nrow=row_to)), ncol = K_up))
 }
 
+# ========================== graph for compact group ==============================
 
+# m1 <- matrix(0,6,6)
+# m1[1,3] <- 1
+# m1[3,1] <- 1
+# m1[1,5] <- 1
+# m1[5,1] <- 1
+# m1[2,4] <- 1
+# m1[4,2] <- 1
+# m1[2,6] <- 1
+# m1[6,2] <- 1
+# m2 <- matrix(0,6,6)
+# m2[1,3] <- 1
+# m2[3,1] <- 1
+# m2[2,4] <- 1
+# m2[4,2] <- 1
+# main_group_info_compact <- find_connected_nodes(m1)
+# sub_group_info_compact <- find_connected_nodes(m2)
 
+dfs <- function(adj_matrix, node, visited) {
+  visited[node] <- TRUE
+  connected_nodes <- c(node)
+  
+  for (neighbor in which(adj_matrix[node, ] == 1)) {
+    if (!visited[neighbor]) {
+      connected_nodes <- c(connected_nodes, dfs(adj_matrix, neighbor, visited))
+    }
+  }
+  return(connected_nodes)
+}
 
+find_connected_nodes <- function(adj_matrix) {
+  n <- nrow(adj_matrix)
+  visited <- rep(FALSE, n)
+  connected_components <- list()
+  for (i in 1:n) {
+    if (!visited[i]) {
+      connected_nodes <- dfs(adj_matrix, i, visited)
+      connected_components <- c(connected_components, list(sort(unique(connected_nodes))))
+    }
+  }
+  return(unique(connected_components))
+}
+
+convert_to_parentheses <- function(lst) {
+  result <- sapply(lst, function(x) paste0("(", paste(x, collapse = ","), ")"))
+  paste(result, collapse = ",")
+}

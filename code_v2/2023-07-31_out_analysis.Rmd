@@ -22,17 +22,18 @@ p <- 8
 q <- 4
 epsilon_sd <- 0.5
 epsilon_sd_init <- 0.5
-signal_size <- 2
+signal_size <- 1
 beta_vlen <- 3
 alpha_vlen <- 2
+rho_ratio <- 0.2
 # dt_seed <- 9
 K_up <- 4
-for(dt_seed in seq(9, 49, 10)){
+for(dt_seed in seq(9, 99, 10)){
   prefix <- "hierarchical-gene/code_v2/"
-  prefix <- ""
-    path_pre <- glue("{prefix}{Sys.Date()}_n{n}_p{p}_q{q}_ss{signal_size}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_epi{epsilon_sd_init}_Kup{K_up}_fminit")
+  # prefix <- ""
+    path_pre <- glue("{prefix}{Sys.Date()}_n{n}_p{p}_q{q}_ss{signal_size}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_epi{epsilon_sd_init}_rr{rho_ratio}_Kup{K_up}_fminit")
   # path_pre <- glue("2023-07-31_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_fminit")
-  cmd <- glue("Rscript --verbose {prefix}test.R -n {n} --dt_seed {dt_seed} -p {p} -q {q} -e {epsilon_sd} --epsilon_sd_init {epsilon_sd_init} --signal_size {signal_size} --beta_vlen {beta_vlen} --alpha_vlen {alpha_vlen} --K_up {K_up} --path {path_pre}.csv >> {path_pre}_log.out")
+  cmd <- glue("Rscript --verbose {prefix}test.R -n {n} --dt_seed {dt_seed} -p {p} -q {q} -e {epsilon_sd} --epsilon_sd_init {epsilon_sd_init} --rho_ratio {rho_ratio} --signal_size {signal_size} --beta_vlen {beta_vlen} --alpha_vlen {alpha_vlen} --K_up {K_up} --path {path_pre}.csv >> {path_pre}_log.out")
   print(cmd)
 }
 ```
@@ -105,17 +106,14 @@ print(cmd)
 library(ggplot2)
 library(dplyr)
 # library(plotly)
-# df <- read.csv("2023-08-12_n500_p8_q4_bl3_al2_eps0.5_fminit.csv")
-# df <- read.csv("2023-08-15_n500_p8_q4_bl3_al2_eps0.5_Kup6_fminit.csv")
-# df <- read.csv("2023-11-28_n500_p8_q4_bl3_al2_eps0.5_Kup4_fminit.csv")
-# df <- read.csv("2023-07-29_n200_p40_q4_nz32_eps05_fminit.csv")
-# df <- read.csv("2023-07-31_n200_p40_q10_bl3_al2_eps0.5_fminit.csv")
-# df <- read.csv("2023-07-31_n200_p80_q10_bl3_al2_eps0.5_fminit.csv")
-# df <- read.csv("2023-07-31_n200_p40_q10_bl10_al2_eps0.5_fminit.csv")
 df <- read.csv("2024-02-24_n500_p8_q4_bl3_al2_eps0.5_Kup4_fminit.csv")
-df <- df %>% mutate(method = ifelse(q_c_seed < 100, 1, 0))
-df$method <- ifelse(df$q_c_seed == 111, -1, df$method)
-df$method <- factor(df$method, levels = c(-1, 0, 1), labels = c("random", "flexmix", "our_method"))
+# df <- read.csv("2024-02-25_n500_p8_q4_ss1_bl3_al2_eps0.5_epi0.5_Kup4_fminit.csv")
+# df <- read.csv("2024-02-24_n500_p8_q4_ss_2_bl3_al2_eps0.5_Kup4_fminit.csv")
+# df <- read.csv("2024-02-24_n500_p8_q4_bl3_al2_eps0.5_Kup6_fminit.csv")
+# 以下方法过期，直接看 tag 列即可
+# df <- df %>% mutate(method = ifelse(q_c_seed < 100, 1, 0))
+# df$method <- ifelse(df$q_c_seed == 111, -1, df$method)
+# df$method <- factor(df$method, levels = c(-1, 0, 1), labels = c("random", "flexmix", "our_method"))
 # df %>% mutate(method = vec_case_when(q_c_seed < 100 ~ q_c_seed,
 #                        q_c_seed == 111 ~ -1,
 #                        q_c_seed == 999 ~ 0))
@@ -124,25 +122,49 @@ df$method <- factor(df$method, levels = c(-1, 0, 1), labels = c("random", "flexm
 
 ```{r}
 df_report <- df %>% 
-  select(dt_seed, q_c_seed, mse, sc, method, main_grn, sub_grn) %>%
-  group_by(dt_seed, q_c_seed) %>% 
-  filter(sc == max(sc)) %>%
-  filter(row_number() == 1)
-df_report
+  select(dt_seed, q_c_seed, mse, sc, ari, tag, main_grn, sub_grn, bic_mean, cdist) %>%
+  group_by(dt_seed, q_c_seed, tag) %>% 
+  arrange(bic_mean) %>%
+  filter(tag == 'hier') %>%
+  filter(row_number() == 1) %>%
+  arrange(dt_seed, q_c_seed)
+df_report2 <- df_report %>%
+  group_by(dt_seed) %>%
+  summarise(per_main = sum(main_grn == 2)/n(),
+            per_sub = sum(sub_grn == 4)/n(),
+            sc = max(sc),
+            ari = max(ari))
+colMeans(df_report2)
+```
+
+```{r}
+df %>% filter(tag == 'flexmix') %>% select(sc, ari) %>% colMeans(na.rm = T)
 ```
 
 
 ```{r}
-df_report <- df %>% 
-  select(dt_seed, q_c_seed, mse, sc, cdist, method) %>%
-  group_by(dt_seed, q_c_seed) %>% 
-  filter(cdist == min(cdist)) %>%
-  filter(row_number() == 1)
-df_report
+df_report %>%
+  group_by(dt_seed) %>%
+  summarise(per_main = sum(main_grn == 2)/n(),
+            per_sub = sum(sub_grn == 4)/n(),
+            sc = max(sc),
+            ari = max(ari))
 ```
 
+
 ```{r}
-ggplot(df_report, aes(x = sc, y = cdist, col = method)) +
+ggplot(df_report, aes(x = sc, fill = tag)) +
+  geom_histogram(position = "identity")
+```
+
+
+```{r}
+df_report %>% arrange(-sc)
+```
+
+
+```{r}
+ggplot(df_report, aes(x = sc, y = cdist, col = tag)) +
   geom_point(aes(size = 2, alpha = 0.5)) +
   theme_bw() +
   facet_wrap(~ dt_seed) +
