@@ -22,14 +22,14 @@ p <- 8
 q <- 4
 epsilon_sd <- 0.5
 epsilon_sd_init <- 0.5
-signal_size <- 1
+signal_size <- 2
 beta_vlen <- 3
 alpha_vlen <- 2
 rho_ratio <- 0.2
 balance <- 2
 cotype <- 'En'
 # dt_seed <- 9
-K_up <- 4
+K_up <- 6
 for(dt_seed in seq(9, 99, 10)){
   prefix <- "hierarchical-gene/code_v2/"
   # prefix <- ""
