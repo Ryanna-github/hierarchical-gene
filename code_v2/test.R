@@ -21,6 +21,7 @@ parser$add_argument("-n", "--num", default=200,  help="sample size")
 parser$add_argument("--dt_seed", default=9,  help="epsilon seed while generating data")
 parser$add_argument("-p", default = 8, help = "dim of X")
 parser$add_argument("-q", default = 4, help = "dim of Z")
+parser$add_argument("-b", default = 1, help = "if data balanced (1: balanced, 2: unbalanced groups with balanced subgroups, 3: balanced groups with unbalanced sbgroups)")
 parser$add_argument("-e", "--epsilon_sd", default = 0.5, help = "error")
 parser$add_argument("--epsilon_sd_init", default = 0.5, help = "epsilon_sd initiation for estimating rho")
 parser$add_argument("--rho_ratio", default = 0.5, help = "update ratio of rho, rho(t+1)=ratio*rho+(1-ratio)rho(t)")
@@ -29,6 +30,7 @@ parser$add_argument("-bl", "--beta_vlen", default = 3, help = "nonzero length of
 parser$add_argument("-al", "--alpha_vlen", default = 2, help = "nonzero length of alpha")
 parser$add_argument("--path", default="temp.csv",  help="csv result save path")
 parser$add_argument("--K_up", default=4,  help="Upper class number")
+parser$add_argument("--cotype", default="En",  help="Covariate matrix of X and Z")
 # parser$add_argument("-a", "--aa", default = 1.2, help = "penalty para in MCP")
 # parser$add_argument("--lambda_1", default = 0.3, help = "lambda 1")
 # parser$add_argument("--lambda_2", default = 2, help = "lambda 2")
@@ -39,12 +41,12 @@ parser$add_argument("--K_up", default=4,  help="Upper class number")
 # --epsilon_sd_init 0.5 --beta_vlen 3 --alpha_vlen 2 --K_up 4
 
 args <- parser$parse_args()
-# print("++++++++++++++++++++++++++")
-# print(args)
+print(str(args))
 
 n <- as.numeric(args$n)
 p <- as.numeric(args$p)
 q <- as.numeric(args$q)
+balance <- as.numeric(args$b)
 epsilon_sd <- as.numeric(args$epsilon_sd)
 sigma_est <- as.numeric(args$epsilon_sd_init)
 rho_ratio <- as.numeric(args$rho_ratio)
@@ -54,11 +56,13 @@ alpha_vlen <- as.numeric(args$alpha_vlen)
 save_path <- args$path
 dt_seed <- as.numeric(args$dt_seed)
 K_up <- as.numeric(args$K_up)
+cotype <- args$cotype
 
 # if(1){
 #   n <- 500
 #   p <- 8
 #   q <- 4
+#   balance <- 2
 #   epsilon_sd <- 0.5
 #   epsilon_sd_init <- 0.5
 #   sigma_est <- as.numeric(epsilon_sd_init)
@@ -69,6 +73,7 @@ K_up <- as.numeric(args$K_up)
 #   save_path <- "temp.csv"
 #   dt_seed <- 9
 #   K_up <- 4  # 估计时的最大类别，应该不少于 group_num_sub
+#   cotype <- "En"
 #   print("*")
 # }
 
@@ -76,8 +81,8 @@ K_up <- as.numeric(args$K_up)
 # n <- 200
 # p <- 8
 # q <- 4
-cotype_x <- "En"
-cotype_z <- "En"
+cotype_x <- cotype
+cotype_z <- cotype
 # epsilon_sd <- 0.5
 beta_nonzero <- c(-2, -2, 2, 2)*signal_size # 长度应和真实 group_num_sub 保持一致
 # beta_nonzero <- c(-3, -1, 1, 3) # 长度应和真实 group_num_sub 保持一致
@@ -92,6 +97,13 @@ group_num_main <- 2
 group_num_sub <- 4
 hier_struc <- list(c(1,2),c(3,4))
 prob_sub <- rep(1/group_num_sub, group_num_sub)
+if(balance == 1){
+  prob_sub <- rep(1/group_num_sub, group_num_sub)
+}else if(balance == 2){
+  prob_sub<-c(1/6,1/6,1/3,1/3)
+}else{
+  prob_sub<-c(1/6,1/3,1/6,1/3)
+}
 reverse <- FALSE
 
 # aa <- 1.2
@@ -125,7 +137,7 @@ colnames_all <- c("dt_seed", "q_c_seed", "aa", "tau", "l1", "l2", "l3",
                   "sc", "sc_main", "sc_sub", 
                   "ari", "ari_main", "ari_sub", "fit_sum", "fit_mean",
                   "penal", "bic_sum", "bic_mean", "main_grn", "sub_grn", 
-                  "rho_init", "rho_est", "rho_ratio", "valid_hier", 
+                  "rho_init", "rho_est", "rho_ratio", "pi_est", "valid_hier", 
                   "group_detail", paste0("case_", 1:4), 
                   "iter_total", "iter_type", "tag")
 

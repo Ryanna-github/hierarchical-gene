@@ -26,14 +26,16 @@ signal_size <- 1
 beta_vlen <- 3
 alpha_vlen <- 2
 rho_ratio <- 0.2
+balance <- 2
+cotype <- 'En'
 # dt_seed <- 9
 K_up <- 4
 for(dt_seed in seq(9, 99, 10)){
   prefix <- "hierarchical-gene/code_v2/"
-  prefix <- ""
-    path_pre <- glue("{prefix}{Sys.Date()}_n{n}_p{p}_q{q}_ss{signal_size}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_epi{epsilon_sd_init}_rr{rho_ratio}_Kup{K_up}_fminit")
+  # prefix <- ""
+    path_pre <- glue("{prefix}{Sys.Date()}_n{n}_p{p}_q{q}_b{balance}_ss{signal_size}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_epi{epsilon_sd_init}_rr{rho_ratio}_Kup{K_up}_ct{cotype}_fminit")
   # path_pre <- glue("2023-07-31_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_fminit")
-  cmd <- glue("Rscript --verbose {prefix}test.R -n {n} --dt_seed {dt_seed} -p {p} -q {q} -e {epsilon_sd} --epsilon_sd_init {epsilon_sd_init} --rho_ratio {rho_ratio} --signal_size {signal_size} --beta_vlen {beta_vlen} --alpha_vlen {alpha_vlen} --K_up {K_up} --path {path_pre}.csv >> {path_pre}_log.out")
+  cmd <- glue("Rscript --verbose {prefix}test.R -n {n} --dt_seed {dt_seed} -p {p} -q {q} -b {balance} -e {epsilon_sd} --epsilon_sd_init {epsilon_sd_init} --rho_ratio {rho_ratio} --signal_size {signal_size} --beta_vlen {beta_vlen} --alpha_vlen {alpha_vlen} --K_up {K_up} --cotype {cotype} --path {path_pre}.csv >> {path_pre}_log.out")
   print(cmd)
 }
 ```
@@ -106,7 +108,7 @@ print(cmd)
 library(ggplot2)
 library(dplyr)
 # library(plotly)
-df <- read.csv("2024-02-26_n500_p8_q4_ss1_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_fminit.csv")
+df <- read.csv("2024-02-26_n500_p8_q4_ss2_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_fminit.csv")
 # 以下方法过期，直接看 tag 列即可
 # df <- df %>% mutate(method = ifelse(q_c_seed < 100, 1, 0))
 # df$method <- ifelse(df$q_c_seed == 111, -1, df$method)
@@ -119,12 +121,13 @@ df <- read.csv("2024-02-26_n500_p8_q4_ss1_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_fmini
 
 ```{r}
 df_report <- df %>% 
-  select(dt_seed, q_c_seed, mse, 
+  select(dt_seed, q_c_seed, l2, l3, mse, 
          cdist, cdist_main, cdist_sub, sc, sc_main, sc_sub, ari, ari_main, ari_sub,
-         main_grn, sub_grn, bic_mean, tag) %>%
+         main_grn, sub_grn, bic_sum, bic_mean, tag) %>%
+  filter(l2 > 0 & l3 > 0) %>%
+  filter(tag == 'hier') %>%
   group_by(dt_seed, q_c_seed, tag) %>% 
   arrange(bic_mean) %>%
-  filter(tag == 'hier') %>%
   filter(row_number() == 1) %>%
   arrange(dt_seed, q_c_seed)
 df_report2 <- df_report %>%
@@ -138,13 +141,32 @@ df_report2 <- df_report %>%
             ari_main = mean(ari_main),
             ari_sub = mean(ari_sub),
             cdist = mean(cdist),
-            cdist_main = mean(cdist_main),
-            cdist_sub = mean(cdist_sub))
-colMeans(df_report2)
+            cdist_main = mean(cdist_main, na.rm = T),
+            cdist_sub = mean(cdist_sub, na.rm = T))
+# df_report2
+colMeans(df_report2, na.rm = T)
 ```
 
 ```{r}
-df %>% filter(tag == 'flexmix') %>% select(sc, ari) %>% colMeans(na.rm = T)
+df_compare <- df %>% 
+  select(dt_seed, q_c_seed, mse, 
+         cdist, cdist_main, cdist_sub, sc, sc_main, sc_sub, ari, ari_main, ari_sub,
+         main_grn, sub_grn, bic_mean, tag) %>%
+  filter(tag == 'flexmix') %>% 
+  group_by(dt_seed) %>%
+  summarise(per_main = sum(main_grn == 2)/n(),
+            per_sub = sum(sub_grn == 4)/n(),
+            sc = mean(sc),
+            sc_main = mean(sc_main),
+            sc_sub = mean(sc_sub),
+            ari = mean(ari),
+            ari_main = mean(ari_main),
+            ari_sub = mean(ari_sub),
+            cdist = mean(cdist),
+            cdist_main = mean(cdist_main, na.rm = T),
+            cdist_sub = mean(cdist_sub, na.rm = T))
+df_compare
+colMeans(df_compare, na.rm = T)
 ```
 
 

@@ -24,6 +24,7 @@ flexmix_init <- function(q_c_seed, minprior_value = 0, tag = "flexmix"){
   cdist_sub <- tryCatch({ coef_dist(coef_est[(p+1):(p+q),], coef$coef_alpha) }, error = function(err) {NaN})
   sc_score <- sc(m_glm@cluster, ci_sim)
   ari_score <- ari(m_glm@cluster, ci_sim)
+  pi_est = paste0("(", paste(as.character(round(prop.table(table(m_glm@cluster)),3)), collapse = ","), ")")
   
   ci_matrix <- matrix(0, nrow = n, ncol = K_up)
   for(i in 1:n){
@@ -38,6 +39,7 @@ flexmix_init <- function(q_c_seed, minprior_value = 0, tag = "flexmix"){
               est_sub_grn = K_est,
               sc_score = sc_score,
               ari_score = ari_score,
+              pi_est = pi_est,
               mse = mse,
               tag = tag))
 }
@@ -71,6 +73,7 @@ random_init <- function(q_c_seed, tag = "random"){
   ci_matrix <- t(apply(q_c_matrix, 1, function(x){as.numeric(x == max(x))}))
   y_hat <- rowSums(ci_matrix * data%*%coef_est)
   mse <- sum((y-y_hat)^2/n)
+  pi_est = paste0("(", paste(as.character(round(prop.table(table(ci_est)),3)), collapse = ","), ")")
   
   print(coef_est)
   return(list(cdist = cdist,
@@ -513,6 +516,7 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
               rho_init = rho_init[1],
               rho_est = paste0("(", paste(as.character(round(rho_list[[iter]],3)), collapse = ","), ")"),
               rho_ratio = rho_ratio,
+              pi_est = paste0("(", paste(as.character(round(prop.table(table(pi_list[[iter]])),3)), collapse = ","), ")"),
               case_table_full = case_table_full,
               valid_hier = valid_hier,
               group_detail = group_detail,
@@ -648,6 +652,7 @@ tuning_hyper <- function(l2_seq, l3_seq, fix_para, coef_full_init,
                   trail$rho_init,
                   trail$rho_est,
                   trail$rho_ratio,
+                  trail$pi_est,
                   trail$valid_hier,
                   trail$group_detail,
                   trail$case_table_full,
