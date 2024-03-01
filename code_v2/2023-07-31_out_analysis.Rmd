@@ -40,7 +40,7 @@ epsilon_sd_init <- 0.5
 signal_size <- 1
 beta_vlen <- 4
 alpha_vlen <- 16
-rho_ratio <- 0.2
+rho_ratio <- 0.1
 balance <- 1
 cotype <- 'En'
 # dt_seed <- 9

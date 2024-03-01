@@ -650,6 +650,10 @@ tuning_hyper <- function(l2_seq, l3_seq, fix_para, coef_full_init,  q_c_matrix_i
   if(save_all){
     result <- NULL
     trail_set <- expand.grid(list(l3 = l3_seq, l2 = l2_seq))
+    # 补 lambda = 0 实验（l2,l3不包含时，简化实验次数）
+    trail_set <- rbind(expand.grid(list(l3 = c(0,mean(l3_seq)), 
+                                        l2 = c(0,mean(l2_seq))))[1:3,],
+                       trail_set)
     trail_num <- nrow(trail_set)
     # bic_record <- rep(-Inf, trail_num)
     trail_record <- vector(mode = "list",length = trail_num)

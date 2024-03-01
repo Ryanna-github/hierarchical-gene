@@ -81,12 +81,74 @@ colnames_part <- c("dt_seed", "q_c_seed", "tag", "mse",
                   "main_grn", "sub_grn", "pi_est","group_detail")
 ```
 
+## FRM1
+
+和主实验中几乎一样
+
+```{r}
+FMR1_comp <- function(q_c_seed, minprior_value = 0.1, tag = "FMR1"){
+  set.seed(q_c_seed)
+  pi_init <- rep(1/K_up, K_up)
+  rho_init <- rep(1, K_up)/sigma_est
+  q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
+  q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+  
+  m_glm <- tryCatch({
+    flexmix(y~cbind(X, Z)-1, cluster = q_c_matrix,
+            model = FLXMRglm(),
+            control = list(minprior = minprior_value))
+  }, error = function(err) {
+    cat("Error occurred:", conditionMessage(err), "\n")
+    flexmix(y~cbind(X, Z)-1, k = K_up,
+            model = FLXMRglm(),
+            control = list(minprior = minprior_value))
+  })
+  
+  est_sub_grn <- m_glm@k
+  ci_est_sub <- m_glm@cluster
+  coef_est <- parameters(m_glm)
+  rownames(coef_full_est) <- NULL
+  ci_matrix <- matrix(0, nrow = n, ncol = est_sub_grn)
+  ci_matrix[cbind(1:n, m_glm@cluster)] <- 1
+  
+  sc_score_main <- NaN
+  ari_score_main <- NaN
+  est_main_grn <- NaN
+  est_sub_grn <- max(ci_est_sub)
+  sc_score_sub <- sc(m_glm@cluster, ci_sim_sub)
+  ari_score_sub <- ari(m_glm@cluster, ci_sim_sub)
+  cdist <- tryCatch({ coef_dist(coef_est, coef$coef_full) }, error = function(err) {NaN})
+  cdist_main <- tryCatch({ coef_dist(coef_est[1:p,], coef$coef_beta) }, error = function(err) {NaN})
+  cdist_sub <- tryCatch({ coef_dist(coef_est[(p+1):(p+q),], coef$coef_alpha) }, error = function(err) {NaN})
+  
+  pi_est = paste0("(", paste(as.character(round(prop.table(table(m_glm@cluster)),3)), collapse = ","), ")")
+  
+  y_hat <- rowSums(ci_matrix * data.frame(predict(m_glm)))
+  mse <- sum((y-y_hat)^2/n)
+  return(list(dt_seed = dt_seed,
+              q_c_seed = q_c_seed,
+              tag = tag,
+              cdist_main = cdist_main,
+              cdist_sub = cdist_sub,
+              # coef_full_ori = coef_full_est,
+              sc_score_main = sc_score_main,
+              sc_score_sub = sc_score_sub,
+              ari_score_main = ari_score_main,
+              ari_score_sub = ari_score_sub,
+              est_main_grn = est_main_grn,
+              est_sub_grn = est_sub_grn,
+              pi_est = paste0("(", paste(as.character(round(prop.table(table(ci_est_sub)),4)), collapse = ","), ")"),
+              mse = mse))
+}
+```
+
+
 ## FMR2
 
 两次使用 FMR 方法得到层次模型模拟结果
 
 ```{r}
-FMR2_comp <- function(q_c_seed, minprior_value = 0.2, tag = "FMR2"){
+FMR2_comp <- function(q_c_seed, minprior_value = 0.1, tag = "FMR2"){
   set.seed(q_c_seed)
   pi_init <- rep(1/K_up, K_up)
   rho_init <- rep(1, K_up)/sigma_est
@@ -134,17 +196,24 @@ FMR2_comp <- function(q_c_seed, minprior_value = 0.2, tag = "FMR2"){
               model = FLXMRglm(),
               control = list(minprior = minprior_value))
     })
+    # est_sub_grn_k_main <- max(m_glm_sub@cluster)
     est_sub_grn_k_main <- m_glm_sub@k
     # K_up2 <- K_up2 - est_sub_grn_k_main + 1
     coef_alpha_est_k_main <- parameters(m_glm_sub)[1:q,]
-    rownames(coef_alpha_est_k_main) <- NULL
+    
+    # if(k_main == 1){
+    #   return(1)
+    # }
     coef_full_est <- cbind(coef_full_est,
-                           rbind(matrix(rep(coef_beta_est[,k_main], est_sub_grn_k_main), 
+                           rbind(matrix(rep(matrix(coef_beta_est, nrow=p)[,k_main],
+                                            est_sub_grn_k_main), 
                                         ncol = est_sub_grn_k_main),
-                                 coef_alpha_est_k_main))
+                                 matrix(coef_alpha_est_k_main, 
+                                        ncol = est_sub_grn_k_main)))
     ci_est_sub[idx_k_main] <- m_glm_sub@cluster + max(ci_est_sub)
   }
-  est_sub_grn <- max(ci_est_sub)
+  # est_sub_grn <- max(ci_est_sub)
+  est_sub_grn <- dim(coef_full_est)[2]
   # cdist
   cdist_main <- tryCatch({ coef_dist(coef_full_est[1:p,], coef$coef_beta) }, error = function(err) {NaN})
   if(is.na(cdist_main)){
@@ -160,7 +229,7 @@ FMR2_comp <- function(q_c_seed, minprior_value = 0.2, tag = "FMR2"){
   # mse(in case)
   ci_matrix <- matrix(0, nrow = n, ncol = est_sub_grn)
   ci_matrix[cbind(1:n, ci_est_sub)] <- 1
-  y_hat <- rowSums(ci_matrix * cbind(X,Z) %*% coef_full_est)
+  y_hat <- rowSums(ci_matrix * (cbind(X,Z) %*% coef_full_est))
   mse <- sum((y-y_hat)^2/n)
   return(list(dt_seed = dt_seed,
               q_c_seed = q_c_seed,
@@ -198,7 +267,7 @@ respclust1_comp <- function(q_c_seed, tag = "respclust1"){
   est_main_grn <- NaN
   est_sub_grn <- K_up
   ci_est_sub <- respclust$cluster
-  cdist_main <- tryCatch({ coef_dist(coef_full_est[1:p,], coef$coef_alpha) }, error = function(err) {NaN})
+  cdist_main <- tryCatch({ coef_dist(coef_full_est[1:p,], coef$coef_beta) }, error = function(err) {NaN})
   cdist_sub <- tryCatch({ coef_dist(coef_full_est[(p+1):(p+q),], coef$coef_alpha) }, error = function(err) {NaN})
   sc_score_sub <- sc(ci_est_sub, ci_sim_sub)
   ari_score_sub <- ari(ci_est_sub, ci_sim_sub)
@@ -279,13 +348,13 @@ respclust2_comp <- function(q_c_seed, tag = "respclust2"){
     sc_score_sub <- sc(ci_est_sub, ci_sim_sub)
     ari_score_main <- ari(ci_est_main, ci_sim_main) 
     ari_score_sub <- ari(ci_est_sub, ci_sim_sub) 
-    cdist_main <- tryCatch({ coef_dist(coef_full_est[1:p,], coef$coef_alpha) }, error = function(err) {NaN})
+    cdist_main <- tryCatch({ coef_dist(coef_full_est[1:p,], coef$coef_beta) }, error = function(err) {NaN})
     cdist_sub <- tryCatch({ coef_dist(coef_full_est[(p+1):(p+q),], coef$coef_alpha) }, error = function(err) {NaN})
     df_K_set <- rbind(df_K_set, c(cdist_main, cdist_sub, sc_score_main, sc_score_sub, ari_score_main, ari_score_sub))
   }
   df_K_set <- data.frame(df_K_set)
   colnames(df_K_set) <- c("cdist_main", "cdist_sub", "sc_score_main", "sc_score_sub", "ari_score_main", "ari_score_sub")
-  idx_chosen <- which.max(rowMeans(df_K_set[,5:6]))
+  idx_chosen <- which.max(rowMeans(df_K_set[,5:6], na.rm = TRUE))
   
   ci_est_main <- ci_est_main_list[[idx_chosen]]
   ci_est_sub <- ci_est_sub_list[[idx_chosen]]
@@ -294,15 +363,28 @@ respclust2_comp <- function(q_c_seed, tag = "respclust2"){
   y_hat <- rowSums(cbind(X,Z) %*% coef_full_list[[idx_chosen]] * ci_matrix)
   mse <- sum((y-y_hat)^2/n)
   
+  cdist_main <- ifelse(is.na(df_K_set$cdist_main[idx_chosen]), 
+                           mean(df_K_set$cdist_main, na.rm = TRUE),
+                           df_K_set$cdist_main[idx_chosen])
+  cdist_sub <- ifelse(is.na(df_K_set$cdist_sub[idx_chosen]), 
+                           mean(df_K_set$cdist_sub, na.rm = TRUE),
+                           df_K_set$cdist_sub[idx_chosen])
+  sc_score_main <- ifelse(is.na(df_K_set$sc_score_main[idx_chosen]), 
+                           mean(df_K_set$sc_score_main, na.rm = TRUE),
+                           df_K_set$sc_score_main[idx_chosen])
+  ari_score_main <- ifelse(is.na(df_K_set$ari_score_main[idx_chosen]), 
+                           mean(df_K_set$ari_score_main, na.rm = TRUE),
+                           df_K_set$ari_score_main[idx_chosen])
+  
   return(list(dt_seed = dt_seed,
               q_c_seed = q_c_seed,
               tag = tag,
-              cdist_main = df_K_set$cdist_main[idx_chosen],
-              cdist_sub = df_K_set$cdist_sub[idx_chosen],
+              cdist_main = cdist_main,
+              cdist_sub = cdist_sub,
               # coef_full_ori = coef_full_est,
-              sc_score_main = df_K_set$sc_score_main[idx_chosen],
+              sc_score_main = sc_score_main,
               sc_score_sub = df_K_set$sc_score_sub[idx_chosen],
-              ari_score_main = df_K_set$ari_score_main[idx_chosen],
+              ari_score_main = ari_score_main,
               ari_score_sub = df_K_set$ari_score_sub[idx_chosen],
               est_main_grn = max(ci_est_main),
               est_sub_grn = max(ci_est_sub),
@@ -339,7 +421,7 @@ resiclust1_comp <- function(q_c_seed, tag = "resiclust1"){
     coef_full_est <- cbind(coef_full_est, matrix(lm_k$beta))
   }
   
-  cdist_main <- tryCatch({ coef_dist(coef_full_est[1:p,], coef$coef_alpha) }, error = function(err) {NaN})
+  cdist_main <- tryCatch({ coef_dist(coef_full_est[1:p,], coef$coef_beta) }, error = function(err) {NaN})
   cdist_sub <- tryCatch({ coef_dist(coef_full_est[(p+1):(p+q),], coef$coef_alpha) }, error = function(err) {NaN})
   
   ci_matrix <- matrix(0, nrow = n, ncol = est_sub_grn)
@@ -419,11 +501,11 @@ resiclust2_comp <- function(q_c_seed, tag = "resiclust2"){
     ci_est_sub_list[[test_idx]] <- ci_est_sub
     coef_full_list[[test_idx]] <- coef_full_est
     
-    sc_score_main <- NaN
+    sc_score_main <- sc(ci_est_main, ci_sim_main)
     sc_score_sub <- sc(ci_est_sub, ci_sim_sub)
-    ari_score_main <- NaN
+    ari_score_main <- ari(ci_est_main, ci_sim_main)
     ari_score_sub <- ari(ci_est_sub, ci_sim_sub)
-    cdist_main <- tryCatch({ coef_dist(coef_full_est[1:p,], coef$coef_alpha) }, error = function(err) {NaN})
+    cdist_main <- tryCatch({ coef_dist(coef_full_est[1:p,], coef$coef_beta) }, error = function(err) {NaN})
     cdist_sub <- tryCatch({ coef_dist(coef_full_est[(p+1):(p+q),], coef$coef_alpha) }, error = function(err) {NaN})
     df_K_set <- rbind(df_K_set, c(cdist_main, cdist_sub, sc_score_main, sc_score_sub, ari_score_main, ari_score_sub))
   }
@@ -441,15 +523,28 @@ resiclust2_comp <- function(q_c_seed, tag = "resiclust2"){
   ci_est_main <- ci_est_main_list[[idx_chosen]]
   ci_est_sub <- ci_est_sub_list[[idx_chosen]]
   
+  cdist_main <- ifelse(is.na(df_K_set$cdist_main[idx_chosen]), 
+                           mean(df_K_set$cdist_main, na.rm = TRUE),
+                           df_K_set$cdist_main[idx_chosen])
+  cdist_sub <- ifelse(is.na(df_K_set$cdist_sub[idx_chosen]), 
+                           mean(df_K_set$cdist_sub, na.rm = TRUE),
+                           df_K_set$cdist_sub[idx_chosen])
+  sc_score_main <- ifelse(is.na(df_K_set$sc_score_main[idx_chosen]), 
+                           mean(df_K_set$sc_score_main, na.rm = TRUE),
+                           df_K_set$sc_score_main[idx_chosen])
+  ari_score_main <- ifelse(is.na(df_K_set$ari_score_main[idx_chosen]), 
+                           mean(df_K_set$ari_score_main, na.rm = TRUE),
+                           df_K_set$ari_score_main[idx_chosen])
+  
   return(list(dt_seed = dt_seed,
               q_c_seed = q_c_seed,
               tag = tag,
-              cdist_main = df_K_set$cdist_main[idx_chosen],
-              cdist_sub = df_K_set$cdist_sub[idx_chosen],
+              cdist_main = cdist_main,
+              cdist_sub = cdist_sub,
               # coef_full_ori = coef_full_est,
-              sc_score_main = df_K_set$sc_score_main[idx_chosen],
+              sc_score_main = sc_score_main,
               sc_score_sub = df_K_set$sc_score_sub[idx_chosen],
-              ari_score_main = df_K_set$ari_score_main[idx_chosen],
+              ari_score_main = ari_score_main,
               ari_score_sub = df_K_set$ari_score_sub[idx_chosen],
               est_main_grn = max(ci_est_main),
               est_sub_grn = max(ci_est_sub),
@@ -819,9 +914,12 @@ oracle_comp <- function(q_c_seed, iter_type = 'stop', iter_max = 200,
 
 # 总实验
 
+## 单 dt_seed
+
 ```{r}
 comresult <- NULL
 for(q_c_seed in 1:q_c_seed_max){
+  comresult <- rbind(comresult, data.frame(FMR1_comp(q_c_seed)))
   comresult <- rbind(comresult, data.frame(FMR2_comp(q_c_seed)))
   comresult <- rbind(comresult, data.frame(respclust1_comp(q_c_seed)))
   comresult <- rbind(comresult, data.frame(respclust2_comp(q_c_seed)))
@@ -870,21 +968,127 @@ colnames(oraresult) <- c("dt_seed", "q_c_seed", "lambda_2", "lambda_3", "tag",
 oraresult %>% arrange(bic_mean)
 ```
 
+```{r}
+# comresult %>% group_by(dt_seed) %>% 
+#   summarise(tag = min(tag),
+#             cdist_main = mean(cdist_main),
+#             cdist_sub = mean(cdist_sub),
+#             # coef_full_ori = coef_full_est,
+#             sc_score_main = mean(sc_score_main),
+#             sc_score_sub = mean(sc_score_sub),
+#             ari_score_main = mean(ari_score_main),
+#             ari_score_suub = mean(ari_score_suub),
+#             est_main_grn = mean(est_main_grn),
+#             est_sub_grn = mean(est_sub_grn),
+#             mse = mean(mse))
+```
+
+## 全 dt_seed
+
 
 ```{r}
-comresult %>% group_by(dt_seed) %>% 
-  summarise(tag = min(tag),
-            cdist_main = mean(cdist_main),
-            cdist_sub = mean(cdist_sub),
-            # coef_full_ori = coef_full_est,
-            sc_score_main = mean(sc_score_main),
-            sc_score_sub = mean(sc_score_sub),
-            ari_score_main = mean(ari_score_main),
-            ari_score_suub = mean(ari_score_suub),
-            est_main_grn = mean(est_main_grn),
-            est_sub_grn = mean(est_sub_grn),
-            mse = mean(mse))
+n <- 500
+p <- 8
+q <- 4
+epsilon_sd <- 0.5
+epsilon_sd_init <- 0.5
+sigma_est <- as.numeric(epsilon_sd_init)
+signal_size <- 2
+beta_vlen <- 3
+alpha_vlen <- 2
+save_path <- "temp.csv"
+# dt_seed <- 9
+K_up <- 6  # 估计时的最大类别，应该不少于 group_num_sub
+
+cotype_x <- "En"
+cotype_z <- "En"
+beta_nonzero <- c(-2, -2, 2, 2)*signal_size # 长度应和真实 group_num_sub 保持一致
+alpha_nonzero <- c(-3, -1, 1, 3)*signal_size
+
+q_c_seed_max <- 10
+group_num_main <- 2                    
+group_num_sub <- 4    
+hier_struc <- list(c(1,2),c(3,4))
+prob_sub <- rep(1/group_num_sub, group_num_sub)  
+reverse <- FALSE
+
+# =============================== prepare =================================
+comb_pair <- combn(K_up, 2)
+H_p <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
+                 diag(p)) %>% Matrix(sparse = TRUE)
+H_q <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
+                 diag(q)) %>% Matrix(sparse = TRUE)
+
+
+# =============================== result =================================
+colnames_part <- c("dt_seed", "q_c_seed", "tag", "mse", 
+                   "cdist_main", "cdist_sub", "ci_prob_mean",
+                  "sc", "sc_main", "sc_sub","ari", "ari_main", "ari_sub",
+                  "main_grn", "sub_grn", "pi_est","group_detail")
 ```
+
+
+```{r}
+comresult <- NULL
+for(dt_seed in seq(9,99,10)){
+  whole.data <- generate_all_data(dt_seed, n, p, q, prob_sub, hier_struc, 
+                                beta_nonzero, alpha_nonzero, beta_vlen, alpha_vlen, 
+                                cotype_x, cotype_z, epsilon_sd, reverse)
+  X <- whole.data$data$X
+  Z <- whole.data$data$Z
+  data <- whole.data$data$data_full
+  coef <- whole.data$coef
+  # coefv <- lapply(coef, as.vector) # 按照类别拉长
+  ci_sim <- whole.data$ci_sim
+  ci_sim_main <- whole.data$ci_sim_main
+  ci_sim_sub <- whole.data$ci_sim_sub
+  y <- matrix(whole.data$y, ncol=1)
+  
+  for(q_c_seed in 1:q_c_seed_max){
+    comresult <- rbind(comresult, data.frame(FMR1_comp(q_c_seed)))
+    comresult <- rbind(comresult, data.frame(FMR2_comp(q_c_seed)))
+    comresult <- rbind(comresult, data.frame(respclust1_comp(q_c_seed)))
+    comresult <- rbind(comresult, data.frame(respclust2_comp(q_c_seed)))
+    comresult <- rbind(comresult, data.frame(resiclust1_comp(q_c_seed)))
+    comresult <- rbind(comresult, data.frame(resiclust2_comp(q_c_seed)))
+  }
+}
+```
+
+```{r}
+df_report <- comresult %>% group_by(tag, dt_seed) %>%
+  summarise(tag = min(tag),
+            dt_seed = min(dt_seed),
+            per_main = sum(est_main_grn == 2, na.rm = FALSE)/n(),
+            per_sub = sum(est_sub_grn == 4, na.rm = FALSE)/n(),
+            sc_main = mean(sc_score_main, na.rm = TRUE),
+            sc_sub = mean(sc_score_sub, na.rm = TRUE),
+            ari_main = mean(ari_score_main, na.rm = TRUE),
+            ari_sub = mean(ari_score_sub, na.rm = TRUE),
+            MSE_main = mean(cdist_main, na.rm = TRUE),
+            MSE_sub = mean(cdist_sub, na.rm = TRUE), .groups = "drop")
+df_report2 <- df_report %>% group_by(tag) %>%
+  summarise(tag = min(tag),
+            per_main = mean(per_main, na.rm = TRUE),
+            per_sub = mean(per_sub, na.rm = TRUE),
+            sc_main = mean(sc_main, na.rm = TRUE),
+            sc_sub = mean(sc_sub, na.rm = TRUE),
+            ari_main = mean(ari_main, na.rm = TRUE),
+            ari_sub = mean(ari_sub, na.rm = TRUE),
+            MSE_main = mean(MSE_main, na.rm = TRUE),
+            MSE_sub = mean(MSE_sub, na.rm = TRUE), .groups = "drop")
+
+df_result <- df_report2 %>% select(-tag)
+write.table(format(df_result, nsmall = 4), "clipboard", sep = "\t", row.names = FALSE, col.names = FALSE)
+```
+
+
+
+
+```{r}
+df_tmp <- df_report %>% filter(tag == 'FMR2')
+```
+
 
 
 
