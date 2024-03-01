@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 > 进行单轮实验，分析封装函数的具体表现
 
 ```{r}
-rm(list = ls(all = TRUE))
+# rm(list = ls(all = TRUE))
 library(ggplot2)
 library(dplyr)
 library(Matrix)
@@ -249,9 +249,7 @@ for(trail_idx in 1:trail_num){
 }
 ```
 
-```{r}
-tt
-```
+
 
 
 

@@ -8,6 +8,8 @@ generate_sigma <- function(m, type.index = "En"){
           sigma[i,j] = 0.25^abs(i-j)
         }else if(type.index == "AR2"){
           sigma[i,j] = 0.75^abs(i-j)
+        }else if(type.index == "AR3"){
+          sigma[i,j] = 0.50^abs(i-j)
         }else if(type.index == "B2"){
           if(abs(i-j) ==1){
             sigma[i,j]= 0.6

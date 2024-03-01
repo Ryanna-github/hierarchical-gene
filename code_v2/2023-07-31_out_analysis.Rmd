@@ -17,19 +17,35 @@ Rscript --verbose test.R -n 500 --dt_seed 9 -p 8 -q 4 -e 0.5 --beta_vlen 3 --alp
 
 ```{r}
 library(glue)
+# n <- 500
+# p <- 8
+# q <- 4
+# epsilon_sd <- 0.5
+# epsilon_sd_init <- 0.5
+# signal_size <- 2
+# beta_vlen <- 3
+# alpha_vlen <- 2
+# rho_ratio <- 0.2
+# balance <- 3
+# cotype <- 'AR3'
+# # dt_seed <- 9
+# K_up <- 6
+
+
 n <- 500
 p <- 8
-q <- 4
+q <- 40
 epsilon_sd <- 0.5
 epsilon_sd_init <- 0.5
-signal_size <- 2
-beta_vlen <- 3
-alpha_vlen <- 2
+signal_size <- 1
+beta_vlen <- 4
+alpha_vlen <- 16
 rho_ratio <- 0.2
-balance <- 2
+balance <- 1
 cotype <- 'En'
 # dt_seed <- 9
-K_up <- 6
+K_up <- 4
+
 for(dt_seed in seq(9, 99, 10)){
   prefix <- "hierarchical-gene/code_v2/"
   # prefix <- ""
@@ -108,7 +124,9 @@ print(cmd)
 library(ggplot2)
 library(dplyr)
 # library(plotly)
-df <- read.csv("2024-02-26_n500_p8_q4_ss2_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_fminit.csv")
+df <- read.csv("2024-02-26_n500_p8_q4_ss2_bl3_al2_eps0.5_epi0.5_rr0.2_Kup6_fminit.csv")
+df <- read.csv("2024-02-27_n500_p8_q4_b3_ss2_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_ctEn_fminit.csv")
+df <- read.csv("2024-02-28_n500_p8_q4_b3_ss2_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_ctAR3_fminit.csv")
 # 以下方法过期，直接看 tag 列即可
 # df <- df %>% mutate(method = ifelse(q_c_seed < 100, 1, 0))
 # df$method <- ifelse(df$q_c_seed == 111, -1, df$method)
@@ -122,7 +140,8 @@ df <- read.csv("2024-02-26_n500_p8_q4_ss2_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_fmini
 ```{r}
 df_report <- df %>% 
   select(dt_seed, q_c_seed, l2, l3, mse, 
-         cdist, cdist_main, cdist_sub, sc, sc_main, sc_sub, ari, ari_main, ari_sub,
+         cdist, cdist_main, cdist_sub, sc, sc_main, sc_sub, 
+         ari, ari_main, ari_sub,
          main_grn, sub_grn, bic_sum, bic_mean, tag) %>%
   filter(l2 > 0 & l3 > 0) %>%
   filter(tag == 'hier') %>%
@@ -144,7 +163,12 @@ df_report2 <- df_report %>%
             cdist_main = mean(cdist_main, na.rm = T),
             cdist_sub = mean(cdist_sub, na.rm = T))
 # df_report2
-colMeans(df_report2, na.rm = T)
+df_result <- colMeans(df_report2, na.rm = T)
+df_result <- data.frame(t(df_result)) %>% select(-dt_seed) %>% round(3) %>%
+  select(per_main, per_sub, sc_main, sc_sub, 
+         ari_main, ari_sub, cdist_main, cdist_sub)
+
+write.table(format(df_result, nsmall = 4), "clipboard", sep = "\t", row.names = FALSE, col.names = FALSE)
 ```
 
 ```{r}
@@ -165,8 +189,14 @@ df_compare <- df %>%
             cdist = mean(cdist),
             cdist_main = mean(cdist_main, na.rm = T),
             cdist_sub = mean(cdist_sub, na.rm = T))
+
+df_compare <- colMeans(df_compare, na.rm = T)
+
+df_compare <- data.frame(t(df_compare)) %>% select(-dt_seed) %>% round(3) %>%
+  select(per_main, per_sub, sc_main, sc_sub, 
+         ari_main, ari_sub, cdist_main, cdist_sub)
 df_compare
-colMeans(df_compare, na.rm = T)
+write.table(format(df_compare, nsmall = 4), "clipboard", sep = "\t", row.names = FALSE, col.names = FALSE)
 ```
 
 

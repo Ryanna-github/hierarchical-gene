@@ -27,9 +27,10 @@ flexmix_init <- function(q_c_seed, minprior_value = 0, tag = "flexmix"){
   pi_est = paste0("(", paste(as.character(round(prop.table(table(m_glm@cluster)),3)), collapse = ","), ")")
   
   ci_matrix <- matrix(0, nrow = n, ncol = K_up)
-  for(i in 1:n){
-    ci_matrix[i,m_glm@cluster[i]] <- 1
-  }
+  ci_matrix[cbind(1:n, m_glm@cluster[i])] <- 1
+  # for(i in 1:n){
+  #   ci_matrix[i,m_glm@cluster[i]] <- 1
+  # }
   y_hat <- rowSums(ci_matrix * data.frame(predict(m_glm)))
   mse <- sum((y-y_hat)^2/n)
   return(list(cdist = cdist, 
@@ -41,34 +42,34 @@ flexmix_init <- function(q_c_seed, minprior_value = 0, tag = "flexmix"){
               ari_score = ari_score,
               pi_est = pi_est,
               mse = mse,
-              tag = tag))
+              tag = tag,
+              q_c_matrix = q_c_matrix))
 }
 
 random_init <- function(q_c_seed, tag = "random"){
+  # ==================================== newmethod ============================================
   set.seed(q_c_seed)
-  pi_init <- rep(1/K_up, K_up)
-  rho_init <- rep(1, K_up)/sigma_est
-  q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
+  ci_init_sub <- sample(1:K_up, n, prob = rep(1/K_up,K_up), replace = TRUE)
+  q_c_matrix <- matrix(0.1, nrow = n, ncol = K_up)
+  q_c_matrix[cbind(1:n, ci_init_sub)] <- 0.9
   q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
-  # coef_est <- coef$coef_full - coef$coef_full + rnorm(prod(dim(coef$coef_full)), 0, 1)
-  # 随机初始化,事先不知道 coef$coef_full,应该用 K_up 初始化
-  coef_est <- matrix(rnorm(K_up*(p+q), 0, 1), ncol = K_up)
   
-  # cdist <- ifelse(ncol(coef$coef_full) == ncol(coef_est), 
-  #                 coef_dist(coef_est, coef$coef_full),
-  #                 NaN)
+  coef_est <- NULL
+  for(k in 1:K_up){
+    X_k <- X[which(ci_init_sub == k),]
+    Z_k <- Z[which(ci_init_sub == k),]
+    y_k <- y[which(ci_init_sub == k)]
+    lm_k <- lm.fit(cbind(X_k,Z_k), y_k)
+    coef_est <- cbind(coef_est, matrix(lm_k$coefficients))
+  }
   cdist <- tryCatch({ coef_dist(coef_est, coef$coef_full) }, error = function(err) {NaN})
   cdist_main <- tryCatch({ coef_dist(coef_est[1:p,], coef$coef_beta) }, error = function(err) {NaN})
   cdist_sub <- tryCatch({ coef_dist(coef_est[(p+1):(p+q),], coef$coef_alpha) }, error = function(err) {NaN})
-  ci_est <- apply(q_c_matrix, 1, which.max)
+  ci_est <- ci_init_sub
   ci_prob_mean <- mean(apply(q_c_matrix, 1, max))
   # sc_score <- sc(ci_est, ci_sim)
-  sc_score <- tryCatch({
-    sc(ci_est, ci_sim)
-  }, error = function(err) {NaN})
-  ari_score <- tryCatch({
-    ari(ci_est, ci_sim)
-  }, error = function(err) {NaN})
+  sc_score <- tryCatch({ sc(ci_est, ci_sim) }, error = function(err) {NaN})
+  ari_score <- tryCatch({ ari(ci_est, ci_sim) }, error = function(err) {NaN})
   
   ci_matrix <- t(apply(q_c_matrix, 1, function(x){as.numeric(x == max(x))}))
   y_hat <- rowSums(ci_matrix * data%*%coef_est)
@@ -76,6 +77,7 @@ random_init <- function(q_c_seed, tag = "random"){
   pi_est = paste0("(", paste(as.character(round(prop.table(table(ci_est)),3)), collapse = ","), ")")
   
   print(coef_est)
+  
   return(list(cdist = cdist,
               cdist_main = cdist_main,
               cdist_sub = cdist_sub,
@@ -85,7 +87,47 @@ random_init <- function(q_c_seed, tag = "random"){
               sc_score = sc_score,
               ari_score = ari_score,
               mse = mse,
-              tag = tag))
+              tag = tag,
+              q_c_matrix = q_c_matrix))
+  
+  # ==================================== outdate ============================================
+  # set.seed(q_c_seed)
+  # pi_init <- rep(1/K_up, K_up)
+  # rho_init <- rep(1, K_up)/sigma_est
+  # q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
+  # q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+  # # coef_est <- coef$coef_full - coef$coef_full + rnorm(prod(dim(coef$coef_full)), 0, 1)
+  # # 随机初始化,事先不知道 coef$coef_full,应该用 K_up 初始化
+  # coef_est <- matrix(rnorm(K_up*(p+q), 0, 1), ncol = K_up)
+  # 
+  # # cdist <- ifelse(ncol(coef$coef_full) == ncol(coef_est), 
+  # #                 coef_dist(coef_est, coef$coef_full),
+  # #                 NaN)
+  # cdist <- tryCatch({ coef_dist(coef_est, coef$coef_full) }, error = function(err) {NaN})
+  # cdist_main <- tryCatch({ coef_dist(coef_est[1:p,], coef$coef_beta) }, error = function(err) {NaN})
+  # cdist_sub <- tryCatch({ coef_dist(coef_est[(p+1):(p+q),], coef$coef_alpha) }, error = function(err) {NaN})
+  # ci_est <- apply(q_c_matrix, 1, which.max)
+  # ci_prob_mean <- mean(apply(q_c_matrix, 1, max))
+  # # sc_score <- sc(ci_est, ci_sim)
+  # sc_score <- tryCatch({ sc(ci_est, ci_sim) }, error = function(err) {NaN})
+  # ari_score <- tryCatch({ ari(ci_est, ci_sim) }, error = function(err) {NaN})
+  # 
+  # ci_matrix <- t(apply(q_c_matrix, 1, function(x){as.numeric(x == max(x))}))
+  # y_hat <- rowSums(ci_matrix * data%*%coef_est)
+  # mse <- sum((y-y_hat)^2/n)
+  # pi_est = paste0("(", paste(as.character(round(prop.table(table(ci_est)),3)), collapse = ","), ")")
+  # 
+  # print(coef_est)
+  # return(list(cdist = cdist,
+  #             cdist_main = cdist_main,
+  #             cdist_sub = cdist_sub,
+  #             ci_prob_mean = ci_prob_mean,
+  #             coef_full_ori = coef_est,
+  #             est_sub_grn = K_up,
+  #             sc_score = sc_score,
+  #             ari_score = ari_score,
+  #             mse = mse,
+  #             tag = tag))
 }
 
 bic_score <- function(q_c_matrix, coef_est, est_main_grn, est_sub_grn, rho_est){
@@ -108,7 +150,7 @@ bic_score <- function(q_c_matrix, coef_est, est_main_grn, est_sub_grn, rho_est){
 
 ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed, 
                        coef_full_init, iter_type, iter_max, 
-                       rho_ratio, rho_clip = 4,
+                       rho_ratio, rho_clip = 4, q_c_matrix_init = NULL,
                        plot_performance = FALSE,
                        eps = 1e-7, eps_abs = 1e-2, eps_rel = 1e-3){
   # iter_type = "fix" 固定迭代轮次, iter_type = "stop" 使用迭代停止准则判断
@@ -121,13 +163,19 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
   rho_list <- list(rho_init)
   pi_init <- rep(1/K_up, K_up)
   pi_list <- list(pi_init)
-  set.seed(q_c_seed)
-  # q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
-  # 真值附近
-  # q_c_matrix <- abs(get_q_c_matrix(n, K_up, ci_sim) + rnorm(n*K_up, mean = 1, sd = .1))
-  # 全随机
-  q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
-  q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+  if(is.null(q_c_matrix_init)){
+    set.seed(q_c_seed)
+    # q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
+    # 真值附近
+    # q_c_matrix <- abs(get_q_c_matrix(n, K_up, ci_sim) + rnorm(n*K_up, mean = 1, sd = .1))
+    # 全随机
+    q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
+    q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+  }else{
+    q_c_matrix <- q_c_matrix_init
+    q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+  }
+  
   
   # coef full
   # coef_full_init <- coef$coef_full - coef$coef_full
@@ -597,7 +645,7 @@ get_group_num <- function(K_up, coef, diff_v, len, merge.all = F, threshold = 1e
 }
 
 # tune l3 first then l2
-tuning_hyper <- function(l2_seq, l3_seq, fix_para, coef_full_init, 
+tuning_hyper <- function(l2_seq, l3_seq, fix_para, coef_full_init,  q_c_matrix_init = NULL,
                          grid = TRUE, save_all = FALSE){
   if(save_all){
     result <- NULL
@@ -617,6 +665,7 @@ tuning_hyper <- function(l2_seq, l3_seq, fix_para, coef_full_init,
                           lambda_3 = lambda_3,
                           q_c_seed = fix_para$q_c_seed,
                           coef_full_init = coef_full_init,
+                          q_c_matrix = q_c_matrix_init,
                           iter_type = 'stop',
                           iter_max = 200,
                           rho_ratio = rho_ratio)

@@ -3,6 +3,7 @@ library(ggplot2)
 library(dplyr)
 library(Matrix)
 library(flexmix)
+# library(ncvreg)
 # library(mclust)
 library(readr)
 # source("sim.R")
@@ -61,15 +62,17 @@ cotype <- args$cotype
 # if(1){
 #   n <- 500
 #   p <- 8
-#   q <- 4
-#   balance <- 2
+#   q <- 40
+#   balance <- 1
 #   epsilon_sd <- 0.5
 #   epsilon_sd_init <- 0.5
 #   sigma_est <- as.numeric(epsilon_sd_init)
-#   rho_ratio <- 0.2
+#   rho_ratio <- 0.0
 #   signal_size <- 1
+#   # beta_vlen <- 3
 #   beta_vlen <- 3
-#   alpha_vlen <- 2
+#   # alpha_vlen <- 2
+#   alpha_vlen <- 16
 #   save_path <- "temp.csv"
 #   dt_seed <- 9
 #   K_up <- 4  # 估计时的最大类别，应该不少于 group_num_sub
@@ -141,6 +144,7 @@ colnames_all <- c("dt_seed", "q_c_seed", "aa", "tau", "l1", "l2", "l3",
                   "group_detail", paste0("case_", 1:4), 
                   "iter_total", "iter_type", "tag")
 
+# q_c_seed_max <- 2
 for(q_c_seed in 1:q_c_seed_max){
 
   result <- as.data.frame(matrix(NaN, nrow = 2, ncol = length(colnames_all)))
@@ -165,6 +169,7 @@ for(q_c_seed in 1:q_c_seed_max){
   result[1,'cdist_sub'] <- flemix_forinit$cdist_sub
   result[1,'cdist_main'] <- flemix_forinit$cdist_main
   result[1,'tag'] <- flemix_forinit$tag
+  q_c_matrix_init <- flemix_forinit$q_c_matrix
 
   # flexmix best result (K squeezed)
   flemix_best <- tryCatch({
@@ -187,16 +192,17 @@ for(q_c_seed in 1:q_c_seed_max){
 
 
   # our method
-  l2_seq <- c(0, 0.5, 1, 1.5, 2, 4)
-  l3_seq <- c(0, 0.5, 1, 1.5, 2, 4)
-  # l2_seq <- c(0, 1, 3, 5, 7)
-  # l3_seq <- c(0, 2, 4, 6, 8, 10)
+  # l2_seq <- c(0, 0.5, 1, 1.5, 2, 4)
+  # l3_seq <- c(0, 0.5, 1, 1.5, 2, 4)
+  l2_seq <- c(0,2,4,6,8)
+  l3_seq <- c(0,1,2,3,4)
   # l2_seq <- c(0)
   # l3_seq <- c(0)
   fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
                    aa = 1.2, tau = 1)
+  # q_c_matrix 初
   hp <- tuning_hyper(l2_seq, l3_seq, fix_para, flemix_forinit$coef_full_ori,
-                     save_all = TRUE)
+                     q_c_matrix_init = q_c_matrix_init, save_all = TRUE)
   colnames(hp) <- colnames_all
   result <- rbind(result, hp)
   write_csv(result, file=save_path, col_names=!file.exists(save_path), append=TRUE)
