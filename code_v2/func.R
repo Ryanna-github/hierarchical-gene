@@ -27,7 +27,7 @@ flexmix_init <- function(q_c_seed, minprior_value = 0, tag = "flexmix"){
   pi_est = paste0("(", paste(as.character(round(prop.table(table(m_glm@cluster)),3)), collapse = ","), ")")
   
   ci_matrix <- matrix(0, nrow = n, ncol = K_up)
-  ci_matrix[cbind(1:n, m_glm@cluster[i])] <- 1
+  ci_matrix[cbind(1:n, m_glm@cluster)] <- 1
   # for(i in 1:n){
   #   ci_matrix[i,m_glm@cluster[i]] <- 1
   # }
@@ -465,8 +465,8 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
                                   diff_w_list[[iter]], q)
   # print(main_group_info$capgfl.matrix2)
   # print(sub_group_info$capgfl.matrix2)
-  est_main_grn <- main_group_info$gr.num
-  est_sub_grn <- sub_group_info$gr.num
+  # est_main_grn <- main_group_info$gr.num
+  # est_sub_grn <- sub_group_info$gr.num
   
   cappfl.diff <- main_group_info$capgfl.matrix2 - sub_group_info$capgfl.matrix2
   valid_hier <- ifelse(min(cappfl.diff) >= 0, TRUE, FALSE)
@@ -477,6 +477,8 @@ ADMM_trail <- function(aa, tau, lambda_1, lambda_2, lambda_3, q_c_seed,
   # (1) 找到哪些类别为同一大组，小组
   main_group_info_compact <- find_connected_nodes(main_group_info$capgfl.matrix2)
   sub_group_info_compact <- find_connected_nodes(sub_group_info$capgfl.matrix2)
+  est_main_grn <- length(main_group_info_compact)
+  est_sub_grn <- length(sub_group_info_compact)
   
   # (2) 计算平均的系数，可以根据样本数进行加权，但因为数值非常接近，可以直接求平均
   coef_beta_ori_comp <- matrix(NaN, p, est_main_grn)

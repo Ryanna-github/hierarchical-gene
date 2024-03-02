@@ -6,12 +6,12 @@ library(flexmix)
 # library(ncvreg)
 # library(mclust)
 library(readr)
-# source("sim.R")
-# source("tools.R")
-# source("func.R")
-source("hierarchical-gene/code_v2/sim.R")
-source("hierarchical-gene/code_v2/tools.R")
-source("hierarchical-gene/code_v2/func.R")
+source("sim.R")
+source("tools.R")
+source("func.R")
+# source("hierarchical-gene/code_v2/sim.R")
+# source("hierarchical-gene/code_v2/tools.R")
+# source("hierarchical-gene/code_v2/func.R")
 library(argparse)
 #
 # 创建参数解析对象
@@ -62,19 +62,19 @@ cotype <- args$cotype
 # if(1){
 #   n <- 500
 #   p <- 8
-#   q <- 40
+#   q <- 4
 #   balance <- 1
 #   epsilon_sd <- 0.5
 #   epsilon_sd_init <- 0.5
 #   sigma_est <- as.numeric(epsilon_sd_init)
-#   rho_ratio <- 0.0
+#   rho_ratio <- 0.2
 #   signal_size <- 1
 #   # beta_vlen <- 3
 #   beta_vlen <- 3
 #   # alpha_vlen <- 2
-#   alpha_vlen <- 16
+#   alpha_vlen <- 2
 #   save_path <- "temp.csv"
-#   dt_seed <- 9
+#   dt_seed <- 99
 #   K_up <- 4  # 估计时的最大类别，应该不少于 group_num_sub
 #   cotype <- "En"
 #   print("*")
@@ -192,12 +192,12 @@ for(q_c_seed in 1:q_c_seed_max){
 
 
   # our method
-  # l2_seq <- c(0, 0.5, 1, 1.5, 2, 4)
-  # l3_seq <- c(0, 0.5, 1, 1.5, 2, 4)
+  l2_seq <- c(0, 0.5, 1, 1.5, 2, 4)
+  l3_seq <- c(0, 0.5, 1, 1.5, 2, 4)
   # l2_seq <- c(5,  6,  6.5,  7,  7.5)
   # l3_seq <- c(1.5,2,  2.5,  3)
-  l2_seq <- c(6,6.5,7,7.5,8,8.5,9,10)
-  l3_seq <- c(2,2.5,3,3.5,4,4.5,5)
+  # l2_seq <- c(6,6.5,7,7.5,8,8.5,9,10)
+  # l3_seq <- c(2,2.5,3,3.5,4,4.5,5)
   # l2_seq <- c(0)
   # l3_seq <- c(0)
   fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
