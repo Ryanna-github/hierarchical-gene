@@ -192,12 +192,12 @@ for(q_c_seed in 1:q_c_seed_max){
 
 
   # our method
-  l2_seq <- c(0, 0.5, 1, 1.5, 2, 4)
-  l3_seq <- c(0, 0.5, 1, 1.5, 2, 4)
+  # l2_seq <- c(0, 0.5, 1, 1.5, 2, 4)
+  # l3_seq <- c(0, 0.5, 1, 1.5, 2, 4)
   # l2_seq <- c(5,  6,  6.5,  7,  7.5)
   # l3_seq <- c(1.5,2,  2.5,  3)
-  # l2_seq <- c(6,6.5,7,7.5,8,8.5,9,10)
-  # l3_seq <- c(2,2.5,3,3.5,4,4.5,5)
+  l2_seq <- c(6,7,8,9,10,12,14)
+  l3_seq <- c(2.5,3.5,4.5,5.5,7,8.5)
   # l2_seq <- c(0)
   # l3_seq <- c(0)
   fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
