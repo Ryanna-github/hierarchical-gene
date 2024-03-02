@@ -931,8 +931,8 @@ for(q_c_seed in 1:q_c_seed_max){
 ```{r}
 q_c_seed <- 1
 iter_max <- 200
-l2_seq <- c(0,1,1.5,2,4)
-l3_seq <- c(0,1,1.5,2,4)
+l2_seq <- c(0,0.5,1,1.2,1.5)
+l3_seq <- c(0,0.5,1,1.2,1.5)
 fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
                  aa = 1.2, tau = 1)
 trail_set <- expand.grid(list(l3 = l3_seq, l2 = l2_seq))
@@ -965,7 +965,15 @@ colnames(oraresult) <- c("dt_seed", "q_c_seed", "lambda_2", "lambda_3", "tag",
 ```
 
 ```{r}
-oraresult %>% arrange(bic_mean)
+ora_result <- oraresult %>% arrange(bic_mean) %>%
+  filter(row_number() == 1) %>%
+  select(sc_main = sc_score_main,
+         sc_sub = sc_score_sub,
+         ari_main = ari_score_main,
+         ari_sub = ari_score_sub,
+         MSE_main = cdist_main,
+         MSE_sub = cdist_sub)
+ora_result
 ```
 
 ```{r}
