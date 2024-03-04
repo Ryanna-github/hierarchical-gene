@@ -32,7 +32,8 @@ q <- 4
 epsilon_sd <- 0.5
 epsilon_sd_init <- 0.5
 sigma_est <- as.numeric(epsilon_sd_init)
-signal_size <- 1
+balance <- 3
+signal_size <- 2
 beta_vlen <- 3
 alpha_vlen <- 2
 save_path <- "temp.csv"
@@ -48,11 +49,16 @@ q_c_seed_max <- 10
 group_num_main <- 2                    
 group_num_sub <- 4    
 hier_struc <- list(c(1,2),c(3,4))
-prob_sub <- rep(1/group_num_sub, group_num_sub)  
+# prob_sub <- rep(1/group_num_sub, group_num_sub)  
+if(balance == 1){
+  prob_sub <- rep(1/group_num_sub, group_num_sub)
+}else if(balance == 2){
+  prob_sub<-c(1/6,1/6,1/3,1/3)
+}else{
+  prob_sub<-c(1/6,1/3,1/6,1/3)
+}
 reverse <- FALSE
-```
 
-```{r}
 whole.data <- generate_all_data(dt_seed, n, p, q, prob_sub, hier_struc, 
                                 beta_nonzero, alpha_nonzero, beta_vlen, alpha_vlen, 
                                 cotype_x, cotype_z, epsilon_sd, reverse)
@@ -588,7 +594,7 @@ oracle_comp <- function(q_c_seed, iter_type = 'stop', iter_max = 200,
   q_c_matrix <- get_q_c_matrix(n, K_up, ci_sim)
   q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
   
-  coef_full_init <- matrix(0, nrow = p+q, ncol = K_up_true)
+  coef_full_init <- matrix(0, nrow = p+q, ncol = K_up)
   coef_full_list <- list(coef_full_init*t(kronecker(rho_init, matrix(1, ncol = p+q))))
   coef_full_ori_list <- list(coef_full_init)
   
@@ -835,8 +841,8 @@ oracle_comp <- function(q_c_seed, iter_type = 'stop', iter_max = 200,
                                   coef_full_ori_list[[iter]][(1+p):(p+q),], 
                                   diff_w_list[[iter]], q)
 
-  est_main_grn <- main_group_info$gr.num
-  est_sub_grn <- sub_group_info$gr.num
+  # est_main_grn <- main_group_info$gr.num
+  # est_sub_grn <- sub_group_info$gr.num
   
   cappfl.diff <- main_group_info$capgfl.matrix2 - sub_group_info$capgfl.matrix2
   valid_hier <- ifelse(min(cappfl.diff) >= 0, TRUE, FALSE)
@@ -847,6 +853,8 @@ oracle_comp <- function(q_c_seed, iter_type = 'stop', iter_max = 200,
   # (1) 找到哪些类别为同一大组，小组
   main_group_info_compact <- find_connected_nodes(main_group_info$capgfl.matrix2)
   sub_group_info_compact <- find_connected_nodes(sub_group_info$capgfl.matrix2)
+  est_main_grn <- length(main_group_info_compact)
+  est_sub_grn <- length(sub_group_info_compact)
   
   # (2) 计算平均的系数，可以根据样本数进行加权，但因为数值非常接近，可以直接求平均
   coef_beta_ori_comp <- matrix(NaN, p, est_main_grn)
@@ -917,15 +925,15 @@ oracle_comp <- function(q_c_seed, iter_type = 'stop', iter_max = 200,
 ## 单 dt_seed
 
 ```{r}
-comresult <- NULL
-for(q_c_seed in 1:q_c_seed_max){
-  comresult <- rbind(comresult, data.frame(FMR1_comp(q_c_seed)))
-  comresult <- rbind(comresult, data.frame(FMR2_comp(q_c_seed)))
-  comresult <- rbind(comresult, data.frame(respclust1_comp(q_c_seed)))
-  comresult <- rbind(comresult, data.frame(respclust2_comp(q_c_seed)))
-  comresult <- rbind(comresult, data.frame(resiclust1_comp(q_c_seed)))
-  comresult <- rbind(comresult, data.frame(resiclust2_comp(q_c_seed)))
-}
+# comresult <- NULL
+# for(q_c_seed in 1:q_c_seed_max){
+#   comresult <- rbind(comresult, data.frame(FMR1_comp(q_c_seed)))
+#   comresult <- rbind(comresult, data.frame(FMR2_comp(q_c_seed)))
+#   comresult <- rbind(comresult, data.frame(respclust1_comp(q_c_seed)))
+#   comresult <- rbind(comresult, data.frame(respclust2_comp(q_c_seed)))
+#   comresult <- rbind(comresult, data.frame(resiclust1_comp(q_c_seed)))
+#   comresult <- rbind(comresult, data.frame(resiclust2_comp(q_c_seed)))
+# }
 ```
 
 ```{r}
@@ -962,10 +970,12 @@ colnames(oraresult) <- c("dt_seed", "q_c_seed", "lambda_2", "lambda_3", "tag",
                          "cdist_main", "cdist_sub", "sc_score_main",
                          "sc_score_sub", "ari_score_main", "ari_score_sub",
                          "est_main_grn", "est_sub_grn", "pi_est", "mse")
+oraresult$bic_mean <- as.numeric(oraresult$bic_mean)
 ```
 
 ```{r}
-ora_result <- oraresult %>% arrange(bic_mean) %>%
+ora_result <- oraresult %>% 
+  arrange(bic_mean) %>%
   filter(row_number() == 1) %>%
   select(sc_main = sc_score_main,
          sc_sub = sc_score_sub,
@@ -1001,6 +1011,7 @@ q <- 4
 epsilon_sd <- 0.5
 epsilon_sd_init <- 0.5
 sigma_est <- as.numeric(epsilon_sd_init)
+balance <- 3
 signal_size <- 2
 beta_vlen <- 3
 alpha_vlen <- 2
@@ -1017,7 +1028,14 @@ q_c_seed_max <- 10
 group_num_main <- 2                    
 group_num_sub <- 4    
 hier_struc <- list(c(1,2),c(3,4))
-prob_sub <- rep(1/group_num_sub, group_num_sub)  
+# prob_sub <- rep(1/group_num_sub, group_num_sub)  
+if(balance == 1){
+  prob_sub <- rep(1/group_num_sub, group_num_sub)
+}else if(balance == 2){
+  prob_sub<-c(1/6,1/6,1/3,1/3)
+}else{
+  prob_sub<-c(1/6,1/3,1/6,1/3)
+}
 reverse <- FALSE
 
 # =============================== prepare =================================
@@ -1088,6 +1106,10 @@ df_report2 <- df_report %>% group_by(tag) %>%
 
 df_result <- df_report2 %>% select(-tag)
 write.table(format(df_result, nsmall = 4), "clipboard", sep = "\t", row.names = FALSE, col.names = FALSE)
+```
+
+```{r}
+df_report2 %>% arrange(tag)
 ```
 
 

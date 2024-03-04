@@ -18,14 +18,14 @@ Rscript --verbose test.R -n 500 --dt_seed 9 -p 8 -q 4 -e 0.5 --beta_vlen 3 --alp
 ```{r}
 library(glue)
 n <- 500
-p <- 8
-q <- 4
+p <- 80
+q <- 40
 epsilon_sd <- 0.5
 epsilon_sd_init <- 0.5
 signal_size <- 1
 beta_vlen <- 3
 alpha_vlen <- 2
-rho_ratio <- 0.2
+rho_ratio <- 0.1
 balance <- 1
 cotype <- 'En'
 # dt_seed <- 9
@@ -48,7 +48,7 @@ K_up <- 4
 
 for(dt_seed in seq(9, 99, 10)){
   prefix <- "hierarchical-gene/code_v2/"
-  prefix <- ""
+  # prefix <- ""
     path_pre <- glue("{prefix}{Sys.Date()}_n{n}_p{p}_q{q}_b{balance}_ss{signal_size}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_epi{epsilon_sd_init}_rr{rho_ratio}_Kup{K_up}_ct{cotype}_fminit")
   # path_pre <- glue("2023-07-31_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_fminit")
   cmd <- glue("Rscript --verbose {prefix}test.R -n {n} --dt_seed {dt_seed} -p {p} -q {q} -b {balance} -e {epsilon_sd} --epsilon_sd_init {epsilon_sd_init} --rho_ratio {rho_ratio} --signal_size {signal_size} --beta_vlen {beta_vlen} --alpha_vlen {alpha_vlen} --K_up {K_up} --cotype {cotype} --path {path_pre}.csv >> {path_pre}_log.out")
@@ -63,7 +63,7 @@ for(dt_seed in seq(9, 99, 10)){
 library(glue)
 n <- 160
 p <- 6
-q <- 30
+q <- 20
 epsilon_sd <- 0.5
 K_up <- 8
 prefix <- "hierarchical-gene/code_v2/"
@@ -127,6 +127,7 @@ library(dplyr)
 df <- read.csv("2024-02-26_n500_p8_q4_ss2_bl3_al2_eps0.5_epi0.5_rr0.2_Kup6_fminit.csv")
 df <- read.csv("2024-02-27_n500_p8_q4_b3_ss2_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_ctEn_fminit.csv")
 df <- read.csv("2024-02-28_n500_p8_q4_b3_ss2_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_ctAR3_fminit.csv")
+df <- read.csv("2024-03-01_n500_p8_q40_b1_ss2_bl4_al16_eps0.5_epi0.5_rr0.1_Kup6_ctEn_fminit.csv")
 # 以下方法过期，直接看 tag 列即可
 # df <- df %>% mutate(method = ifelse(q_c_seed < 100, 1, 0))
 # df$method <- ifelse(df$q_c_seed == 111, -1, df$method)
@@ -167,7 +168,7 @@ df_result <- colMeans(df_report2, na.rm = T)
 df_result <- data.frame(t(df_result)) %>% select(-dt_seed) %>% round(3) %>%
   select(per_main, per_sub, sc_main, sc_sub, 
          ari_main, ari_sub, cdist_main, cdist_sub)
-
+df_result
 write.table(format(df_result, nsmall = 4), "clipboard", sep = "\t", row.names = FALSE, col.names = FALSE)
 ```
 
@@ -229,6 +230,64 @@ ggplot(df_report, aes(x = sc, y = cdist, col = tag)) +
   guides(size = FALSE, alpha = FALSE)
 ```
 
+# summary
+
+直接使用汇总数据得到结果
+
+```{r}
+library(ggplot2)
+library(ggpubr)
+library(dplyr)
+df <- read.csv("summary_data/lowxz_b23.csv")
+df <- df %>% filter(signal == 2, K_up == 6)
+df$method <- factor(df$method, levels = c("proposed", "oracle", "FMR2", 
+                                          "resiclust2", "respclust2",
+                                          "FMR1", "resiclust1", "respclust1"))
+```
+
+```{r}
+get_btype_plot <- function(btype){
+  df_use <- df %>% filter(bl == btype)
+  p_list <- NULL
+  score_names <- c("per_main", "per_sub", "SC_main", "SC_sub", "MSE_main", "MSE_sub")
+  for(i in 1:length(score_names)){
+    col <- rlang::sym(score_names[i])
+    p_list[[i]] <- ggplot(df_use, aes(x = method, y = !!col, 
+                                      fill = method)) +
+      geom_bar(stat = "identity",width = 1, col = "black") +
+      scale_fill_brewer(palette = "Pastel1") +
+      theme_minimal() +
+      theme(axis.title.x = element_blank(),
+            axis.text.x = element_blank())
+  }
+  return(p_list)
+}
+```
+
+```{r}
+p1_list <- get_btype_plot(1)
+p2_list <- get_btype_plot(2)
+p3_list <- get_btype_plot(3)
+p_list <- c(p1_list, p2_list, p3_list)
+```
+
+```{r}
+# pdf('test.pdf',height = 10,width=14)
+# do.call("ggarrange", c(p_list, nrow = 3, ncol = 6, common.legend = TRUE, legend = "bottom"))
+# dev.off()
+```
+
+
+
+```{r}
+# ggarrange(p1_list[[1]],p1_list[[2]],p1_list[[3]],
+#           p1_list[[4]],p1_list[[5]],p1_list[[6]],
+#           p2_list[[1]],p2_list[[2]],p2_list[[3]],
+#           p2_list[[4]],p2_list[[5]],p2_list[[6]],
+#           p3_list[[1]],p3_list[[2]],p3_list[[3]],
+#           p3_list[[4]],p3_list[[5]],p3_list[[6]], 
+#           nrow = 3, ncol = 6, common.legend = TRUE, legend = "bottom")
+```
 
 # score
 
@@ -311,12 +370,12 @@ df_tmp <- rbind(df1, df2, df3, df4)
 
 
 ```{r}
-df$q_c_seed <- factor(df$q_c_seed)
-df_tmp$q_c_seed <- factor(df_tmp$q_c_seed)
-ggplot(df, aes(x = cdist, y = fit_sum)) +
-  geom_point(aes(alpha = 0.4)) +
-  theme_bw() +
-  facet_wrap(~ q_c_seed)
+# df$q_c_seed <- factor(df$q_c_seed)
+# df_tmp$q_c_seed <- factor(df_tmp$q_c_seed)
+# ggplot(df, aes(x = cdist, y = fit_sum)) +
+#   geom_point(aes(alpha = 0.4)) +
+#   theme_bw() +
+#   facet_wrap(~ q_c_seed)
 ```
 
 
