@@ -19,7 +19,7 @@ library(tidyverse)
 
 - LUAD_data_RNA_Seq_v2_mRNA_median_Zscores.txt
   - 20440*519
-  - 2095 行数据除了前两列都缺失，即缺失 517 行（占10%），其余数据完全
+  - 2095 行数据除了前两列都缺失，缺失 517 行（占10%），其余数据完全
   
 - data_bcr_clinical_data_patient_match.csv 522*74
   - 其中 FEV1_PERCENT_REF_PREBRONCHOLIATOR 字段为 reponse variable
@@ -50,6 +50,7 @@ dim(low)
 
 ```{r}
 sum(bcr1$FEV1_PERCENT_REF_PREBRONCHOLIATOR == "[Not Available]")/nrow(bcr1)
+sum(bcr1$CARBON_MONOXIDE_DIFFUSION_DLCO == "[Not Available]")/nrow(bcr1)
 ```
 
 ```{r}
@@ -73,9 +74,42 @@ bcr %>% filter(PATIENT_ID %in% c("TCGA-50-5066", "TCGA-50-5946"))
 ```
 
 ```{r}
+bcr_plot <- bcr1 %>% 
+  select(fev1 = FEV1_PERCENT_REF_PREBRONCHOLIATOR,
+         dlco = CARBON_MONOXIDE_DIFFUSION_DLCO) %>%
+  filter(fev1 != "[Not Available]" & dlco != "[Not Available]")
+bcr_plot$fev1 <- as.numeric(bcr_plot$fev1)
+bcr_plot$dlco <- as.numeric(bcr_plot$dlco)
+```
+
+```{r}
+library(ggpubr)
+p1 <- ggplot(bcr_plot) +
+  geom_histogram(aes(x = fev1), fill = "#DC143C", alpha = 0.5, color = "#333333") +
+  theme_minimal() +
+  theme(legend.position = 'none')
+p2 <- ggplot(bcr_plot) +
+  geom_histogram(aes(x = dlco), fill = "#4682B4", alpha = 0.5, color = "#333333") +
+  theme_minimal() +
+  theme(legend.position = 'none')
+ggarrange(p1,p2,nrow=1)
+```
+```{r}
+pdf('test.pdf',height = 6, width=14)
+do.call("ggarrange", c(list(p1,p2), nrow = 1))
+dev.off()
+```
+
+
+
+```{r}
 fev1 <- bcr1$FEV1_PERCENT_REF_PREBRONCHOLIATOR
 fev1 <- scale(as.numeric(fev1[fev1 != "[Not Available]"]))
 fev1 %>% hist(breaks = 50)
+
+dlco <- bcr1$CARBON_MONOXIDE_DIFFUSION_DLCO
+dlco <- scale(as.numeric(dlco[dlco != "[Not Available]"]))
+dlco %>% hist(breaks = 50)
 ```
 
 # 数据预处理
@@ -113,8 +147,6 @@ Z <- genet
 
 
 
-
-
 ```{r}
 dim(X)
 dim(Z)
@@ -122,10 +154,15 @@ dim(Z)
 
 
 ```{r}
-data <- merge(X, Z, by.x = "PATIENT_ID", by.y = "Hugo_Symbol") %>%
+data_fev1 <- merge(X, Z, by.x = "PATIENT_ID", by.y = "Hugo_Symbol") %>%
   rename(id = PATIENT_ID) %>%
   filter(FEV1_PERCENT_REF_PREBRONCHOLIATOR != "[Not Available]")
-dim(data)
+dim(data_fev1)
+
+data_dlco <- merge(X, Z, by.x = "PATIENT_ID", by.y = "Hugo_Symbol") %>%
+  rename(id = PATIENT_ID) %>%
+  filter(CARBON_MONOXIDE_DIFFUSION_DLCO != "[Not Available]")
+dim(data_dlco)
 ```
 
 直接使用上述 data 实际应该并不方便，替代方法：使用 id 分别 join 得到 X,Z,y
@@ -203,6 +240,12 @@ dim(as.matrix(X_genet))
 
 # 正经整理
 
+```{r}
+library(dplyr)
+library(tidyverse)
+library(corrplot)
+```
+
 < 之前为摸索，从这里开始运行即可
 
 ## 数据准备
@@ -270,10 +313,20 @@ Z_from <- genet %>%
   as.data.frame()
 ```
 
+
+```{r}
+# zz <- sapply(Z_from[,2:dim(Z_from)[2]], as.numeric)
+# zzm <- cor(zz)
+# corrplot(zzm)
+```
+
+
+
 ```{r}
 dim(X_from)
 dim(Z_from)
 id_its <- intersect(X_from$sample_id, Z_from$Hugo_Symbol)
+length(id_its)
 ```
 
 ```{r}
@@ -292,9 +345,18 @@ Z <- Z_from %>%
   filter(Hugo_Symbol %in% id_its) %>%
   select(-Hugo_Symbol) %>%
   mutate(across(.fns=as.numeric)) 
-hist(apply(Z, 2, sd))
+print(dim(Z))
+# hist(apply(Z, 2, sd))
 Z <- Z[apply(Z, 2, sd) > 0]
+print(dim(Z))
+hist(apply(Z, 2, sd))
 ```
+
+  AFP     APOA2   LGALS14    SPACA7      SPIC     CRYGD 
+283.47749 183.48826 174.60662 140.96256  90.56233  75.02895 
+     MYH7     PAQR9       CRH      APOB 
+ 73.66773  72.79849  70.33625  62.48313 
+ 
 
 
 ```{r}
@@ -335,7 +397,18 @@ Z_pca_20 <- Z_pca[,1:20]
 Z_pca_30 <- Z_pca[,1:30]
 ```
 
+```{r}
+mm <- cor(Z_pca_20)
+corrplot(mm)
+# corrplot(mm, order = 'hclust')
+```
 
+
+```{r}
+mm <- (as.matrix(X_from[,2:7]))
+cor(mm)
+corrplot(cor(mm))
+```
 
 ```{r}
 write.csv(X, file = "../data/realX_image_6.csv", row.names = FALSE)

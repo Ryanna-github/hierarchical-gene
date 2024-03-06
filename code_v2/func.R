@@ -94,10 +94,16 @@ random_init <- function(q_c_seed, tag = "random"){
   
   # ==================================== outdate ============================================
   set.seed(q_c_seed)
-  pi_init <- rep(1/K_up, K_up)
-  rho_init <- rep(1, K_up)/sigma_est
-  q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
+  ci_init_sub <- sample(1:K_up, n, prob = rep(1/K_up,K_up), replace = TRUE)
+  q_c_matrix <- matrix(0.1, nrow = n, ncol = K_up)
+  q_c_matrix[cbind(1:n, ci_init_sub)] <- 0.9
   q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+  
+  # set.seed(q_c_seed)
+  # pi_init <- rep(1/K_up, K_up)
+  # rho_init <- rep(1, K_up)/sigma_est
+  # q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
+  # q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
   # coef_est <- coef$coef_full - coef$coef_full + rnorm(prod(dim(coef$coef_full)), 0, 1)
   # 随机初始化,事先不知道 coef$coef_full,应该用 K_up 初始化
   coef_est <- matrix(rnorm(K_up*(p+q), 0, 1), ncol = K_up)

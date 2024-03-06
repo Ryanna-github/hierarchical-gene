@@ -144,7 +144,7 @@ colnames_all <- c("dt_seed", "q_c_seed", "aa", "tau", "l1", "l2", "l3",
                   "group_detail", paste0("case_", 1:4), 
                   "iter_total", "iter_type", "tag")
 
-q_c_seed_max <- 2
+# q_c_seed_max <- 2
 for(q_c_seed in 1:q_c_seed_max){
 
   result <- as.data.frame(matrix(NaN, nrow = 2, ncol = length(colnames_all)))
@@ -200,17 +200,17 @@ for(q_c_seed in 1:q_c_seed_max){
   # l3_seq <- c(2.5,3.5,4.5,5.5,7,8.5)
   if(signal_size == 1 & K_up == 4){
     l2_seq <- c(2.5,3)
-    l3_seq <- c(5.3,5.5,5.8)
+    l3_seq <- c(3.5,4,4.5,5)
   }else if(signal_size == 2 & K_up == 4){
-    l2_seq <- c(5,6.5,8)
-    l3_seq <- c(8,9,10)
+    l2_seq <- c(5,6.5,7,7.5,8)
+    l3_seq <- c(8.5,9,9.5,10)
   }else if(signal_size == 1 & K_up == 6){
-    l2_seq <- c(5,6.5,7.5,8)
+    l2_seq <- c(5,6.5,7,7.5,8)
     l3_seq <- c(8,8.5,9,10)
   }
   else if(signal_size == 2 & K_up == 6){
-    l2_seq <- c(5,6.5,7.5,8)*1.8
-    l3_seq <- c(8,8.5,9,10)*1.8
+    l2_seq <- c(5,6.5,7,7.5,8)*1.1
+    l3_seq <- c(8,8.5,9,10)*1.1
   }
   fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
                    aa = 1.2, tau = 1)
