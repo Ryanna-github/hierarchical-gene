@@ -6,12 +6,12 @@ library(flexmix)
 # library(ncvreg)
 # library(mclust)
 library(readr)
-# source("sim.R")
-# source("tools.R")
-# source("func.R")
-source("hierarchical-gene/code_v2/sim.R")
-source("hierarchical-gene/code_v2/tools.R")
-source("hierarchical-gene/code_v2/func.R")
+source("sim.R")
+source("tools.R")
+source("func.R")
+# source("hierarchical-gene/code_v2/sim.R")
+# source("hierarchical-gene/code_v2/tools.R")
+# source("hierarchical-gene/code_v2/func.R")
 library(argparse)
 #
 # 创建参数解析对象
@@ -59,26 +59,26 @@ dt_seed <- as.numeric(args$dt_seed)
 K_up <- as.numeric(args$K_up)
 cotype <- args$cotype
 
-# if(1){
-#   n <- 500
-#   p <- 80
-#   q <- 40
-#   balance <- 1
-#   epsilon_sd <- 0.5
-#   epsilon_sd_init <- 0.5
-#   sigma_est <- as.numeric(epsilon_sd_init)
-#   rho_ratio <- 0.1
-#   signal_size <- 1
-#   # beta_vlen <- 3
-#   beta_vlen <- 3
-#   # alpha_vlen <- 2
-#   alpha_vlen <- 2
-#   save_path <- "temp.csv"
-#   dt_seed <- 99
-#   K_up <- 4  # 估计时的最大类别，应该不少于 group_num_sub
-#   cotype <- "En"
-#   print("*")
-# }
+if(1){
+  n <- 500
+  p <- 80
+  q <- 40
+  balance <- 1
+  epsilon_sd <- 0.5
+  epsilon_sd_init <- 0.5
+  sigma_est <- as.numeric(epsilon_sd_init)
+  rho_ratio <- 0.1
+  signal_size <- 1
+  # beta_vlen <- 3
+  beta_vlen <- 20
+  # alpha_vlen <- 2
+  alpha_vlen <- 10
+  save_path <- "temp.csv"
+  dt_seed <- 9
+  K_up <- 4  # 估计时的最大类别，应该不少于 group_num_sub
+  cotype <- "En"
+  print("*")
+}
 
 # 超参数设定
 # n <- 200
@@ -198,6 +198,10 @@ for(q_c_seed in 1:q_c_seed_max){
   # l3_seq <- c(1.5,2,  2.5,  3)
   # l2_seq <- c(6,7,8,9,10,12,14)
   # l3_seq <- c(2.5,3.5,4.5,5.5,7,8.5)
+  
+  l2_seq <- c(2.5)
+  l3_seq <- c(4)
+  
   if(signal_size == 1 & K_up == 4){
     l2_seq <- c(2.5,3)
     l3_seq <- c(3.5,4,4.5,5)

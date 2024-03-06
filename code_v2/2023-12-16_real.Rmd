@@ -266,10 +266,17 @@ low <- read.csv("../data/low_features_LUAD.csv")
 
 
 ```{r}
+# df_pivot <- bcr1 %>% 
+#   select(PATIENT_ID, FEV1_PERCENT_REF_PREBRONCHOLIATOR) %>%
+#   filter(FEV1_PERCENT_REF_PREBRONCHOLIATOR != "[Not Available]") %>%
+#   rename(fev1 = FEV1_PERCENT_REF_PREBRONCHOLIATOR)
+# dim(df_pivot)
+# df_pivot
+
 df_pivot <- bcr1 %>% 
-  select(PATIENT_ID, FEV1_PERCENT_REF_PREBRONCHOLIATOR) %>%
-  filter(FEV1_PERCENT_REF_PREBRONCHOLIATOR != "[Not Available]") %>%
-  rename(fev1 = FEV1_PERCENT_REF_PREBRONCHOLIATOR)
+  select(PATIENT_ID, CARBON_MONOXIDE_DIFFUSION_DLCO) %>%
+  filter(CARBON_MONOXIDE_DIFFUSION_DLCO != "[Not Available]") %>%
+  rename(dlco = CARBON_MONOXIDE_DIFFUSION_DLCO)
 dim(df_pivot)
 df_pivot
 ```
@@ -378,6 +385,13 @@ dim(as.matrix(Z))
 
 
 ```{r}
+# fev1
+pca$totalvar
+cumsum(pca$sdev**2/sum(pca$sdev**2))
+```
+
+```{r}
+# dlco
 pca$totalvar
 cumsum(pca$sdev**2/sum(pca$sdev**2))
 ```
@@ -417,6 +431,13 @@ write.csv(Z_pca_30, file = "../data/realZ_gene_30.csv", row.names = FALSE)
 write.csv(df_pivot_use, file = "../data/y.csv", row.names = FALSE)
 ```
 
+```{r}
+write.csv(X, file = "../data/realX2_image_6.csv", row.names = FALSE)
+write.csv(Z_pca_20, file = "../data/realZ2_gene_20.csv", row.names = FALSE)
+write.csv(Z_pca_30, file = "../data/realZ2_gene_30.csv", row.names = FALSE)
+write.csv(df_pivot_use, file = "../data/y2.csv", row.names = FALSE)
+```
+
 
 # 模型
 
@@ -430,9 +451,13 @@ source("func.R")
 
 
 ```{r}
-X <- read.csv("../data/realX_image_6.csv") %>% as.matrix()
-Z <- read.csv("../data/realZ_gene_20.csv") %>% as.matrix()
-y <- read.csv("../data/y.csv")$fev1
+# X <- read.csv("../data/realX_image_6.csv") %>% as.matrix()
+# Z <- read.csv("../data/realZ_gene_20.csv") %>% as.matrix()
+# y <- read.csv("../data/y.csv")$fev1
+
+X <- read.csv("../data/realX2_image_6.csv") %>% as.matrix()
+Z <- read.csv("../data/realZ2_gene_20.csv") %>% as.matrix()
+y <- read.csv("../data/y2.csv")$dlco
 # X <- scale(X)
 # Z <- scale(Z)
 data <- cbind(X,Z)
@@ -440,12 +465,13 @@ data <- cbind(X,Z)
 
 ```{r}
 n <- 160
+n <- 140
 K_up <- 8
 p <- 6
 q <- 20
 dt_seed <- 0
 q_c_seed <- 1
-sigma_est <- 2
+sigma_est <- 0.5
 ```
 
 
@@ -517,13 +543,14 @@ result[2,'tag'] <- flemix_best$tag
 ```{r}
 # l2_seq <- c(0, 0.5, 1, 2, 4)
 # l3_seq <- c(0, 0.5, 1, 2, 4)
-l2_seq <- c(0.5, 1, 1.5, 2)
-l3_seq <- c(1, 2, 3, 4)
+l2_seq <- c(2)
+l3_seq <- c(3)
 fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
                  aa = 1.2, tau = 1)
 hp <- tuning_hyper(l2_seq, l3_seq, fix_para, flemix_forinit$coef_full_ori,
-                   save_all = TRUE)
+                   save_all = TRUE, add0 = FALSE)
 ```
+
 
 ```{r}
 colnames(hp) <- colnames_all
@@ -532,11 +559,20 @@ result <- rbind(result, hp)
 
 
 ```{r}
-data <- cbind(X, Z)
-```
+l2_seq <- c(1)
+l3_seq <- c(4)
+# l2_seq <- c(3)
+# l3_seq <- c(3)
+q_c_seed <- 3
+flemix_forinit <- tryCatch({
+  flexmix_init(q_c_seed, 0)
+}, error = function(err) {
+  cat("Random Init\n")
+  random_init(q_c_seed)
+})
 
-
-```{r}
+fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 1.2,
+                 aa = 1.2, tau = 1)
 trail_set <- expand.grid(list(l3 = l3_seq, l2 = l2_seq))
 
 trail_num <- nrow(trail_set)
@@ -550,7 +586,7 @@ for(trail_idx in 1:trail_num){
   lambda_2 <- trail_set$l2[trail_idx]
   lambda_3 <- trail_set$l3[trail_idx]
   
-  trail <- ADMM_trail(aa = fix_para$aa,
+  trail2 <- ADMM_trail(aa = fix_para$aa,
                       tau = fix_para$tau,
                       lambda_1 = fix_para$lambda_1,
                       lambda_2 = lambda_2,
@@ -562,54 +598,179 @@ for(trail_idx in 1:trail_num){
                       iter_type = 'stop')
   trail_record[[trail_idx]] <- trail
   
-  result <- rbind(result, c(fix_para$dt_seed,
-                  fix_para$q_c_seed,
-                  fix_para$aa,
-                  fix_para$tau,
-                  fix_para$lambda_1,
-                  lambda_2,
-                  lambda_3,
-                  trail$cdist,
-                  trail$cdist_main,
-                  trail$cdist_sub,
-                  trail$ci_prob_mean,
-                  trail$mse,
-                  trail$sc_score,
-                  trail$sc_score_main,
-                  trail$sc_score_sub,
-                  trail$ari_score,
-                  trail$ari_score_main,
-                  trail$ari_score_sub,
-                  # trail$BIC.var,
-                  trail$fit_sum,
-                  trail$fit_mean,
-                  trail$penal,
-                  trail$bic_sum,
-                  trail$bic_mean,
-                  trail$est_main_grn,
-                  trail$est_sub_grn,
-                  trail$rho_init,
-                  trail$rho_est,
-                  trail$rho_ratio,
-                  trail$pi_est,
-                  trail$valid_hier,
-                  trail$group_detail,
-                  trail$case_table_full,
-                  trail$iter_total,
-                  trail$iter_type,
-                  "hier"))
+  # result <- rbind(result, c(fix_para$dt_seed,
+  #                 fix_para$q_c_seed,
+  #                 fix_para$aa,
+  #                 fix_para$tau,
+  #                 fix_para$lambda_1,
+  #                 lambda_2,
+  #                 lambda_3,
+  #                 trail$cdist,
+  #                 trail$cdist_main,
+  #                 trail$cdist_sub,
+  #                 trail$ci_prob_mean,
+  #                 trail$mse,
+  #                 trail$sc_score,
+  #                 trail$sc_score_main,
+  #                 trail$sc_score_sub,
+  #                 trail$ari_score,
+  #                 trail$ari_score_main,
+  #                 trail$ari_score_sub,
+  #                 # trail$BIC.var,
+  #                 trail$fit_sum,
+  #                 trail$fit_mean,
+  #                 trail$penal,
+  #                 trail$bic_sum,
+  #                 trail$bic_mean,
+  #                 trail$est_main_grn,
+  #                 trail$est_sub_grn,
+  #                 trail$rho_init,
+  #                 trail$rho_est,
+  #                 trail$rho_ratio,
+  #                 trail$pi_est,
+  #                 trail$valid_hier,
+  #                 trail$group_detail,
+  #                 trail$case_table_full,
+  #                 trail$iter_total,
+  #                 trail$iter_type,
+  #                 "hier"))
 }
+```
+
+```{r}
+# trail_fev1 <- trail
+# trail_dlco <- trail2
+```
+
+
+```{r}
+trail <- trail_fev1
+trail$coef_full_ori_comp
+trail$group_detail
+trail$bic_mean
+trail$est_main_grn
+trail$est_sub_grn
+```
+
+```{r}
+trail$coef_full_ori_comp[1:6,]
+```
+
+```{r}
+ci_est_sub <- trail$ci_est_sub
+```
+
+```{r}
+trail <- trail_dlco
+df_coef_main <- trail$coef_full_ori_comp[1:6,]
+df_coef_main <- t(unique(t(df_coef_main)))
+df_coef_sub <- trail$coef_full_ori_comp[7:(p+q),]
+sum(df_coef_main == 0)/prod(dim(df_coef_main))
+sum(df_coef_sub == 0)/prod(dim(df_coef_sub))
+```
+
+
+```{r}
+# cor(X)
+# library(corrplot)
+# corrplot(cor(X))
+```
+
+
+```{r}
+library(pheatmap)
+# pheatmap(trail$coef_full_ori_comp[1:6,], cluster_rows = F, cluster_cols = F)
+pheatmap(trail$coef_full_ori_comp[7:dim(trail$coef_full_ori_comp)[1],], cluster_rows = F, cluster_cols = F,
+         color = colorRampPalette(c("navy","white","firebrick3"))(100))
+pheatmap(trail$coef_full_ori_comp[7:dim(trail$coef_full_ori_comp)[1],] ,
+                   color = colorRampPalette(c("navy","white","firebrick3"))(100))
 ```
 
 
 
+```{r}
+df_heat <- data.frame(y = y, 
+                      ci_est_main = trail$ci_est_main, 
+                      ci_est_sub = trail$ci_est_sub)
+# df_heat$ci_est_main <- as.factor(df_heat$ci_est_main)
+df_heat$ci_est_sub <- factor(df_heat$ci_est_sub)
+
+# dlco 需要这部分
+df_heat$ci_est_main[df_heat$ci_est_main == 1] <- 3
+df_heat$ci_est_main[df_heat$ci_est_main == 2] <- 1
+df_heat$ci_est_main[df_heat$ci_est_main == 3] <- 2
+
+df_heat <- df_heat %>% arrange(ci_est_main, ci_est_sub)
+df_heat <- cbind(data.frame(id = 1:n), df_heat)
+```
 
 
 
+```{r}
+# p <- NULL
+# for(i in 1:length(df_heat_melt[df_heat_melt$level == "ci_est_main",]$value)){
+#   p[i] <- pblue[as.numeric(df_heat_melt[df_heat_melt$level == "ci_est_main",]$value[i])]
+# }
+
+# p <- pblue[as.numeric(df_heat_melt[df_heat_melt$level == "ci_est_main", "value"])]
+```
 
 
 
+```{r}
+library(RColorBrewer)
 
+# 生成指定类别的调色板
+pblue <- brewer.pal(3, "Blues")
+pred <- brewer.pal(7, "Reds")
+pmain <- c("#4682B4", "#DC143C")
+psub <- c(pblue[1],pred[2],pblue[2],pred[3:7])
+
+pblue <- brewer.pal(8, "Blues")
+pred <- brewer.pal(8, "Reds")
+pmain <- c("#4682B4", "#DC143C")
+psub <- c(pred[2:4],pblue[3],pred[5:8])
+```
+
+
+```{r}
+library(reshape2)
+df_heat_melt <- melt(df_heat, id.vars = c("id", "y"), 
+     measure.vars = c("ci_est_main", "ci_est_sub"),
+     variable.name = "level",
+     value.name = "value")
+df_heat_melt$cl <- NULL
+df_heat_melt$cl[df_heat_melt$level == "ci_est_main"] <- pmain[as.numeric(df_heat_melt[df_heat_melt$level == "ci_est_main", "value"])]
+df_heat_melt$cl[df_heat_melt$level == "ci_est_sub"] <- psub[as.numeric(df_heat_melt[df_heat_melt$level == "ci_est_sub", "value"])]
+```
+```{r}
+df_coef_sub <- trail$coef_full_ori_comp[7:dim(trail$coef_full_ori_comp)[1],]
+```
+
+
+```{r}
+options(repr.plot.width = 1, repr.plot.height = 7) 
+p1 <- ggplot(df_heat_melt, aes(x=level, y=id, fill=cl)) +
+  geom_raster(alpha = 0.8) +
+  theme_minimal() +
+  coord_fixed(ratio = 0.02) +  
+  # guides(fill = F) +
+  scale_fill_identity() +
+  xlab("")
+p1
+ggsave("heat2.pdf", p1, width = 8, height = 10, units = "cm")
+```
+
+
+```{r}
+trail_coef_main <- data.frame(trail$coef_full_ori_comp[1:6,c(1,4)])
+trail_coef_main <- data.frame(trail$coef_full_ori_comp[1:6,c(1,2)])
+colnames(trail_coef_main) <- c("Group 1", "Group 2")
+rownames(trail_coef_main) <- colnames(X)
+
+library(stargazer)
+stargazer(trail_coef_main, summary = FALSE)
+```
 
 
 

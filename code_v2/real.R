@@ -28,12 +28,12 @@ K_up <- as.numeric(args$K_up)
 
 dt_seed <- NaN
 q_c_seed_max <- 10
-rho_ratio <- 1
+rho_ratio <- 0.2
 
 if(0){
   n <- 160
   p <- 6
-  q <- 30
+  q <- 20
   epsilon_sd <- 0.5
   sigma_est <- 0.5
   save_path <- "temp.csv"
@@ -41,9 +41,14 @@ if(0){
 }
 
 # data
-X <- read.csv("../data/realX_image_6.csv") %>% as.matrix()
-Z <- read.csv(glue("../data/realZ_gene_{q}.csv")) %>% as.matrix()
-y <- read.csv("../data/y.csv")$fev1
+# X <- read.csv("../data/realX_image_6.csv") %>% as.matrix()
+# Z <- read.csv(glue("../data/realZ_gene_{q}.csv")) %>% as.matrix()
+# y <- read.csv("../data/y.csv")$fev1
+
+X <- read.csv("../data/realX2_image_6.csv") %>% as.matrix()
+Z <- read.csv(glue("../data/realZ2_gene_{q}.csv")) %>% as.matrix()
+y <- read.csv("../data/y2.csv")$dlco
+
 
 # X <- read.csv("hierarchical-gene/data/realX_image_6.csv") %>% as.matrix()
 # Z <- read.csv("hierarchical-gene/data/realZ_gene_20.csv") %>% as.matrix()
@@ -119,7 +124,7 @@ for(q_c_seed in 1:q_c_seed_max){
   result[2,'cdist_main'] <- flemix_best$cdist_main
   result[2,'tag'] <- flemix_best$tag
 
-  l2_seq <- c(0.5, 1, 1.5, 2)
+  l2_seq <- c(0.5, 1, 1.5, 2, 2.5)
   l3_seq <- c(1, 2, 3, 4)
   fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
                    aa = 1.2, tau = 1)
