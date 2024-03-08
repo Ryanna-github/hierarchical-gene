@@ -6,12 +6,12 @@ library(flexmix)
 # library(ncvreg)
 # library(mclust)
 library(readr)
-source("sim.R")
-source("tools.R")
-source("func.R")
-# source("hierarchical-gene/code_v2/sim.R")
-# source("hierarchical-gene/code_v2/tools.R")
-# source("hierarchical-gene/code_v2/func.R")
+# source("sim.R")
+# source("tools.R")
+# source("func.R")
+source("hierarchical-gene/code_v2/sim.R")
+source("hierarchical-gene/code_v2/tools.R")
+source("hierarchical-gene/code_v2/func.R")
 library(argparse)
 #
 # 创建参数解析对象
@@ -59,26 +59,26 @@ dt_seed <- as.numeric(args$dt_seed)
 K_up <- as.numeric(args$K_up)
 cotype <- args$cotype
 
-if(1){
-  n <- 500
-  p <- 80
-  q <- 40
-  balance <- 1
-  epsilon_sd <- 0.5
-  epsilon_sd_init <- 0.5
-  sigma_est <- as.numeric(epsilon_sd_init)
-  rho_ratio <- 0.1
-  signal_size <- 1
-  # beta_vlen <- 3
-  beta_vlen <- 20
-  # alpha_vlen <- 2
-  alpha_vlen <- 10
-  save_path <- "temp.csv"
-  dt_seed <- 9
-  K_up <- 4  # 估计时的最大类别，应该不少于 group_num_sub
-  cotype <- "En"
-  print("*")
-}
+# if(1){
+#   n <- 500
+#   p <- 80
+#   q <- 40
+#   balance <- 1
+#   epsilon_sd <- 0.5
+#   epsilon_sd_init <- 0.5
+#   sigma_est <- as.numeric(epsilon_sd_init)
+#   rho_ratio <- 0.1
+#   signal_size <- 1
+#   # beta_vlen <- 3
+#   beta_vlen <- 3
+#   # alpha_vlen <- 2
+#   alpha_vlen <- 2
+#   save_path <- "temp.csv"
+#   dt_seed <- 9
+#   K_up <- 6  # 估计时的最大类别，应该不少于 group_num_sub
+#   cotype <- "En"
+#   print("*")
+# }
 
 # 超参数设定
 # n <- 200
@@ -144,20 +144,27 @@ colnames_all <- c("dt_seed", "q_c_seed", "aa", "tau", "l1", "l2", "l3",
                   "group_detail", paste0("case_", 1:4), 
                   "iter_total", "iter_type", "tag")
 
-# q_c_seed_max <- 2
-for(q_c_seed in 1:q_c_seed_max){
+q_c_seed_max <- 1
+for(q_c_seed in 1:10){
 
   result <- as.data.frame(matrix(NaN, nrow = 2, ncol = length(colnames_all)))
   colnames(result) <- colnames_all
   result$dt_seed <- dt_seed
 
   # flexmix for initialization
+  miniprior <- ifelse(K_up == 4, 0, 0.1)
   flemix_forinit <- tryCatch({
-    flexmix_init(q_c_seed, 0)
+    flexmix_init(q_c_seed, miniprior)
   }, error = function(err) {
-    cat("Random Init\n")
-    random_init(q_c_seed)
+    # cat("Random Init\n")
+    # random_init(q_c_seed)
+    cat(paste0("Fail to init for dt_seed ", dt_seed," q_c_seed ", q_c_seed, ", continue...\n"))
+    FALSE
   })
+  # 若未初始化成功，直接用下一个随机种子
+  if(isFALSE(flemix_forinit)){
+    next
+  }
   result[1,'q_c_seed'] <- q_c_seed
   result[1,'sub_grn'] <- flemix_forinit$est_sub_grn
   result[1,'sc'] <- flemix_forinit$sc_score
@@ -170,7 +177,22 @@ for(q_c_seed in 1:q_c_seed_max){
   result[1,'cdist_main'] <- flemix_forinit$cdist_main
   result[1,'tag'] <- flemix_forinit$tag
   q_c_matrix_init <- flemix_forinit$q_c_matrix
-
+  
+  if(K_up != flemix_forinit$est_sub_grn){
+    cat(paste("K_up changes from", K_up, "to", flemix_forinit$est_sub_grn))
+    K_up <- flemix_forinit$est_sub_grn
+    
+    comb_pair <- combn(K_up, 2)
+    H_p <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
+                     diag(p)) %>% Matrix(sparse = TRUE)
+    H_q <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
+                     diag(q)) %>% Matrix(sparse = TRUE)
+    # flexmix 大组数目估计过小不需要再继续运算了
+    if(K_up < 4){
+      next
+    }
+  }
+  
   # flexmix best result (K squeezed)
   flemix_best <- tryCatch({
     flexmix_init(q_c_seed, 0.1)
@@ -203,19 +225,16 @@ for(q_c_seed in 1:q_c_seed_max){
   l3_seq <- c(4)
   
   if(signal_size == 1 & K_up == 4){
-    l2_seq <- c(2.5,3)
-    l3_seq <- c(3.5,4,4.5,5)
+    l2_seq <- c(2.5,3,3.5)
+    l3_seq <- c(3.5,4,4.5,5,6)
   }else if(signal_size == 2 & K_up == 4){
     l2_seq <- c(5,6.5,7,7.5,8)
     l3_seq <- c(8.5,9,9.5,10)
-  }else if(signal_size == 1 & K_up == 6){
+  }else{
     l2_seq <- c(5,6.5,7,7.5,8)
     l3_seq <- c(8,8.5,9,10)
   }
-  else if(signal_size == 2 & K_up == 6){
-    l2_seq <- c(5,6.5,7,7.5,8)*1.1
-    l3_seq <- c(8,8.5,9,10)*1.1
-  }
+  
   fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
                    aa = 1.2, tau = 1)
   # q_c_matrix 初

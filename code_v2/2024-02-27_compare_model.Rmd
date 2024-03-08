@@ -38,7 +38,7 @@ beta_vlen <- 3
 alpha_vlen <- 2
 save_path <- "temp.csv"
 dt_seed <- 9
-K_up <- 4  # 估计时的最大类别，应该不少于 group_num_sub
+K_up <- 6  # 估计时的最大类别，应该不少于 group_num_sub
 
 cotype_x <- "En"
 cotype_z <- "En"
@@ -86,6 +86,36 @@ colnames_part <- c("dt_seed", "q_c_seed", "tag", "mse",
                   "sc", "sc_main", "sc_sub","ari", "ari_main", "ari_sub",
                   "main_grn", "sub_grn", "pi_est","group_detail")
 ```
+
+
+```{r}
+q_c_seed <- 4
+K_up <- 6
+set.seed(q_c_seed)
+pi_init <- rep(1/K_up, K_up)
+rho_init <- rep(1, K_up)/sigma_est
+q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
+q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+
+minprior_value <- 0.1
+qflag = TRUE
+m_glm <- tryCatch({
+  flexmix(y~cbind(X, Z)-1, cluster = q_c_matrix,
+          model = FLXMRglm(),
+          control = list(minprior = minprior_value))
+}, error = function(err) {
+  qflag <<- FALSE
+  cat("Error occurred:", conditionMessage(err), "\n")
+  flexmix(y~cbind(X, Z)-1, k = K_up,
+          model = FLXMRglm(),
+          control = list(minprior = minprior_value))
+})
+# 区分按照类别初始化和按照 q_c 初始化两种情况
+tag <- "flexmix"
+tag <- ifelse(qflag, paste0(tag, "_q"), paste0(tag, "_k"))
+if(!qflag){ q_c_matrix <- NULL }
+```
+
 
 ## FRM1
 

@@ -5,17 +5,23 @@ flexmix_init <- function(q_c_seed, minprior_value = 0, tag = "flexmix"){
   rho_init <- rep(1, K_up)/sigma_est
   q_c_matrix <- abs(t(kronecker(pi_init, matrix(1, ncol = n))) + rnorm(n*K_up, mean = 0, sd = .1))
   q_c_matrix <- q_c_matrix / apply(q_c_matrix, 1, sum)
+  qflag = TRUE
   
   m_glm <- tryCatch({
     flexmix(y~cbind(X, Z)-1, cluster = q_c_matrix,
             model = FLXMRglm(),
             control = list(minprior = minprior_value))
   }, error = function(err) {
+    qflag <<- FALSE
     cat("Error occurred:", conditionMessage(err), "\n")
     flexmix(y~cbind(X, Z)-1, k = K_up,
             model = FLXMRglm(),
             control = list(minprior = minprior_value))
   })
+  # 区分按照类别初始化和按照 q_c 初始化两种情况
+  tag <- ifelse(qflag, paste0(tag, "_q"), paste(tag, "_k"))
+  if(!qflag){ q_c_matrix <- NULL }
+
   K_est <- m_glm@k
   coef_est <- parameters(m_glm)[1:(p+q),]
   row.names(coef_est) <- NULL

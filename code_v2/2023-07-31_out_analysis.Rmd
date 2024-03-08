@@ -29,7 +29,7 @@ rho_ratio <- 0.1
 balance <- 1
 cotype <- 'En'
 # dt_seed <- 9
-K_up <- 4
+K_up <- 6
 
 
 # n <- 500
@@ -48,7 +48,7 @@ K_up <- 4
 
 for(dt_seed in seq(9, 99, 10)){
   prefix <- "hierarchical-gene/code_v2/"
-  # prefix <- ""
+  prefix <- ""
     path_pre <- glue("{prefix}{Sys.Date()}_n{n}_p{p}_q{q}_b{balance}_ss{signal_size}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_epi{epsilon_sd_init}_rr{rho_ratio}_Kup{K_up}_ct{cotype}_fminit")
   # path_pre <- glue("2023-07-31_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_fminit")
   cmd <- glue("Rscript --verbose {prefix}test.R -n {n} --dt_seed {dt_seed} -p {p} -q {q} -b {balance} -e {epsilon_sd} --epsilon_sd_init {epsilon_sd_init} --rho_ratio {rho_ratio} --signal_size {signal_size} --beta_vlen {beta_vlen} --alpha_vlen {alpha_vlen} --K_up {K_up} --cotype {cotype} --path {path_pre}.csv >> {path_pre}_log.out")
@@ -129,7 +129,7 @@ df <- read.csv("2024-02-26_n500_p8_q4_ss2_bl3_al2_eps0.5_epi0.5_rr0.2_Kup6_fmini
 df <- read.csv("2024-02-27_n500_p8_q4_b3_ss2_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_ctEn_fminit.csv")
 df <- read.csv("2024-02-28_n500_p8_q4_b3_ss2_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_ctAR3_fminit.csv")
 df <- read.csv("2024-03-04_n500_p80_q40_b1_ss2_bl3_al2_eps0.5_epi0.5_rr0.1_Kup4_ctEn_fminit.csv")
-df <- read.csv("2024-03-06_n500_p80_q40_b1_ss2_bl3_al2_eps0.5_epi0.5_rr0.1_Kup6_ctEn_fminit.csv")
+df <- read.csv("2024-03-06_n500_p80_q40_b1_ss2_bl3_al2_eps0.5_epi0.5_rr0.1_Kup4_ctEn_fminit.csv")
 # 以下方法过期，直接看 tag 列即可
 # df <- df %>% mutate(method = ifelse(q_c_seed < 100, 1, 0))
 # df$method <- ifelse(df$q_c_seed == 111, -1, df$method)
