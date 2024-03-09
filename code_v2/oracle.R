@@ -459,8 +459,10 @@ for(dt_seed in seq(9,99,10)){
                    diag(q)) %>% Matrix(sparse = TRUE)
   
   iter_max <- 200
-  l2_seq <- c(0.5,1,1.5,2)
-  l3_seq <- c(0.5,1,1.5,2)
+  l2_seq <- c(0.5,1,1.2,1.5)
+  l3_seq <- c(0.5,1,1.2,1.5)
+  # l2_seq <- c(1)
+  # l3_seq <- c(1)
   fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
                    aa = 1.2, tau = 1)
   trail_set <- expand.grid(list(l3 = l3_seq, l2 = l2_seq))
@@ -481,7 +483,7 @@ for(dt_seed in seq(9,99,10)){
                                     trail$sc_score_main, trail$sc_score_sub,
                                     trail$ari_score_main, trail$ari_score_sub,
                                     trail$est_main_grn, trail$est_sub_grn,
-                                    trail$pi_est, trail$mse))
+                                    trail$pi_est, trail$mse, trail$q_c_seed))
     print(str(trail))
     
     
