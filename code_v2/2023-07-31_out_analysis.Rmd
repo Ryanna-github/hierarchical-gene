@@ -11,6 +11,33 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # terminal generator
 
+## oracle
+
+```{r}
+library(glue)
+n <- 500
+p <- 80
+q <- 40
+epsilon_sd <- 0.5
+epsilon_sd_init <- 0.5
+signal_size <- 1
+beta_vlen <- 3
+alpha_vlen <- 2
+rho_ratio <- 0.0
+balance <- 1
+cotype <- 'En'
+# dt_seed <- 9
+K_up <- 4
+
+prefix <- "hierarchical-gene/code_v2/"
+# prefix <- ""
+  path_pre <- glue("{prefix}{Sys.Date()}_n{n}_p{p}_q{q}_b{balance}_ss{signal_size}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_epi{epsilon_sd_init}_rr{rho_ratio}_Kup{K_up}_ct{cotype}_fminit")
+# path_pre <- glue("2023-07-31_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_fminit")
+cmd <- glue("Rscript --verbose {prefix}oracle.R -n {n} -p {p} -q {q} -b {balance} -e {epsilon_sd} --epsilon_sd_init {epsilon_sd_init} --rho_ratio {rho_ratio} --signal_size {signal_size} --beta_vlen {beta_vlen} --alpha_vlen {alpha_vlen} --K_up {K_up} --cotype {cotype} --path {path_pre}.csv >> {path_pre}_log.out")
+print(cmd)
+```
+
+
 ## sim
 
 Rscript --verbose test.R -n 500 --dt_seed 9 -p 8 -q 4 -e 0.5 --beta_vlen 3 --alpha_vlen 2 --K_up 4 --path 2023-11-28_n500_p8_q4_bl3_al2_eps0.5_Kup4_fminit.csv >> 2023-11-28_n500_p8_q4_bl3_al2_eps0.5_Kup4_fminit_log.out
@@ -22,7 +49,7 @@ p <- 80
 q <- 40
 epsilon_sd <- 0.5
 epsilon_sd_init <- 0.5
-signal_size <- 1
+signal_size <- 2
 beta_vlen <- 3
 alpha_vlen <- 2
 rho_ratio <- 0.1
@@ -48,7 +75,7 @@ K_up <- 6
 
 for(dt_seed in seq(9, 99, 10)){
   prefix <- "hierarchical-gene/code_v2/"
-  prefix <- ""
+  # prefix <- ""
     path_pre <- glue("{prefix}{Sys.Date()}_n{n}_p{p}_q{q}_b{balance}_ss{signal_size}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_epi{epsilon_sd_init}_rr{rho_ratio}_Kup{K_up}_ct{cotype}_fminit")
   # path_pre <- glue("2023-07-31_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_fminit")
   cmd <- glue("Rscript --verbose {prefix}test.R -n {n} --dt_seed {dt_seed} -p {p} -q {q} -b {balance} -e {epsilon_sd} --epsilon_sd_init {epsilon_sd_init} --rho_ratio {rho_ratio} --signal_size {signal_size} --beta_vlen {beta_vlen} --alpha_vlen {alpha_vlen} --K_up {K_up} --cotype {cotype} --path {path_pre}.csv >> {path_pre}_log.out")
@@ -129,7 +156,8 @@ df <- read.csv("2024-02-26_n500_p8_q4_ss2_bl3_al2_eps0.5_epi0.5_rr0.2_Kup6_fmini
 df <- read.csv("2024-02-27_n500_p8_q4_b3_ss2_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_ctEn_fminit.csv")
 df <- read.csv("2024-02-28_n500_p8_q4_b3_ss2_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_ctAR3_fminit.csv")
 df <- read.csv("2024-03-04_n500_p80_q40_b1_ss2_bl3_al2_eps0.5_epi0.5_rr0.1_Kup4_ctEn_fminit.csv")
-df <- read.csv("2024-03-06_n500_p80_q40_b1_ss2_bl3_al2_eps0.5_epi0.5_rr0.1_Kup4_ctEn_fminit.csv")
+df <- read.csv("2024-03-06_n500_p80_q40_b1_ss1_bl3_al2_eps0.5_epi0.5_rr0.1_Kup4_ctEn_fminit.csv")
+df <- read.csv("2024-03-08_n500_p80_q40_b1_ss1_bl3_al2_eps0.5_epi0.5_rr0.1_Kup6_ctEn_fminit.csv")
 # 以下方法过期，直接看 tag 列即可
 # df <- df %>% mutate(method = ifelse(q_c_seed < 100, 1, 0))
 # df$method <- ifelse(df$q_c_seed == 111, -1, df$method)
@@ -141,17 +169,20 @@ df <- read.csv("2024-03-06_n500_p80_q40_b1_ss2_bl3_al2_eps0.5_epi0.5_rr0.1_Kup4_
 ```
 
 ```{r}
+n <- 500
+df <- df %>% mutate(bic_mean2 = fit_mean + penal/log(n))
+df <- df %>% mutate(bic_mean2 = bic_mean)
+
 df_report <- df %>% 
   select(dt_seed, q_c_seed, l2, l3, mse, 
          cdist, cdist_main, cdist_sub, sc, sc_main, sc_sub, 
          ari, ari_main, ari_sub,
-         main_grn, sub_grn, fit_mean, penal, bic_sum, bic_mean, tag) %>%
-  mutate(bic_mean2 = fit_mean + penal/log(n)) %>%
+         main_grn, sub_grn, fit_mean, penal, bic_sum, bic_mean2, tag) %>%
   filter(l2 > 0 & l3 > 0) %>%
   filter(tag == 'hier') %>%
   group_by(dt_seed, q_c_seed, tag) %>% 
   arrange(bic_mean2) %>%
-  filter(row_number() == 1) %>%
+  filter(row_number() == 2) %>%
   arrange(dt_seed, q_c_seed)
 df_report2 <- df_report %>%
   group_by(dt_seed) %>%
