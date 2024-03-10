@@ -160,9 +160,6 @@ FMR1_comp <- function(q_c_seed, minprior_value = 0.1, tag = "FMR1"){
 # ori
 ```
 
-
-
-
 ## FMR2
 
 两次使用 FMR 方法得到层次模型模拟结果
@@ -938,6 +935,34 @@ oracle_comp <- function(q_c_seed, iter_type = 'stop', iter_max = 200,
 
 ## 单 dt_seed
 
+### 直接
+
+分析 oracle.R 运行结果
+
+```{r}
+df <- read.csv("2024-03-09_n500_p80_q40_b1_ss1_bl3_al2_eps0.5_epi0.5_rr0_Kup4_ctEn_oracle.csv")
+df_result <- df %>% 
+  group_by(dt_seed) %>%
+  arrange(bic_mean, .by_group=TRUE) %>%
+  filter(row_number() == 1)
+df_result2 <- df_result %>%
+  # select(-dt_seed) %>%
+  transmute(per_main = (est_main_grn == 2),
+         per_sub = (est_sub_grn == 4),
+         sc_main = sc_score_main,
+         sc_sub = sc_score_sub,
+         ari_main = ari_score_main,
+         ari_sub = ari_score_sub,
+         MSE_main = cdist_main,
+         MSE_sub = cdist_sub)
+as.data.frame(t(colMeans(df_result2, na.rm = T)))
+```
+
+
+
+
+### 计算
+
 ```{r}
 # comresult <- NULL
 # for(q_c_seed in 1:q_c_seed_max){
@@ -1031,13 +1056,13 @@ q <- 40
 epsilon_sd <- 0.5
 epsilon_sd_init <- 0.5
 sigma_est <- as.numeric(epsilon_sd_init)
-balance <- 3
-signal_size <- 1
+balance <- 2
+signal_size <- 2
 beta_vlen <- 3
 alpha_vlen <- 2
 save_path <- "temp.csv"
 # dt_seed <- 9
-K_up <- 4  # 估计时的最大类别，应该不少于 group_num_sub
+K_up <- 6  # 估计时的最大类别，应该不少于 group_num_sub
 
 cotype_x <- "En"
 cotype_z <- "En"

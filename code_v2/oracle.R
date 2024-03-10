@@ -1,6 +1,7 @@
 library(dplyr)
 library(Matrix)
 library(flexmix)
+library(readr)
 # source("sim.R")
 # source("tools.R")
 # source("func.R")
@@ -459,8 +460,10 @@ for(dt_seed in seq(9,99,10)){
                    diag(q)) %>% Matrix(sparse = TRUE)
   
   iter_max <- 200
-  l2_seq <- c(0.5,1,1.2,1.5)
-  l3_seq <- c(0.5,1,1.2,1.5)
+  # l2_seq <- c(0.5,1,1.2,1.5)
+  # l3_seq <- c(0.5,1,1.2,1.5)
+  l2_seq <- c(0.5,0.8,1,1.2)
+  l3_seq <- c(0.5,0.8,1,1.2)
   # l2_seq <- c(1)
   # l3_seq <- c(1)
   fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
