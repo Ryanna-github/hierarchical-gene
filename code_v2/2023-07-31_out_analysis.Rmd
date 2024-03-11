@@ -20,11 +20,11 @@ p <- 80
 q <- 40
 epsilon_sd <- 0.5
 epsilon_sd_init <- 0.5
-signal_size <- 1
+signal_size <- 2
 beta_vlen <- 3
 alpha_vlen <- 2
 rho_ratio <- 0.0
-balance <- 1
+balance <- 2
 cotype <- 'En'
 # dt_seed <- 9
 K_up <- 4
@@ -42,10 +42,6 @@ print(cmd)
 
 Rscript --verbose test.R -n 500 --dt_seed 9 -p 8 -q 4 -e 0.5 --beta_vlen 3 --alpha_vlen 2 --K_up 4 --path 2023-11-28_n500_p8_q4_bl3_al2_eps0.5_Kup4_fminit.csv >> 2023-11-28_n500_p8_q4_bl3_al2_eps0.5_Kup4_fminit_log.out
 
-```{r}
-a <- 1
-```
-
 
 ```{r}
 library(glue)
@@ -54,8 +50,8 @@ p <- 80
 q <- 40
 epsilon_sd <- 0.5
 epsilon_sd_init <- 0.5
-signal_size <- 1
-beta_vlen <- 3
+signal_size <- 2
+beta_vlen <- 1
 alpha_vlen <- 2
 rho_ratio <- 0.1
 balance <- 2
@@ -163,6 +159,7 @@ df <- read.csv("2024-02-28_n500_p8_q4_b3_ss2_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_ct
 df <- read.csv("2024-03-04_n500_p80_q40_b1_ss2_bl3_al2_eps0.5_epi0.5_rr0.1_Kup4_ctEn_fminit.csv")
 df <- read.csv("2024-03-06_n500_p80_q40_b1_ss1_bl3_al2_eps0.5_epi0.5_rr0.1_Kup4_ctEn_fminit.csv")
 df <- read.csv("2024-03-09_n500_p80_q40_b1_ss2_bl3_al2_eps0.5_epi0.5_rr0.1_Kup6_ctEn_fminit.csv")
+df <- read.csv("2024-03-10_n500_p80_q40_b2_ss2_bl3_al2_eps0.5_epi0.5_rr0.1_Kup6_ctEn_fminit.csv")
 # 以下方法过期，直接看 tag 列即可
 # df <- df %>% mutate(method = ifelse(q_c_seed < 100, 1, 0))
 # df$method <- ifelse(df$q_c_seed == 111, -1, df$method)
@@ -172,6 +169,7 @@ df <- read.csv("2024-03-09_n500_p80_q40_b1_ss2_bl3_al2_eps0.5_epi0.5_rr0.1_Kup6_
 #                        q_c_seed == 999 ~ 0))
 # df$method <- factor(as.integer(df$q_c_seed %in% c(111, 999)), levels = c(0,1), labels = c("our method", "flemix or random"))
 ```
+
 
 ```{r}
 n <- 500
