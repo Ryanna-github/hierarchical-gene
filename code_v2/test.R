@@ -6,79 +6,79 @@ library(flexmix)
 # library(ncvreg)
 # library(mclust)
 library(readr)
-source("sim.R")
-source("tools.R")
-source("func.R")
-# source("hierarchical-gene/code_v2/sim.R")
-# source("hierarchical-gene/code_v2/tools.R")
-# source("hierarchical-gene/code_v2/func.R")
-# library(argparse)
-# #
-# # 创建参数解析对象
-# parser <- ArgumentParser()
-# # Rscript test.R -n 120 --dt_seed 9 -p 8 -q 4 -e 0.5 --path 2023-07-28_eps05_fminit.csv
-# 
-# parser$add_argument("-n", "--num", default=200,  help="sample size")
-# parser$add_argument("--dt_seed", default=9,  help="epsilon seed while generating data")
-# parser$add_argument("-p", default = 8, help = "dim of X")
-# parser$add_argument("-q", default = 4, help = "dim of Z")
-# parser$add_argument("-b", default = 1, help = "if data balanced (1: balanced, 2: unbalanced groups with balanced subgroups, 3: balanced groups with unbalanced sbgroups)")
-# parser$add_argument("-e", "--epsilon_sd", default = 0.5, help = "error")
-# parser$add_argument("--epsilon_sd_init", default = 0.5, help = "epsilon_sd initiation for estimating rho")
-# parser$add_argument("--rho_ratio", default = 0.5, help = "update ratio of rho, rho(t+1)=ratio*rho+(1-ratio)rho(t)")
-# parser$add_argument("-ss", "--signal_size", default = 1, help = "signal size")
-# parser$add_argument("-bl", "--beta_vlen", default = 3, help = "nonzero length of beta")
-# parser$add_argument("-al", "--alpha_vlen", default = 2, help = "nonzero length of alpha")
-# parser$add_argument("--path", default="temp.csv",  help="csv result save path")
-# parser$add_argument("--K_up", default=4,  help="Upper class number")
-# parser$add_argument("--cotype", default="En",  help="Covariate matrix of X and Z")
-# # parser$add_argument("-a", "--aa", default = 1.2, help = "penalty para in MCP")
-# # parser$add_argument("--lambda_1", default = 0.3, help = "lambda 1")
-# # parser$add_argument("--lambda_2", default = 2, help = "lambda 2")
-# # parser$add_argument("--lambda_3", default = 5, help = "lambda 3")
-# # parser$add_argument("--tau", default = 0.5, help = "ADMM penalty")
-# 
-# # Rscript --verbose test.R -n 500 --dt_seed 9 -p 8 -q 4 --epsilon_sd 0.5
-# # --epsilon_sd_init 0.5 --beta_vlen 3 --alpha_vlen 2 --K_up 4
-# 
-# args <- parser$parse_args()
-# print(str(args))
-# 
-# n <- as.numeric(args$n)
-# p <- as.numeric(args$p)
-# q <- as.numeric(args$q)
-# balance <- as.numeric(args$b)
-# epsilon_sd <- as.numeric(args$epsilon_sd)
-# sigma_est <- as.numeric(args$epsilon_sd_init)
-# rho_ratio <- as.numeric(args$rho_ratio)
-# signal_size <- as.numeric(args$signal_size)
-# beta_vlen <- as.numeric(args$beta_vlen)
-# alpha_vlen <- as.numeric(args$alpha_vlen)
-# save_path <- args$path
-# dt_seed <- as.numeric(args$dt_seed)
-# K_up <- as.numeric(args$K_up)
-# cotype <- args$cotype
+# source("sim.R")
+# source("tools.R")
+# source("func.R")
+source("hierarchical-gene/code_v2/sim.R")
+source("hierarchical-gene/code_v2/tools.R")
+source("hierarchical-gene/code_v2/func.R")
+library(argparse)
+#
+# 创建参数解析对象
+parser <- ArgumentParser()
+# Rscript test.R -n 120 --dt_seed 9 -p 8 -q 4 -e 0.5 --path 2023-07-28_eps05_fminit.csv
 
-if(1){
-  n <- 500
-  p <- 80
-  q <- 40
-  balance <- 1
-  epsilon_sd <- 0.5
-  epsilon_sd_init <- 0.5
-  sigma_est <- as.numeric(epsilon_sd_init)
-  rho_ratio <- 0.1
-  signal_size <- 1
-  # beta_vlen <- 3
-  beta_vlen <- 30
-  # alpha_vlen <- 2
-  alpha_vlen <- 20
-  save_path <- "temp.csv"
-  dt_seed <- 9
-  K_up <- 4  # 估计时的最大类别，应该不少于 group_num_sub
-  cotype <- "En"
-  print("*")
-}
+parser$add_argument("-n", "--num", default=200,  help="sample size")
+parser$add_argument("--dt_seed", default=9,  help="epsilon seed while generating data")
+parser$add_argument("-p", default = 8, help = "dim of X")
+parser$add_argument("-q", default = 4, help = "dim of Z")
+parser$add_argument("-b", default = 1, help = "if data balanced (1: balanced, 2: unbalanced groups with balanced subgroups, 3: balanced groups with unbalanced sbgroups)")
+parser$add_argument("-e", "--epsilon_sd", default = 0.5, help = "error")
+parser$add_argument("--epsilon_sd_init", default = 0.5, help = "epsilon_sd initiation for estimating rho")
+parser$add_argument("--rho_ratio", default = 0.5, help = "update ratio of rho, rho(t+1)=ratio*rho+(1-ratio)rho(t)")
+parser$add_argument("-ss", "--signal_size", default = 1, help = "signal size")
+parser$add_argument("-bl", "--beta_vlen", default = 3, help = "nonzero length of beta")
+parser$add_argument("-al", "--alpha_vlen", default = 2, help = "nonzero length of alpha")
+parser$add_argument("--path", default="temp.csv",  help="csv result save path")
+parser$add_argument("--K_up", default=4,  help="Upper class number")
+parser$add_argument("--cotype", default="En",  help="Covariate matrix of X and Z")
+# parser$add_argument("-a", "--aa", default = 1.2, help = "penalty para in MCP")
+# parser$add_argument("--lambda_1", default = 0.3, help = "lambda 1")
+# parser$add_argument("--lambda_2", default = 2, help = "lambda 2")
+# parser$add_argument("--lambda_3", default = 5, help = "lambda 3")
+# parser$add_argument("--tau", default = 0.5, help = "ADMM penalty")
+
+# Rscript --verbose test.R -n 500 --dt_seed 9 -p 8 -q 4 --epsilon_sd 0.5
+# --epsilon_sd_init 0.5 --beta_vlen 3 --alpha_vlen 2 --K_up 4
+
+args <- parser$parse_args()
+print(str(args))
+
+n <- as.numeric(args$n)
+p <- as.numeric(args$p)
+q <- as.numeric(args$q)
+balance <- as.numeric(args$b)
+epsilon_sd <- as.numeric(args$epsilon_sd)
+sigma_est <- as.numeric(args$epsilon_sd_init)
+rho_ratio <- as.numeric(args$rho_ratio)
+signal_size <- as.numeric(args$signal_size)
+beta_vlen <- as.numeric(args$beta_vlen)
+alpha_vlen <- as.numeric(args$alpha_vlen)
+save_path <- args$path
+dt_seed <- as.numeric(args$dt_seed)
+K_up <- as.numeric(args$K_up)
+cotype <- args$cotype
+
+# if(1){
+#   n <- 500
+#   p <- 80
+#   q <- 40
+#   balance <- 1
+#   epsilon_sd <- 0.5
+#   epsilon_sd_init <- 0.5
+#   sigma_est <- as.numeric(epsilon_sd_init)
+#   rho_ratio <- 0.1
+#   signal_size <- 1
+#   # beta_vlen <- 3
+#   beta_vlen <- 30
+#   # alpha_vlen <- 2
+#   alpha_vlen <- 20
+#   save_path <- "temp.csv"
+#   dt_seed <- 9
+#   K_up <- 4  # 估计时的最大类别，应该不少于 group_num_sub
+#   cotype <- "En"
+#   print("*")
+# }
 
 # 超参数设定
 # n <- 200
