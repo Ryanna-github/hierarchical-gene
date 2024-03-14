@@ -1,1 +1,2 @@
-Rscript --verbose real.R -n 140 -p 6 -q 20 -e 0.5 --K_up 8 --path 2024-03-06_real2_n140_p6_q20_eps0.5_Kup8_fminit.csv >> 2024-03-06_real2_n140_p6_q20_eps0.5_Kup8_fminit_log.out
+Rscript --verbose real.R -n 140 -p 6 -q 30 -e 0.5 --K_up 6 --y_type fev1 --path 2024-03-12_real2_n140_p6_q30_eps0.5_Kup6_fminit_fev1.csv >> 2024-03-12_real2_n140_p6_q30_eps0.5_Kup6_fminit_fev1_log.out
+Rscript --verbose real.R -n 140 -p 6 -q 30 -e 0.5 --K_up 6 --y_type dlco --path 2024-03-12_real2_n140_p6_q30_eps0.5_Kup6_fminit_dlco.csv >> 2024-03-12_real2_n140_p6_q30_eps0.5_Kup6_fminit_dlco_log.out

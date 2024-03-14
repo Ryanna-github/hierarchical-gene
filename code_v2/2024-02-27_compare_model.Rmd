@@ -879,12 +879,12 @@ oracle_comp <- function(q_c_seed, iter_type = 'stop', iter_max = 200,
 
 ```{r}
 # df <- read.csv("2024-03-10_n500_p80_q40_b1_ss1_bl3_al2_eps0.5_epi0.5_rr0_Kup4_ctEn_oracle.csv")
-df <- read.csv("2024-03-10_n500_p80_q40_b2_ss2_bl3_al2_eps0.5_epi0.5_rr0_Kup4_ctEn_oracle.csv")
+df <- read.csv("2024-03-11_n500_p80_q40_b3_ss2_bl3_al2_eps0.5_epi0.5_rr0_Kup4_ctEn_oracle.csv")
 df_result <- df %>% 
   filter(est_sub_grn >= 4) %>%
   group_by(dt_seed) %>%
   arrange(bic_mean, .by_group=TRUE) %>%
-  filter(row_number() == 7)
+  filter(row_number() == 1)
 df_result2 <- df_result %>%
   # select(-dt_seed) %>%
   transmute(per_main = (est_main_grn == 2),

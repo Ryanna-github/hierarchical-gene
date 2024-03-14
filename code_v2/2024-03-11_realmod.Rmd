@@ -1,0 +1,655 @@
+---
+title: "2024-03-11_realmod"
+author: "Yan Ren"
+date: "2024-03-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+实证分析部分，不用 PCA 处理，直接用皮尔逊相关系数或者类似方法选择变量，并且将 FEV1 和 DLCO 统一样本
+
+```{r}
+library(dplyr)
+library(tidyverse)
+library(corrplot)
+```
+
+
+## 数据准备
+
+1. 选择id，注意因为要同时对 FEV1, DLCO 进行计算，要使用共同 id。后续连接每一次先用该 id join，并且 arrange(id) 保证顺序一样，X,Z 不保留原始 id 列，可以用 X_from, Z_from 保留所选行所有结果，X, Z 再表示真正使用的 x,z
+
+2. 记得进行数据类型的转化 as.numeric
+
+3. X 是 lower 中图像的低维数据，Z 是经过 PCA 降维后的基因数据
+
+
+```{r}
+gene <- read.csv("../data/LUAD_data_RNA_Seq_v2_mRNA_median_Zscores.txt", sep = "\t")
+bcr1 <- read.csv("../data/data_bcr_clinical_data_patient_match.csv")
+bcr2 <- read.csv("../data/data_bcr_clinical_data_sample_match.csv")
+low <- read.csv("../data/low_features_LUAD.csv")
+```
+
+```{r}
+# 从 y 出发，选择二者都有值的行
+df_pivot <- bcr1 %>% 
+  select(PATIENT_ID, FEV1_PERCENT_REF_PREBRONCHOLIATOR, CARBON_MONOXIDE_DIFFUSION_DLCO) %>%
+  filter(CARBON_MONOXIDE_DIFFUSION_DLCO != "[Not Available]" &
+           FEV1_PERCENT_REF_PREBRONCHOLIATOR != "[Not Available]") %>%
+  rename(fev1 = FEV1_PERCENT_REF_PREBRONCHOLIATOR,
+         dlco = CARBON_MONOXIDE_DIFFUSION_DLCO)
+df_pivot$fev1 <- as.numeric(df_pivot$fev1)
+df_pivot$dlco <- as.numeric(df_pivot$dlco)
+df_pivot
+dim(df_pivot)
+```
+
+```{r}
+convert_to_numeric <- function(x) {
+  result <- tryCatch(as.numeric(x), error = function(e) e)
+  return(result)
+}
+```
+
+
+```{r}
+X_from <- low %>% 
+  mutate(sample_id = gsub("\\.", "-", sample_id)) %>%
+  filter(sample_id %in% df_pivot$PATIENT_ID) %>%
+  arrange(sample_id) %>%
+  # convert_to_numeric() %>%
+  as.data.frame()
+dim(X_from)
+```
+
+
+
+```{r}
+gene_colnames <- colnames(gene)[3:length(colnames(gene))] %>%
+  lapply(function(x) substr(x, 1, nchar(x)-3)) %>%
+  unlist()
+# 如果此步转化，后续会被转置消除掉
+# gene_colnames <- gsub("\\.", "-", gene_colnames)
+colnames(gene) <- c(colnames(gene)[1:2], gene_colnames)
+# 转置
+genet <- rownames_to_column(as.data.frame(t(gene)))[3:ncol(gene),]
+colnames(genet) <- c("Hugo_Symbol", gene$Hugo_Symbol)
+genet <- genet[,colSums(is.na(genet)) != nrow(genet)] # 删除 2085(=20440-18345) 个没有记录的位点
+genet$Hugo_Symbol <- gsub("\\.", "-", genet$Hugo_Symbol)
+Z_from <- genet %>%
+  mutate(Hugo_Symbol = gsub("\\.", "-", Hugo_Symbol)) %>%
+  filter(Hugo_Symbol %in% df_pivot$PATIENT_ID) %>%
+  arrange(Hugo_Symbol) %>%
+  # convert_to_numeric() %>%
+  as.data.frame()
+dim(Z_from)
+```
+```{r}
+X_from
+Z_from[1:10,1:5]
+```
+
+```{r}
+dim(X_from)
+dim(Z_from)
+id_its <- intersect(X_from$sample_id, Z_from$Hugo_Symbol)
+length(id_its)
+
+df_pivot_use <- df_pivot %>%
+  filter(PATIENT_ID %in% id_its) %>%
+  arrange(PATIENT_ID)
+df_pivot_use
+```
+
+
+```{r}
+X <- X_from %>% 
+  filter(sample_id %in% id_its) %>%
+  select(-sample_id)
+Z <- Z_from %>% 
+  filter(Hugo_Symbol %in% id_its) %>%
+  select(-Hugo_Symbol) %>%
+  mutate(across(.fns=as.numeric)) 
+print(dim(Z))
+Z_sd <- apply(Z, 2, sd)
+Z <- Z[Z_sd > 0 & Z_sd <= 10]
+print(dim(Z))
+hist(apply(Z, 2, sd))
+```
+
+EGFR (Epidermal Growth Factor Receptor)：EGFR 是一种受体酪氨酸激酶，在肺癌中常见的突变基因之一。EGFR 突变与肺癌的发生和治疗耐药性密切相关。
+
+KRAS：KRAS 是一个常见的癌基因，在多种癌症中发生突变。KRAS 突变在非小细胞肺癌中较为常见，特别是在吸烟者中。
+
+ALK (Anaplastic Lymphoma Kinase)：ALK 是另一个与非小细胞肺癌相关的基因。ALK 融合基因在一些非小细胞肺癌患者中较为常见，对于一些患者来说是一种治疗靶点。
+
+ROS1：ROS1 是另一个非小细胞肺癌中的潜在治疗靶点，与一些肺癌患者的融合基因相关。
+
+TP53：TP53 是一种肿瘤抑制基因，突变会导致失去对癌细胞的抑制作用，与多种肿瘤类型相关，包括肺癌。
+
+MET：MET 是一种受体酪氨酸激酶，其异常激活与肺癌的发生和进展相关。
+
+RET：RET 基因突变与一些非小细胞肺癌患者的肿瘤发生相关。
+
+CDKN2A (p16)：CDKN2A 是一个抑制细胞周期的基因，突变与多种肿瘤类型，包括肺癌相关。
+
+```{r}
+gname_potential <- c("EGFR", "KRAS", "ALK", "ROS1", "TP53", "MET", "RET", "CDKN2A")
+```
+
+
+```{r}
+gname <- "CDKN2A"
+col <- rlang::sym(gname)
+gname %in% colnames(Z)
+sd(Z[[col]])
+```
+
+```{r}
+df_pivot_use$fev1 <- as.numeric(df_pivot_use$fev1)
+df_pivot_use$dlco <- as.numeric(df_pivot_use$dlco)
+```
+
+
+```{r}
+corr_fev1 <- apply(Z, 2, function(row) cor(row, df_pivot_use$fev1))
+corr_dlco <- apply(Z, 2, function(row) cor(row, df_pivot_use$dlco))
+```
+
+```{r}
+plot(corr_fev1, corr_dlco)
+```
+
+
+```{r}
+corr_fev1_select <- sort(abs(corr_fev1), decreasing = T)[1:15]
+corr_dlco_select <- sort(abs(corr_dlco), decreasing = T)[1:15]
+gname_select <- union(names(corr_fev1_select), names(corr_dlco_select))
+```
+
+```{r}
+# for(i in 1:length(gname_potential)){
+#   corr_fev1[gname_potential[i]]
+#   corr_dlco[gname_potential[i]]
+#   idx_fev1 <- which(sort(abs(corr_fev1), decreasing = T) == abs(corr_fev1[gname_potential[i]]))
+#   idx_dlco <- which(sort(abs(corr_dlco), decreasing = T) == abs(corr_dlco[gname_potential[i]]))
+#   cat(idx_fev1, idx_dlco, "\n")
+# }
+```
+
+```{r}
+# 选择变量的方差解释度
+# 解释方差比例很少，文章中不提及
+sum(apply(Z[,gname_select], 2, var))/sum(apply(Z[,], 2, var))
+```
+```{r}
+Z_select <- Z[,gname_select]
+
+pdf(file = "Z_cor_pearson.pdf")
+# corrplot(cor(Z_select), order = "hclust", method = "square",
+#          tl.col="black", tl.cex=0.8)
+corrplot(cor(Z_select), order = "hclust",
+         tl.col="black", tl.cex=0.8)
+# corrplot(cor(Z_select), method = "color",
+#          tl.col="black", tl.cex=0.8)
+dev.off()
+```
+
+
+```{r}
+write.csv(X, file = "../data/realX_v2_image_6.csv", row.names = FALSE)
+write.csv(Z_select, file = "../data/realZ_v2_gene_30.csv", row.names = FALSE)
+write.csv(df_pivot_use, file = "../data/realy_v2.csv", row.names = FALSE)
+```
+
+## 直接开始分析
+
+### 文件内运行
+
+```{r}
+library(dplyr)
+library(Matrix)
+library(flexmix)
+source("tools.R")
+source("func.R")
+```
+
+```{r}
+X <- read.csv("../data/realX_v2_image_6.csv") %>% as.matrix()
+Z <- read.csv("../data/realZ_v2_gene_30.csv") %>% as.matrix()
+y <- read.csv("../data/realy_v2.csv")$fev1
+# X <- scale(X)
+# Z <- scale(Z)
+data <- cbind(X,Z)
+```
+
+
+```{r}
+n <- 140
+K_up <- 6
+p <- 6
+q <- 30
+dt_seed <- 0
+q_c_seed <- 1
+sigma_est <- 0.5
+```
+
+
+
+```{r}
+comb_pair <- combn(K_up, 2)
+H_p <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
+                 diag(p)) %>% Matrix(sparse = TRUE)
+H_q <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
+                 diag(q)) %>% Matrix(sparse = TRUE)
+
+
+# =============================== result =================================
+colnames_all <- c("dt_seed", "q_c_seed", "aa", "tau", "l1", "l2", "l3",
+                  "cdist", "cdist_main", "cdist_sub", "ci_prob_mean", "mse", 
+                  "sc", "sc_main", "sc_sub", 
+                  "ari", "ari_main", "ari_sub", "fit_sum", "fit_mean",
+                  "penal", "bic_sum", "bic_mean", "main_grn", "sub_grn", 
+                  "rho_init", "rho_est", "rho_ratio", "pi_est", "valid_hier", 
+                  "group_detail", paste0("case_", 1:4), 
+                  "iter_total", "iter_type", "tag")
+```
+
+
+```{r}
+result <- as.data.frame(matrix(NaN, nrow = 2, ncol = length(colnames_all)))
+colnames(result) <- colnames_all
+result$dt_seed <- dt_seed
+
+# flexmix for initialization
+flemix_forinit <- tryCatch({
+  flexmix_init(q_c_seed, 0)
+}, error = function(err) {
+  cat("Random Init\n")
+  random_init(q_c_seed)
+})
+result[1,'q_c_seed'] <- q_c_seed
+result[1,'sub_grn'] <- flemix_forinit$est_sub_grn
+result[1,'sc'] <- flemix_forinit$sc_score
+result[1,'sc_sub'] <- flemix_forinit$sc_score
+result[1,'ari'] <- flemix_forinit$ari_score
+result[1,'ari_sub'] <- flemix_forinit$ari_score
+result[1,'mse'] <- flemix_forinit$mse
+result[1,'cdist'] <- flemix_forinit$cdist
+result[1,'cdist_sub'] <- flemix_forinit$cdist_sub
+result[1,'cdist_main'] <- flemix_forinit$cdist_main
+result[1,'tag'] <- flemix_forinit$tag
+q_c_matrix_init <- flemix_forinit$q_c_matrix
+
+# flexmix best result (K squeezed)
+flemix_best <- tryCatch({
+  flexmix_init(q_c_seed, 0.1)
+}, error = function(err) {
+  cat("Random Init\n")
+  random_init(q_c_seed)
+})
+result[2,'q_c_seed'] <- q_c_seed
+result[2,'sub_grn'] <- flemix_best$est_sub_grn
+result[2,'sc'] <- flemix_best$sc_score
+result[2,'sc_sub'] <- flemix_best$sc_score
+result[2,'ari'] <- flemix_best$ari_score
+result[2,'ari_sub'] <- flemix_best$ari_score
+result[2,'mse'] <- flemix_best$mse
+result[2,'cdist'] <- flemix_best$cdist
+result[2,'cdist_sub'] <- flemix_best$cdist_sub
+result[2,'cdist_main'] <- flemix_best$cdist_main
+result[2,'tag'] <- flemix_best$tag
+```
+
+```{r}
+# l2_seq <- c(0, 0.5, 1, 2, 4)
+# l3_seq <- c(0, 0.5, 1, 2, 4)
+l2_seq <- c(2)
+l3_seq <- c(3)
+fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
+                 aa = 1.2, tau = 1)
+hp <- tuning_hyper(l2_seq, l3_seq, fix_para, flemix_forinit$coef_full_ori,
+                   save_all = TRUE, add0 = FALSE)
+```
+
+```{r}
+colnames(hp) <- colnames_all
+result <- rbind(result, hp)
+```
+
+
+### 直接分析 csv 结果
+
+```{r}
+# df <- read.csv("2024-03-12_real2_n140_p6_q30_eps0.5_Kup6_fminit_fev1.csv")
+df <- read.csv("2024-03-12_real2_n140_p6_q30_eps0.5_Kup6_fminit_dlco.csv")
+```
+
+```{r}
+df %>% group_by(q_c_seed) %>%
+  arrange(bic_mean, .by_group = TRUE) %>%
+  filter(row_number() == 1) %>%
+  arrange(bic_mean)
+```
+
+```{r}
+# # 前半部分描述性统计
+# library(ggplot2)
+# library(ggExtra)
+# 
+# df <- read.csv("../data/realy_v2.csv")
+# p <- ggplot(df, aes(x = fev1, y = dlco)) +
+#   geom_point(size = 3, alpha = 0.7) +
+#   theme_minimal() +
+#   labs(x = "FEV1",
+#        y = "DLCO") +
+#   coord_fixed(ratio = 0.6)
+# p <- ggMarginal(p, type = "histogram", margins = "y", 
+#                 size = 2, fill = "#4682B4", alpha = 0.5) 
+# # ggsave("fev1_dlco.pdf", p, width = 10, height = 10)
+# p
+```
+
+### 单轮次结果热图
+
+```{r}
+X <- read.csv("../data/realX_v2_image_6.csv") %>% as.matrix()
+Z <- read.csv("../data/realZ_v2_gene_30.csv") %>% as.matrix()
+# y <- read.csv("../data/realy_v2.csv")$fev1
+y <- read.csv("../data/realy_v2.csv")$dlco
+# X <- scale(X)
+# Z <- scale(Z)
+data <- cbind(X,Z)
+```
+
+
+```{r}
+n <- 140
+K_up <- 6
+p <- 6
+q <- 30
+dt_seed <- 0
+q_c_seed <- 4
+sigma_est <- 0.5
+```
+
+
+
+```{r}
+comb_pair <- combn(K_up, 2)
+H_p <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
+                 diag(p)) %>% Matrix(sparse = TRUE)
+H_q <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
+                 diag(q)) %>% Matrix(sparse = TRUE)
+
+
+# =============================== result =================================
+colnames_all <- c("dt_seed", "q_c_seed", "aa", "tau", "l1", "l2", "l3",
+                  "cdist", "cdist_main", "cdist_sub", "ci_prob_mean", "mse", 
+                  "sc", "sc_main", "sc_sub", 
+                  "ari", "ari_main", "ari_sub", "fit_sum", "fit_mean",
+                  "penal", "bic_sum", "bic_mean", "main_grn", "sub_grn", 
+                  "rho_init", "rho_est", "rho_ratio", "pi_est", "valid_hier", 
+                  "group_detail", paste0("case_", 1:4), 
+                  "iter_total", "iter_type", "tag")
+```
+
+
+```{r}
+result <- as.data.frame(matrix(NaN, nrow = 2, ncol = length(colnames_all)))
+colnames(result) <- colnames_all
+result$dt_seed <- dt_seed
+
+# flexmix for initialization
+flemix_forinit <- tryCatch({
+  flexmix_init(q_c_seed, 0)
+}, error = function(err) {
+  cat("Random Init\n")
+  random_init(q_c_seed)
+})
+result[1,'q_c_seed'] <- q_c_seed
+result[1,'sub_grn'] <- flemix_forinit$est_sub_grn
+result[1,'sc'] <- flemix_forinit$sc_score
+result[1,'sc_sub'] <- flemix_forinit$sc_score
+result[1,'ari'] <- flemix_forinit$ari_score
+result[1,'ari_sub'] <- flemix_forinit$ari_score
+result[1,'mse'] <- flemix_forinit$mse
+result[1,'cdist'] <- flemix_forinit$cdist
+result[1,'cdist_sub'] <- flemix_forinit$cdist_sub
+result[1,'cdist_main'] <- flemix_forinit$cdist_main
+result[1,'tag'] <- flemix_forinit$tag
+q_c_matrix_init <- flemix_forinit$q_c_matrix
+```
+
+```{r}
+# l2_seq <- c(0, 0.5, 1, 2, 4)
+# l3_seq <- c(0, 0.5, 1, 2, 4)
+l2_seq <- c(0.5)
+l3_seq <- c(4)
+fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
+                 aa = 1.2, tau = 1)
+hp <- tuning_hyper(l2_seq, l3_seq, fix_para, flemix_forinit$coef_full_ori,
+                   save_all = TRUE, add0 = FALSE)
+colnames(hp) <- colnames_all
+result <- rbind(result, hp)
+```
+
+```{r}
+trail_fev1 <- trail
+trail_dlco <- trail
+```
+
+```{r}
+l2_seq <- c(0.5)
+l3_seq <- c(4)
+
+flemix_forinit <- tryCatch({
+  flexmix_init(q_c_seed, 0)
+}, error = function(err) {
+  cat("Random Init\n")
+  random_init(q_c_seed)
+})
+
+fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.5,
+                 aa = 1.2, tau = 1)
+trail_set <- expand.grid(list(l3 = l3_seq, l2 = l2_seq))
+
+trail_num <- nrow(trail_set)
+trail_record <- vector(mode = "list",length = trail_num)
+coef_full_init <- flemix_forinit$coef_full_ori
+
+trail_idx <- 1
+for(trail_idx in 1:trail_num){
+  lambda_2 <- trail_set$l2[trail_idx]
+  lambda_3 <- trail_set$l3[trail_idx]
+  
+  trail <- ADMM_trail(aa = fix_para$aa,
+                      tau = fix_para$tau,
+                      lambda_1 = fix_para$lambda_1,
+                      lambda_2 = lambda_2,
+                      lambda_3 = lambda_3,
+                      q_c_seed = fix_para$q_c_seed,
+                      coef_full_init = coef_full_init,
+                      iter_max = 200,
+                      rho_ratio = 0.2,
+                      iter_type = 'stop')
+  trail_record[[trail_idx]] <- trail
+}
+```
+
+```{r}
+trail$coef_full_ori_comp
+trail$group_detail
+trail$bic_mean
+```
+
+
+```{r}
+ci_est_sub <- trail$ci_est_sub
+```
+
+```{r}
+trail <- trail_fev1
+df_coef_main <- trail$coef_full_ori_comp[1:6,]
+df_coef_main <- t(unique(t(df_coef_main)))
+df_coef_sub <- trail$coef_full_ori_comp[7:(p+q),]
+sum(df_coef_main == 0)/prod(dim(df_coef_main))
+sum(df_coef_sub == 0)/prod(dim(df_coef_sub))
+```
+
+```{r}
+df_heat <- data.frame(y = y, 
+                      ci_est_main = trail$ci_est_main, 
+                      ci_est_sub = trail$ci_est_sub)
+# df_heat$ci_est_main <- as.factor(df_heat$ci_est_main)
+df_heat$ci_est_sub <- factor(df_heat$ci_est_sub)
+df_heat <- df_heat %>% arrange(ci_est_main, ci_est_sub)
+df_heat <- cbind(data.frame(id = 1:n), df_heat)
+```
+
+```{r}
+library(RColorBrewer)
+
+# 生成指定类别的调色板
+pblue <- brewer.pal(8, "Blues")
+pred <- brewer.pal(8, "Reds")
+pmain <- c("#DC143C", "#4682B4")
+psub <- c(pred[3:7],pblue[3])
+```
+
+
+```{r}
+library(reshape2)
+df_heat_melt <- melt(df_heat, id.vars = c("id", "y"), 
+     measure.vars = c("ci_est_main", "ci_est_sub"),
+     variable.name = "level",
+     value.name = "value")
+df_heat_melt$cl <- NULL
+df_heat_melt$cl[df_heat_melt$level == "ci_est_main"] <- pmain[as.numeric(df_heat_melt[df_heat_melt$level == "ci_est_main", "value"])]
+df_heat_melt$cl[df_heat_melt$level == "ci_est_sub"] <- psub[as.numeric(df_heat_melt[df_heat_melt$level == "ci_est_sub", "value"])]
+```
+```{r}
+# df_coef_sub <- trail$coef_full_ori_comp[7:dim(trail$coef_full_ori_comp)[1],]
+```
+
+
+```{r}
+options(repr.plot.width = 1, repr.plot.height = 7) 
+p1 <- ggplot(df_heat_melt, aes(x=level, y=id, fill=cl)) +
+  geom_raster(alpha = 0.8) +
+  theme_minimal() +
+  coord_fixed(ratio = 0.02) +  
+  # guides(fill = F) +
+  scale_fill_identity() +
+  xlab("")
+p1
+ggsave("heat_fev1.pdf", p1, width = 8, height = 10, units = "cm")
+```
+
+
+```{r}
+ci_est_sub
+```
+
+
+```{r}
+trail$ci_est_sub
+```
+
+
+```{r}
+trail_fev1$ci_est_sub
+```
+
+```{r}
+sc(trail$ci_est_sub, trail_fev1$ci_est_sub)
+sc(trail$ci_est_main, trail_fev1$ci_est_main)
+```
+```{r}
+library(pheatmap)
+pheatmap(trail_fev1$coef_full_ori_comp[7:36,], 
+         cluster_rows = F, cluster_cols = F,
+         color = colorRampPalette(c("navy","white","firebrick3"))(100))
+pheatmap(trail_dlco$coef_full_ori_comp[7:36,], 
+         cluster_rows = F, cluster_cols = F,
+         color = colorRampPalette(c("navy","white","firebrick3"))(100))
+```
+```{r}
+plot(rowSums(abs(trail_fev1$coef_full_ori_comp[7:36,])),
+     rowSums(abs(trail_dlco$coef_full_ori_comp[7:36,])))
+```
+
+
+```{r}
+df_Z_exp <- data.frame(gname = colnames(Z),
+                       fev1_score = rowSums(abs(trail_fev1$coef_full_ori_comp[7:36,])),
+                       dlco_score = rowSums(abs(trail_dlco$coef_full_ori_comp[7:36,])))
+df_Z_exp %>%
+  arrange(- fev1_score - dlco_score)
+```
+MLN
+MAP7D2
+
+ST3GAL6
+PRDM16
+RAD23B
+KIF11
+
+```{r}
+# trail_coef_main <- data.frame(trail_fev1$coef_full_ori_comp[1:6,c(1,6)])
+trail_coef_main <- data.frame(trail_dlco$coef_full_ori_comp[1:6,c(1,6)])
+colnames(trail_coef_main) <- c("Group 1", "Group 2")
+rownames(trail_coef_main) <- colnames(X)
+
+library(stargazer)
+stargazer(trail_coef_main, summary = FALSE)
+
+round(trail_coef_main, 3)
+```
+
+
+```{r}
+ci_est_main_fev1 <- trail_fev1$ci_est_main
+ci_est_sub_fev1 <- trail_fev1$ci_est_sub
+ci_est_main_dlco <- trail_dlco$ci_est_main
+ci_est_sub_dlco <- trail_dlco$ci_est_sub
+
+# main_fev1 <- matrix(0, nrow = n, ncol = n)
+# sub_fev1 <- matrix(0, nrow = n, ncol = n)
+# main_dlco <- matrix(0, nrow = n, ncol = n)
+# sub_dlco <- matrix(0, nrow = n, ncol = n)
+compare_main <- matrix(0, nrow = n, ncol = n)
+compare_sub <- matrix(0, nrow = n, ncol = n)
+
+for(i in 1:n){
+  for(j in i:n){
+    # main_fev1[i,j] <- as.numeric(ci_est_main_fev1[i] == ci_est_main_fev1[j])
+    # sub_fev1[i,j] <- as.numeric(ci_est_sub_fev1[i] == ci_est_sub_fev1[j])
+    # main_dlco[i,j] <- as.numeric(ci_est_main_dlco[i] == ci_est_main_dlco[j])
+    # sub_dlco[i,j] <- as.numeric(ci_est_sub_dlco[i] == ci_est_sub_dlco[j])
+    compare_main[i,j] <- as.numeric(ci_est_main_fev1[i] == ci_est_main_fev1[j])
+    compare_main[j,i] <- as.numeric(ci_est_main_dlco[i] == ci_est_sub_dlco[j])
+    
+    compare_sub[i,j] <- as.numeric(ci_est_sub_fev1[i] == ci_est_sub_fev1[j])
+    compare_sub[j,i] <- as.numeric(ci_est_sub_dlco[i] == ci_est_sub_dlco[j])
+  }
+}
+```
+
+```{r}
+idx <- n
+pheatmap(compare_main[1:idx,1:idx], cluster_rows = F, cluster_cols = F, color = colorRampPalette(c("white","black"))(100))
+pheatmap(compare_sub[1:idx,1:idx], cluster_rows = F, cluster_cols = F, color = colorRampPalette(c("white","black"))(100))
+
+pheatmap(sub_fev1[1:idx,1:idx], cluster_rows = F, cluster_cols = F, color = colorRampPalette(c("white","black"))(100))
+pheatmap(main_dlco[1:idx,1:idx], cluster_rows = F, cluster_cols = F, color = colorRampPalette(c("white","black"))(100))
+pheatmap(sub_dlco[1:idx,1:idx], cluster_rows = F, cluster_cols = F, color = colorRampPalette(c("white","black"))(100))
+```
+
+
+
+

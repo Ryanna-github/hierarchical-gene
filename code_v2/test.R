@@ -228,16 +228,16 @@ for(q_c_seed in 1:10){
   }else if(signal_size == 2 & K_up == 4){
     # l2_seq <- c(5,6.5,7,7.5,8)
     # l3_seq <- c(8.5,9,9.5,10)
-    l2_seq <- c(6.5,7,7.5,8)
-    l3_seq <- c(8.5,9,9.5)
-    lambda_1 <- 1
+    l2_seq <- c(6.5,7,7.5,8) + 0.2
+    l3_seq <- c(7.5,8.5,9,9.5)
+    lambda_1 <- 0.6
   }else{
     l2_seq <- c(5,6.5,7,7.5,8)
     l3_seq <- c(8,8.5,9,10)
   }
   
-  # l2_seq <- c(12, 13, 14)
-  # l3_seq <- c(13, 14, 15)
+  l2_seq <- c(12, 13, 14)
+  l3_seq <- c(13, 14, 15)
   
   fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = lambda_1,
                    aa = 1.2, tau = 1)
