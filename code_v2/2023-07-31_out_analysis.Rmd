@@ -50,14 +50,14 @@ p <- 80
 q <- 40
 epsilon_sd <- 0.5
 epsilon_sd_init <- 0.5
-signal_size <- 2
-beta_vlen <- 3
-alpha_vlen <- 2
+signal_size <- 1
+beta_vlen <- 20
+alpha_vlen <- 10
 rho_ratio <- 0.1
-balance <- 3
+balance <- 1
 cotype <- 'En'
 # dt_seed <- 9
-K_up <- 6
+K_up <- 4
 
 
 # n <- 500

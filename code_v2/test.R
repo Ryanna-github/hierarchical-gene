@@ -236,7 +236,7 @@ for(q_c_seed in 1:10){
     l3_seq <- c(8,8.5,9,10)
   }
   
-  l2_seq <- c(12, 13, 14)
+  l2_seq <- c(8,9,10)
   l3_seq <- c(13, 14, 15)
   
   fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = lambda_1,
