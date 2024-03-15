@@ -50,7 +50,7 @@ p <- 80
 q <- 40
 epsilon_sd <- 0.5
 epsilon_sd_init <- 0.5
-signal_size <- 1
+signal_size <- 2
 beta_vlen <- 20
 alpha_vlen <- 10
 rho_ratio <- 0.1
@@ -162,7 +162,8 @@ df <- read.csv("2024-03-06_n500_p80_q40_b1_ss1_bl3_al2_eps0.5_epi0.5_rr0.1_Kup4_
 df <- read.csv("2024-03-09_n500_p80_q40_b1_ss2_bl3_al2_eps0.5_epi0.5_rr0.1_Kup6_ctEn_fminit.csv")
 df <- read.csv("2024-03-10_n500_p80_q40_b2_ss2_bl3_al2_eps0.5_epi0.5_rr0.1_Kup6_ctEn_fminit.csv")
 df <- read.csv("2024-03-11_n500_p80_q40_b3_ss1_bl3_al2_eps0.5_epi0.5_rr0.1_Kup6_ctEn_fminit.csv")
-df <- read.csv("2024-03-12_n500_p80_q40_b3_ss2_bl3_al2_eps0.5_epi0.5_rr0.1_Kup6_ctEn_fminit.csv")
+df <- read.csv("2024-03-12_n500_p80_q40_b3_ss2_bl3_al2_eps0.5_epi0.5_rr0.1_Kup4_ctEn_fminit.csv")
+df <- read.csv("2024-03-14_n500_p80_q40_b1_ss1_bl20_al10_eps0.5_epi0.5_rr0.1_Kup6_ctEn_fminit.csv")
 # 以下方法过期，直接看 tag 列即可
 # df <- df %>% mutate(method = ifelse(q_c_seed < 100, 1, 0))
 # df$method <- ifelse(df$q_c_seed == 111, -1, df$method)
@@ -280,7 +281,7 @@ library(ggpubr)
 library(dplyr)
 # df <- read.csv("summary_data/lowxz_b23.csv")
 df <- read.csv("summary_data/highxz_b23.csv")
-df <- df %>% filter(signal == 2, K_up == 6)
+df <- df %>% filter(signal == 2, K_up == 4)
 df$method <- factor(df$method, levels = c("proposed", "oracle", "FMR2", 
                                           "resiclust2", "respclust2",
                                           "FMR1", "resiclust1", "respclust1"))

@@ -359,8 +359,8 @@ df %>% group_by(q_c_seed) %>%
 ```{r}
 X <- read.csv("../data/realX_v2_image_6.csv") %>% as.matrix()
 Z <- read.csv("../data/realZ_v2_gene_30.csv") %>% as.matrix()
-# y <- read.csv("../data/realy_v2.csv")$fev1
-y <- read.csv("../data/realy_v2.csv")$dlco
+y <- read.csv("../data/realy_v2.csv")$fev1
+# y <- read.csv("../data/realy_v2.csv")$dlco
 # X <- scale(X)
 # Z <- scale(Z)
 data <- cbind(X,Z)
@@ -373,7 +373,7 @@ K_up <- 6
 p <- 6
 q <- 30
 dt_seed <- 0
-q_c_seed <- 4
+q_c_seed <- 7
 sigma_est <- 0.5
 ```
 
@@ -482,15 +482,12 @@ for(trail_idx in 1:trail_num){
 ```
 
 ```{r}
+# trail <- trail_fev1
 trail$coef_full_ori_comp
 trail$group_detail
 trail$bic_mean
 ```
 
-
-```{r}
-ci_est_sub <- trail$ci_est_sub
-```
 
 ```{r}
 trail <- trail_fev1
@@ -499,6 +496,7 @@ df_coef_main <- t(unique(t(df_coef_main)))
 df_coef_sub <- trail$coef_full_ori_comp[7:(p+q),]
 sum(df_coef_main == 0)/prod(dim(df_coef_main))
 sum(df_coef_sub == 0)/prod(dim(df_coef_sub))
+round(df_coef_main, 3)
 ```
 
 ```{r}
@@ -547,27 +545,14 @@ p1 <- ggplot(df_heat_melt, aes(x=level, y=id, fill=cl)) +
   scale_fill_identity() +
   xlab("")
 p1
-ggsave("heat_fev1.pdf", p1, width = 8, height = 10, units = "cm")
+ggsave("heat_fev1.pdf", p1, width = 10, height = 30, units = "cm")
 ```
 
 
-```{r}
-ci_est_sub
-```
-
 
 ```{r}
-trail$ci_est_sub
-```
-
-
-```{r}
-trail_fev1$ci_est_sub
-```
-
-```{r}
-sc(trail$ci_est_sub, trail_fev1$ci_est_sub)
-sc(trail$ci_est_main, trail_fev1$ci_est_main)
+sc(trail_dlco$ci_est_sub, trail_fev1$ci_est_sub)
+sc(trail_dlco$ci_est_main, trail_fev1$ci_est_main)
 ```
 ```{r}
 library(pheatmap)
@@ -578,9 +563,22 @@ pheatmap(trail_dlco$coef_full_ori_comp[7:36,],
          cluster_rows = F, cluster_cols = F,
          color = colorRampPalette(c("navy","white","firebrick3"))(100))
 ```
+
 ```{r}
-plot(rowSums(abs(trail_fev1$coef_full_ori_comp[7:36,])),
-     rowSums(abs(trail_dlco$coef_full_ori_comp[7:36,])))
+library(ggrepel)
+```
+
+
+```{r}
+df_gene_imp <- data.frame(gname = colnames(Z),
+                          fev1_score = rowSums(abs(trail_fev1$coef_full_ori_comp[7:36,])),
+                          dlco_score = rowSums(abs(trail_dlco$coef_full_ori_comp[7:36,])))
+p <- ggplot(df_gene_imp, aes(x = fev1_score, y = dlco_score)) +
+  geom_point(col = "firebrick3", size = 3, alpha = 0.7) +
+  geom_text_repel(aes(label = gname)) +
+  theme_minimal()
+p
+ggsave("fev1_dlco_score.pdf", p, width = 8, height = 5)
 ```
 
 
@@ -610,6 +608,14 @@ stargazer(trail_coef_main, summary = FALSE)
 
 round(trail_coef_main, 3)
 ```
+
+
+
+
+
+
+
+
 
 
 ```{r}
