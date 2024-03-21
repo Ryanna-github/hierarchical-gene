@@ -490,7 +490,7 @@ trail$bic_mean
 
 
 ```{r}
-trail <- trail_fev1
+trail <- trail_dlco
 df_coef_main <- trail$coef_full_ori_comp[1:6,]
 df_coef_main <- t(unique(t(df_coef_main)))
 df_coef_sub <- trail$coef_full_ori_comp[7:(p+q),]
@@ -516,7 +516,7 @@ library(RColorBrewer)
 pblue <- brewer.pal(8, "Blues")
 pred <- brewer.pal(8, "Reds")
 pmain <- c("#DC143C", "#4682B4")
-psub <- c(pred[3:7],pblue[3])
+psub <- c(pred[seq(7,3,-1)],pblue[3])
 ```
 
 
@@ -536,16 +536,22 @@ df_heat_melt$cl[df_heat_melt$level == "ci_est_sub"] <- psub[as.numeric(df_heat_m
 
 
 ```{r}
+df_heat_melt$level <- ifelse(df_heat_melt$level == "ci_est_main", "main", "sub")
+df_heat_melt$level <- factor(df_heat_melt$level, levels = c("sub", "main"))
+```
+
+
+```{r}
 options(repr.plot.width = 1, repr.plot.height = 7) 
-p1 <- ggplot(df_heat_melt, aes(x=level, y=id, fill=cl)) +
+p1 <- ggplot(df_heat_melt, aes(y=level, x=id, fill=cl)) +
   geom_raster(alpha = 0.8) +
   theme_minimal() +
-  coord_fixed(ratio = 0.02) +  
+  coord_fixed(ratio = 8) +  
   # guides(fill = F) +
   scale_fill_identity() +
-  xlab("")
+  labs(x = "", y = "")
 p1
-ggsave("heat_fev1.pdf", p1, width = 10, height = 30, units = "cm")
+ggsave("heat_dlco.pdf", p1, width = 24, height = 4, units = "cm")
 ```
 
 
@@ -589,13 +595,24 @@ df_Z_exp <- data.frame(gname = colnames(Z),
 df_Z_exp %>%
   arrange(- fev1_score - dlco_score)
 ```
-MLN
-MAP7D2
+```{r}
+gname_top <- c('MLN','MAP7D2','PRDM16','ST3GAL6','DNAJA1','RAD23B','SET')
+gname_top_idx <- which(colnames(Z) %in% gname_top) + 6
+data.frame(gname = gname_top,
+           fev1_score = rowSums(abs(trail_fev1$coef_full_ori_comp[gname_top_idx,])),
+           dlco_score = rowSums(abs(trail_dlco$coef_full_ori_comp[gname_top_idx,]))) %>%
+  arrange(- fev1_score - dlco_score)
 
-ST3GAL6
-PRDM16
-RAD23B
-KIF11
+```
+
+```{r}
+trail <- trail_dlco
+coef_sub_top <- data.frame(trail$coef_full_ori_comp[gname_top_idx,])
+rownames(coef_sub_top) <- gname_top
+colnames(coef_sub_top) <- paste("SubGroup",1:6)
+coef_sub_top
+```
+
 
 ```{r}
 # trail_coef_main <- data.frame(trail_fev1$coef_full_ori_comp[1:6,c(1,6)])

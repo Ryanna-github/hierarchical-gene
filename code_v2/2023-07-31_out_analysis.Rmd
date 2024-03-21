@@ -20,11 +20,11 @@ p <- 80
 q <- 40
 epsilon_sd <- 0.5
 epsilon_sd_init <- 0.5
-signal_size <- 2
-beta_vlen <- 3
-alpha_vlen <- 2
+signal_size <- 1
+beta_vlen <- 20
+alpha_vlen <- 10
 rho_ratio <- 0.0
-balance <- 3
+balance <- 1
 cotype <- 'En'
 # dt_seed <- 9
 K_up <- 4
@@ -57,7 +57,7 @@ rho_ratio <- 0.1
 balance <- 1
 cotype <- 'En'
 # dt_seed <- 9
-K_up <- 4
+K_up <- 6
 
 
 # n <- 500
@@ -164,6 +164,7 @@ df <- read.csv("2024-03-10_n500_p80_q40_b2_ss2_bl3_al2_eps0.5_epi0.5_rr0.1_Kup6_
 df <- read.csv("2024-03-11_n500_p80_q40_b3_ss1_bl3_al2_eps0.5_epi0.5_rr0.1_Kup6_ctEn_fminit.csv")
 df <- read.csv("2024-03-12_n500_p80_q40_b3_ss2_bl3_al2_eps0.5_epi0.5_rr0.1_Kup4_ctEn_fminit.csv")
 df <- read.csv("2024-03-14_n500_p80_q40_b1_ss1_bl20_al10_eps0.5_epi0.5_rr0.1_Kup6_ctEn_fminit.csv")
+df <- read.csv("2024-03-15_n500_p80_q40_b1_ss2_bl20_al10_eps0.5_epi0.5_rr0.1_Kup6_ctEn_fminit.csv")
 # 以下方法过期，直接看 tag 列即可
 # df <- df %>% mutate(method = ifelse(q_c_seed < 100, 1, 0))
 # df$method <- ifelse(df$q_c_seed == 111, -1, df$method)
@@ -189,7 +190,7 @@ df_report <- df %>%
   filter(tag == 'hier') %>%
   group_by(dt_seed, q_c_seed, tag) %>% 
   arrange(bic_mean2) %>%
-  filter(row_number() == 8) %>%
+  filter(row_number() == 7) %>%
   arrange(dt_seed, q_c_seed)
 df_report2 <- df_report %>%
   group_by(dt_seed) %>%

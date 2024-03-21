@@ -923,10 +923,10 @@ q <- 40
 epsilon_sd <- 0.5
 epsilon_sd_init <- 0.5
 sigma_est <- as.numeric(epsilon_sd_init)
-balance <- 2
-signal_size <- 2
-beta_vlen <- 3
-alpha_vlen <- 2
+balance <- 1
+signal_size <- 1
+beta_vlen <- 20
+alpha_vlen <- 10
 save_path <- "temp.csv"
 dt_seed <- 9
 K_up <- 4  # 估计时的最大类别，应该不少于 group_num_sub

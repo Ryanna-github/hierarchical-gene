@@ -459,6 +459,7 @@ for(dt_seed in seq(9,99,10)){
   H_q <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
                    diag(q)) %>% Matrix(sparse = TRUE)
   
+  
   iter_max <- 200
   l2_seq <- c(1,1.5,2)
   l3_seq <- c(1,1.5, 2)
@@ -466,7 +467,32 @@ for(dt_seed in seq(9,99,10)){
   # l3_seq <- c(0.5,0.8,1,1.2)
   # l2_seq <- c(1)
   # l3_seq <- c(1)
-  fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
+  
+  
+  lambda_1 = 0.5
+  
+  if(signal_size == 1 & K_up == 4){
+    # l2_seq <- c(2.5,3,3.5)
+    # l3_seq <- c(3.5,4,4.5,5,6)
+    l2_seq <- c(7, 7.5, 8, 9)
+    l3_seq <- c(11, 12, 13)
+  }else if(signal_size == 2 & K_up == 4){
+    # l2_seq <- c(5,6.5,7,7.5,8)
+    # l3_seq <- c(8.5,9,9.5,10)
+    # l2_seq <- c(6.5,7,7.5,8) + 0.2
+    # l3_seq <- c(7.5,8.5,9,9.5)
+    l2_seq <- c(14, 15, 16, 17)
+    l3_seq <- c(19, 20, 21)
+    lambda_1 <- 0.6
+  }else{
+    l2_seq <- c(5,6.5,7,7.5,8)
+    l3_seq <- c(8,8.5,9,10)
+  }
+  
+  
+  
+  
+  fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = lambda_1,
                    aa = 1.2, tau = 1)
   trail_set <- expand.grid(list(l3 = l3_seq, l2 = l2_seq))
   
