@@ -103,7 +103,7 @@ FMR1_comp <- function(q_c_seed, minprior_value = 0.1, tag = "FMR1"){
 两次使用 FMR 方法得到层次模型模拟结果
 
 ```{r}
-FMR2_comp <- function(q_c_seed, minprior_value = 0.1, tag = "FMR2"){
+FMR2_comp <- function(q_c_seed, minprior_value = 0.2, tag = "FMR2"){
   set.seed(q_c_seed)
   pi_init <- rep(1/K_up, K_up)
   rho_init <- rep(1, K_up)/sigma_est
@@ -121,6 +121,7 @@ FMR2_comp <- function(q_c_seed, minprior_value = 0.1, tag = "FMR2"){
             model = FLXMRglm(),
             control = list(minprior = minprior_value))
   })
+  logLik_main <- m_glm@logLik
   est_main_grn <- m_glm@k
   ci_est_main <- m_glm@cluster
   coef_beta_est <- parameters(m_glm)[1:p,]
@@ -151,6 +152,7 @@ FMR2_comp <- function(q_c_seed, minprior_value = 0.1, tag = "FMR2"){
               model = FLXMRglm(),
               control = list(minprior = minprior_value))
     })
+    logLik_sub <- m_glm_sub@logLik
     # est_sub_grn_k_main <- max(m_glm_sub@cluster)
     est_sub_grn_k_main <- m_glm_sub@k
     # K_up2 <- K_up2 - est_sub_grn_k_main + 1
@@ -263,7 +265,7 @@ respclust1_comp <- function(q_c_seed, tag = "respclust1"){
 # 与 q_c_seed 无关，进行一次实验即可
 respclust2_comp <- function(q_c_seed, tag = "respclust2"){
   set.seed(q_c_seed)
-  K_up1_list <- c(2,3)
+  K_up1_list <- c(1,2,3)
   K_up2_list <- c(1,2,3)
   K_pair_set <- expand.grid(list(K_up1 = K_up1_list, K_up2 = K_up2_list))
   df_K_set <- NULL
@@ -309,7 +311,7 @@ respclust2_comp <- function(q_c_seed, tag = "respclust2"){
   }
   df_K_set <- data.frame(df_K_set)
   colnames(df_K_set) <- c("cdist_main", "cdist_sub", "sc_score_main", "sc_score_sub", "ari_score_main", "ari_score_sub")
-  idx_chosen <- which.max(rowMeans(df_K_set[,5:6], na.rm = TRUE))
+  idx_chosen <- which.max(rowMeans(df_K_set[,3:6], na.rm = TRUE))
   
   ci_est_main <- ci_est_main_list[[idx_chosen]]
   ci_est_sub <- ci_est_sub_list[[idx_chosen]]
@@ -409,7 +411,7 @@ resiclust1_comp <- function(q_c_seed, tag = "resiclust1"){
 resiclust2_comp <- function(q_c_seed, tag = "resiclust2"){
   set.seed(q_c_seed)
   # 同质性假定下先计算系数，为了使用残差估计类别
-  K_up1_list <- c(2,3)
+  K_up1_list <- c(1,2,3)
   K_up2_list <- c(1,2,3)
   K_pair_set <- expand.grid(list(K_up1 = K_up1_list, K_up2 = K_up2_list))
   
@@ -982,12 +984,12 @@ colnames_part <- c("dt_seed", "q_c_seed", "tag", "mse",
 ```{r}
 q_c_seed <- 1
 iter_max <- 200
-l2_seq <- c(0,0.5,1,1.2,1.5)
-l3_seq <- c(0,0.5,1,1.2,1.5)
+l2_seq <- c(1.2,1.5)
+l3_seq <- c(2.5, 3)
 fix_para <- list(dt_seed = dt_seed, q_c_seed = q_c_seed, lambda_1 = 0.3,
                  aa = 1.2, tau = 1)
 trail_set <- expand.grid(list(l3 = l3_seq, l2 = l2_seq))
-oraresult <- NULL
+# oraresult <- NULL
 trail_num <- nrow(trail_set)
 for(trail_idx in 1:trail_num){
   aa <- fix_para$aa
@@ -1052,89 +1054,465 @@ ora_result
 
 ## 全 dt_seed
 
+```{r}
+library(glue)
+library(ggpubr)
+library(dplyr)
+library(reshape2)
+library(meantables)
+```
+
+```{r}
+para_set <- expand.grid(list(balance = c(1,2,3),
+                 signal_size = c(1,2),
+                 K_up = c(4,6)))
+para_set <- expand.grid(list(balance = c(2,3),
+                 signal_size = c(1,2),
+                 K_up = c(4,6)))
+```
+
 
 ```{r}
 n <- 500
-p <- 80
-q <- 40
+p <- 8
+q <- 4
 epsilon_sd <- 0.5
 epsilon_sd_init <- 0.5
 sigma_est <- as.numeric(epsilon_sd_init)
-balance <- 3
-signal_size <- 2
+balance <- 1
+signal_size <- 1
 beta_vlen <- 3
 alpha_vlen <- 2
-save_path <- "temp.csv"
+# save_path <- "temp.csv"
 # dt_seed <- 9
-K_up <- 6  # 估计时的最大类别，应该不少于 group_num_sub
+K_up <- 4  # 估计时的最大类别，应该不少于 group_num_sub
 
-cotype_x <- "En"
-cotype_z <- "En"
-beta_nonzero <- c(-2, -2, 2, 2)*signal_size # 长度应和真实 group_num_sub 保持一致
-alpha_nonzero <- c(-3, -1, 1, 3)*signal_size
-
-q_c_seed_max <- 10
-group_num_main <- 2                    
-group_num_sub <- 4    
-hier_struc <- list(c(1,2),c(3,4))
-# prob_sub <- rep(1/group_num_sub, group_num_sub)  
-if(balance == 1){
-  prob_sub <- rep(1/group_num_sub, group_num_sub)
-}else if(balance == 2){
-  prob_sub<-c(1/6,1/6,1/3,1/3)
-}else{
-  prob_sub<-c(1/6,1/3,1/6,1/3)
+for(i in 1:nrow(para_set)){
+  balance <- para_set$balance[i]
+  signal_size <- para_set$signal_size[i]
+  K_up <- para_set$K_up[i]
+  
+  cotype_x <- "En"
+  cotype_z <- "En"
+  beta_nonzero <- c(-2, -2, 2, 2)*signal_size # 长度应和真实 group_num_sub 保持一致
+  alpha_nonzero <- c(-3, -1, 1, 3)*signal_size
+  
+  q_c_seed_max <- 10
+  group_num_main <- 2                    
+  group_num_sub <- 4    
+  hier_struc <- list(c(1,2),c(3,4))
+  # prob_sub <- rep(1/group_num_sub, group_num_sub)  
+  if(balance == 1){
+    prob_sub <- rep(1/group_num_sub, group_num_sub)
+  }else if(balance == 2){
+    prob_sub<-c(1/6,1/6,1/3,1/3)
+  }else{
+    prob_sub<-c(1/6,1/3,1/6,1/3)
+  }
+  reverse <- FALSE
+  
+  # =============================== prepare =================================
+  comb_pair <- combn(K_up, 2)
+  H_p <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
+                   diag(p)) %>% Matrix(sparse = TRUE)
+  H_q <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
+                   diag(q)) %>% Matrix(sparse = TRUE)
+  
+  
+  # =============================== result =================================
+  colnames_part <- c("dt_seed", "q_c_seed", "tag", "mse", 
+                     "cdist_main", "cdist_sub", "ci_prob_mean",
+                    "sc", "sc_main", "sc_sub","ari", "ari_main", "ari_sub",
+                    "main_grn", "sub_grn", "pi_est","group_detail")
+  
+  
+  comresult <- NULL
+  for(dt_seed in seq(9,99,10)){
+    whole.data <- generate_all_data(dt_seed, n, p, q, prob_sub, hier_struc, 
+                                  beta_nonzero, alpha_nonzero, beta_vlen, alpha_vlen, 
+                                  cotype_x, cotype_z, epsilon_sd, reverse)
+    X <- whole.data$data$X
+    Z <- whole.data$data$Z
+    data <- whole.data$data$data_full
+    coef <- whole.data$coef
+    # coefv <- lapply(coef, as.vector) # 按照类别拉长
+    ci_sim <- whole.data$ci_sim
+    ci_sim_main <- whole.data$ci_sim_main
+    ci_sim_sub <- whole.data$ci_sim_sub
+    y <- matrix(whole.data$y, ncol=1)
+    
+    for(q_c_seed in 1:q_c_seed_max){
+      FMR1_res <- tryCatch({ data.frame(FMR1_comp(q_c_seed)) }, 
+               error = function(err) { cat("Error occurred when:", dt_seed, 
+                                           "q_c_seed:", q_c_seed, "\n") ; NULL})
+      FMR2_res <- tryCatch({ data.frame(FMR2_comp(q_c_seed, minprior_value = 0.15)) }, 
+               error = function(err) { cat("Error occurred when:", dt_seed, 
+                                           "q_c_seed:", q_c_seed, "\n") ; NULL})
+      comresult <- rbind(comresult, FMR1_res)
+      comresult <- rbind(comresult, FMR2_res)
+      comresult <- rbind(comresult, data.frame(respclust1_comp(q_c_seed)))
+      comresult <- rbind(comresult, data.frame(respclust2_comp(q_c_seed)))
+      comresult <- rbind(comresult, data.frame(resiclust1_comp(q_c_seed)))
+      comresult <- rbind(comresult, data.frame(resiclust2_comp(q_c_seed)))
+    }
+  }
+  
+  comresult_mean <- comresult %>% group_by(tag, dt_seed) %>%
+    summarise(tag = min(tag),
+              dt_seed = min(dt_seed),
+              per_main = sum(est_main_grn == 2, na.rm = FALSE)/n(),
+              per_sub = sum(est_sub_grn == 4, na.rm = FALSE)/n(),
+              K_main = mean(est_main_grn, na.rm = FALSE),
+              K_sub = mean(est_sub_grn, na.rm = FALSE),
+              sc_main = mean(sc_score_main, na.rm = TRUE),
+              sc_sub = mean(sc_score_sub, na.rm = TRUE),
+              ari_main = mean(ari_score_main, na.rm = TRUE),
+              ari_sub = mean(ari_score_sub, na.rm = TRUE),
+              MSE_main = mean(cdist_main, na.rm = TRUE),
+              MSE_sub = mean(cdist_sub, na.rm = TRUE), .groups = "drop")
+  
+  filename <- glue("comp_n{n}_p{p}_q{q}_b{balance}_ss{signal_size}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_epi{epsilon_sd_init}_Kup{K_up}.csv")
+  write.csv(comresult_mean, file = filename, row.names = FALSE)
+  print(filename)
 }
-reverse <- FALSE
-
-# =============================== prepare =================================
-comb_pair <- combn(K_up, 2)
-H_p <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
-                 diag(p)) %>% Matrix(sparse = TRUE)
-H_q <- kronecker(t(apply(comb_pair, 2, get_e_mat, K_up)),
-                 diag(q)) %>% Matrix(sparse = TRUE)
-
-
-# =============================== result =================================
-colnames_part <- c("dt_seed", "q_c_seed", "tag", "mse", 
-                   "cdist_main", "cdist_sub", "ci_prob_mean",
-                  "sc", "sc_main", "sc_sub","ari", "ari_main", "ari_sub",
-                  "main_grn", "sub_grn", "pi_est","group_detail")
 ```
 
 
 ```{r}
-comresult <- NULL
-for(dt_seed in seq(9,99,10)){
-  whole.data <- generate_all_data(dt_seed, n, p, q, prob_sub, hier_struc, 
-                                beta_nonzero, alpha_nonzero, beta_vlen, alpha_vlen, 
-                                cotype_x, cotype_z, epsilon_sd, reverse)
-  X <- whole.data$data$X
-  Z <- whole.data$data$Z
-  data <- whole.data$data$data_full
-  coef <- whole.data$coef
-  # coefv <- lapply(coef, as.vector) # 按照类别拉长
-  ci_sim <- whole.data$ci_sim
-  ci_sim_main <- whole.data$ci_sim_main
-  ci_sim_sub <- whole.data$ci_sim_sub
-  y <- matrix(whole.data$y, ncol=1)
-  
-  for(q_c_seed in 1:q_c_seed_max){
-    FMR1_res <- tryCatch({ data.frame(FMR1_comp(q_c_seed)) }, 
-             error = function(err) { cat("Error occurred when:", dt_seed, 
-                                         "q_c_seed:", q_c_seed, "\n") ; NULL})
-    FMR2_res <- tryCatch({ data.frame(FMR2_comp(q_c_seed)) }, 
-             error = function(err) { cat("Error occurred when:", dt_seed, 
-                                         "q_c_seed:", q_c_seed, "\n") ; NULL})
-    comresult <- rbind(comresult, FMR1_res)
-    comresult <- rbind(comresult, FMR2_res)
-    comresult <- rbind(comresult, data.frame(respclust1_comp(q_c_seed)))
-    comresult <- rbind(comresult, data.frame(respclust2_comp(q_c_seed)))
-    comresult <- rbind(comresult, data.frame(resiclust1_comp(q_c_seed)))
-    comresult <- rbind(comresult, data.frame(resiclust2_comp(q_c_seed)))
+# 整理版本，从保存的实验 & 对比方法全数据画箱线图
+signal_size <- 2
+balance <- 3
+p <- 8
+q <- 4
+beta_vlen <- 3
+alpha_vlen <- 2
+K_up <- 6
+
+# 1. 读取各部分数据
+df_prop <- read.csv(glue("2024-02-26_n500_p{p}_q{q}_ss{signal_size}_bl{beta_vlen}_al{alpha_vlen}_eps0.5_epi0.5_rr0.2_Kup{K_up}_fminit.csv"))
+df_comp <- read.csv(glue("comp_n{n}_p{p}_q{q}_b{balance}_ss{signal_size}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_epi{epsilon_sd_init}_Kup{K_up}.csv"))
+df_orac <- read.csv("2024-03-26_n500_p8_q4_b1_ss1_bl3_al2_eps0.5_epi0.5_rr0_Kup4_ctEn_oracle.csv")
+colnames_sum <- c('tag','dt_seed','per_main','per_sub',
+                  'K_main', 'K_sub', 
+                  'sc_main','sc_sub',
+                  'ari_main','ari_sub',
+                  'MSE_main','MSE_sub')
+
+# 2. 各部分进行处理并拼接（to merge）
+# 2.1 propose 方法
+df_prop_tm <- df_prop %>% 
+  filter(l2 > 0 & l3 > 0 & tag == 'hier') %>%
+  select(dt_seed, q_c_seed, l2, l3, cdist_main, cdist_sub, sc_main, sc_sub, 
+         ari_main, ari_sub, main_grn, sub_grn, fit_mean, penal, bic_sum, bic_mean, tag) %>%
+  # group_by(dt_seed, q_c_seed, tag) %>% 
+  group_by(dt_seed, tag) %>% 
+  arrange(bic_mean) %>%
+  filter(row_number() == 1) %>%
+  arrange(dt_seed, q_c_seed) # 检查节点（此时为每个 dt_seed q_c_seed 组合的最佳结果）
+df_prop_tm <- df_prop_tm %>%
+  group_by(dt_seed) %>%
+  summarise(per_main = as.numeric(main_grn == 2),
+            per_sub = as.numeric(sub_grn == 4),
+            # per_main = sum(main_grn == 2)/n(),
+            # per_sub = sum(sub_grn == 4)/n(),
+            K_main = mean(main_grn),
+            K_sub = mean(sub_grn),
+            sc_main = mean(sc_main),
+            sc_sub = mean(sc_sub),
+            ari_main = mean(ari_main),
+            ari_sub = mean(ari_sub),
+            MSE_main = mean(cdist_main, na.rm = T),
+            MSE_sub = mean(cdist_sub, na.rm = T))
+df_prop_tm$tag <- "proposed"
+df_prop_tm <- df_prop_tm %>% select(colnames_sum)
+
+## 2.2 oracle 方法
+df_orac_tm <- df_orac %>% 
+  rename(l2 = lambda_2, l3 = lambda_3, 
+         sc_main = sc_score_main, sc_sub = sc_score_sub,
+         ari_main = ari_score_main, ari_sub = ari_score_sub,
+         main_grn = est_main_grn, sub_grn = est_sub_grn) %>%
+  select(dt_seed, q_c_seed, l2, l3, 
+         cdist_main, cdist_sub, sc_main, sc_sub, 
+         ari_main, ari_sub, main_grn, sub_grn, bic_sum, bic_mean, tag) %>%
+  # group_by(dt_seed, q_c_seed, tag) %>%
+  group_by(dt_seed, tag) %>%
+  arrange(bic_mean) %>%
+  filter(row_number() == 1) %>%
+  arrange(dt_seed, q_c_seed) # 检查节点（此时为每个 dt_seed q_c_seed 组合的最佳结果）
+df_orac_tm <- df_orac_tm %>%
+  group_by(dt_seed) %>%
+  summarise(per_main = as.numeric(main_grn == 2),
+            per_sub = as.numeric(sub_grn == 4),
+            # per_main = sum(main_grn == 2)/n(),
+            # per_sub = sum(sub_grn == 4)/n(),
+            K_main = mean(main_grn),
+            K_sub = mean(sub_grn),
+            sc_main = mean(sc_main),
+            sc_sub = mean(sc_sub),
+            ari_main = mean(ari_main),
+            ari_sub = mean(ari_sub),
+            MSE_main = mean(cdist_main, na.rm = T),
+            MSE_sub = mean(cdist_sub, na.rm = T))
+df_orac_tm$tag <- "oracle"
+df_orac_tm <- df_orac_tm %>% select(colnames_sum)
+
+## 2.3 compare 方法（保存结果已为整理后结果）
+df_comp_tm <- df_comp
+
+# 3. 整合结果，进行绘图
+df_plot <- rbind(df_prop_tm, df_orac_tm, df_comp_tm) %>% select(-'dt_seed')
+df_plot_long <- melt(df_plot, id.vars = "tag")
+df_plot_long$tag <- factor(df_plot_long$tag, levels = c('proposed', 'oracle', 'FMR2', 'resiclust2', 'respclust2', 'FMR1', 'resiclust1', 'respclust1'))
+
+
+score_names <- c("K_main", "K_sub", "sc_main", "sc_sub", "MSE_main", "MSE_sub")
+df_tb <- NULL
+for(i in 1:length(score_names)){
+  col <- rlang::sym(score_names[i])
+  df_tb_cur <- df_plot %>% group_by(tag) %>% 
+    mean_table(!!col, digits = 4) %>%
+    mean_format("mean (sd)", digits = 4) %>%
+    select(response_var, group_cat, formatted_stats) %>%
+    rename(tag = group_cat)
+  df_tb <- rbind(df_tb, df_tb_cur)
+}
+
+df1 <- df_plot %>% group_by(tag) %>%
+  summarise(per_main = mean(per_main, na.rm = FALSE),
+            per_sub = mean(per_sub, na.rm = FALSE))
+df2 <- dcast(df_tb, tag~response_var)
+df_tb <- merge(df1, df2, by = 'tag')
+
+
+df_tb$tag <- factor(df_tb$tag, levels = c("proposed", "oracle", "FMR2", "resiclust2", "respclust2", "FMR1", "resiclust1", "respclust1"))
+df_tb <- df_tb %>% arrange(tag) %>% select(tag, per_main, K_main, sc_main, MSE_main,
+                                           per_sub, K_sub, sc_sub, MSE_sub)
+df_tb 
+write.table(df_tb, "clipboard", sep="\t", row.names=FALSE)
+```
+
+
+
+```{r}
+# 重新画图，思路和以前一样，但是重新修改变量
+get_btype_plot <- function(ss, K_up_plot, btype){
+  df_use <- df %>% filter(bl == btype & signal == ss & K_up == K_up_plot)
+  p_list <- NULL
+  score_names <- c("per_main", "per_sub", "K_main", "K_sub", 
+                   "SC_main", "SC_sub", "MSE_main", "MSE_sub")
+  for(i in 1:length(score_names)){
+    col <- rlang::sym(score_names[i])
+    p_list[[i]] <- ggplot(df_use, aes(x = method, y = !!col, 
+                                      fill = method)) +
+      geom_bar(stat = "identity",width = 1, col = "black") +
+      scale_fill_brewer(palette = "Pastel1") +
+      theme_minimal() +
+      theme(axis.title.x = element_blank(),
+            axis.text.x = element_blank())
   }
+  return(p_list)
 }
 ```
+
+```{r}
+library(tidyverse)
+df <- read.csv("summary_data/lowxz_b23_mod.csv")
+df$method <- factor(df$method, levels = c("proposed", "oracle", "FMR2", "resiclust2","respclust2", "FMR1", "resiclust1", "respclust1"))
+df <- df %>%
+  separate(SC_main, into = c("SC_main", "SC_main_std"), sep = "\\(", convert = TRUE) %>%
+  separate(SC_sub, into = c("SC_sub", "SC_sub_std"), sep = "\\(", convert = TRUE) %>%
+  separate(K_main, into = c("K_main", "K_main_std"), sep = "\\(", convert = TRUE) %>%
+  separate(K_sub, into = c("K_sub", "K_sub_std"), sep = "\\(", convert = TRUE) %>%
+  separate(MSE_main, into = c("MSE_main", "MSE_main_std"), sep = "\\(", convert = TRUE) %>%
+  separate(MSE_sub, into = c("MSE_sub", "MSE_sub_std"), sep = "\\(", convert = TRUE) %>%
+  mutate(SC_main_std = str_sub(SC_main_std, end = -2),
+         SC_sub_std = str_sub(SC_sub_std, end = -2),
+         K_main_std = str_sub(K_main_std, end = -2),
+         K_sub_std = str_sub(K_sub_std, end = -2),
+         MSE_main_std = str_sub(MSE_main_std, end = -2),
+         MSE_sub_std = str_sub(MSE_sub_std, end = -2)) %>%
+  mutate(across(contains("_"), as.numeric))
+df[df == "-"] <- NaN
+df
+```
+
+
+```{r}
+ss <- 2
+K_up_plot <- 4
+p1_list <- get_btype_plot(ss, K_up_plot,1)
+p2_list <- get_btype_plot(ss, K_up_plot,2)
+p3_list <- get_btype_plot(ss, K_up_plot,3)
+p_list <- c(p1_list, p2_list, p3_list)
+```
+
+```{r}
+pdf(glue('test_ss{ss}_Kup{K_up_plot}.pdf'), height = 10, width = 14)
+do.call("ggarrange", c(p_list, nrow = 3, ncol = 8, common.legend = TRUE, legend = "bottom"))
+dev.off()
+```
+
+
+
+
+
+
+
+
+
+
+```{r}
+library(RColorBrewer)
+# 获取 "Pastel1" 调色板中的颜色
+colors <- brewer.pal(8, "Pastel1")
+colors
+"#FBB4AE" "#B3CDE3" "#CCEBC5" "#DECBE4" "#FED9A6" "#FFFFCC" "#E5D8BD" "#FDDAEC"
+```
+
+
+
+```{r}
+get_plot <- function(df_plot_long){
+  p_list <- NULL
+  # score_names <- c("MSE_main", "MSE_sub", "per_main", "per_sub", "sc_main", "sc_sub")
+  score_names <- c("per_main", "per_sub", "sc_main", "sc_sub", "MSE_main", "MSE_sub")
+  for(i in 1:length(score_names)){
+    df_use <- df_plot_long %>% filter(variable == score_names[i])
+    # if(score_names[i] %in% c("per_main", "per_sub", "sc_main", "sc_sub")){
+    #   df_use$value[is.na(df_use$value)] <- 0
+    # }
+    # df_use$value[is.na(df_use$value)] <- -1
+    p_list[[i]] <- ggplot(df_use, aes(x = tag, y = value, col = tag)) +
+      geom_boxplot(na.rm = FALSE) +
+      # scale_fill_brewer(palette = "Pastel1") +
+      scale_fill_manual(values = c("proposed" = colors[1],
+                                   "oracle" = colors[2],
+                                   "FMR2" = colors[3],
+                                   "resiclust2" = colors[4],
+                                   "respclust2" = colors[5],
+                                   "FMR1" = colors[6],
+                                   "resiclust1" = colors[7],
+                                   "respclust1" = colors[8])) +
+      ylab(score_names[i]) +
+      # ylim(-0.5, NA) +
+      theme_minimal() +
+      # theme(axis.title.x = element_blank())
+      theme(axis.title.x = element_blank(),
+            axis.text.x = element_blank(),
+            legend.title = element_blank())
+  }
+  return(p_list)
+}
+
+
+p_list <- get_plot(df_plot_long)
+do.call("ggarrange", c(p_list, nrow = 3, ncol = 2, common.legend = TRUE, legend = "bottom"))
+```
+
+
+
+```{r}
+# 实验阶段版本
+# mean
+# 现在不同 q_c_seed 中找最好结果（实际因为没有评价准则 都用平均）
+comresult_mean <- comresult %>% group_by(tag, dt_seed) %>%
+  summarise(tag = min(tag),
+            dt_seed = min(dt_seed),
+            per_main = sum(est_main_grn == 2, na.rm = FALSE)/n(),
+            per_sub = sum(est_sub_grn == 4, na.rm = FALSE)/n(),
+            sc_main = mean(sc_score_main, na.rm = TRUE),
+            sc_sub = mean(sc_score_sub, na.rm = TRUE),
+            ari_main = mean(ari_score_main, na.rm = TRUE),
+            ari_sub = mean(ari_score_sub, na.rm = TRUE),
+            MSE_main = mean(cdist_main, na.rm = TRUE),
+            MSE_sub = mean(cdist_sub, na.rm = TRUE), .groups = "drop")
+# comresult_mean2 <- comresult_mean %>% group_by(tag) %>%
+#   summarise(tag = min(tag),
+#             per_main = mean(per_main, na.rm = TRUE),
+#             per_sub = mean(per_sub, na.rm = TRUE),
+#             sc_main = mean(sc_main, na.rm = TRUE),
+#             sc_sub = mean(sc_sub, na.rm = TRUE),
+#             ari_main = mean(ari_main, na.rm = TRUE),
+#             ari_sub = mean(ari_sub, na.rm = TRUE),
+#             MSE_main = mean(MSE_main, na.rm = TRUE),
+#             MSE_sub = mean(MSE_sub, na.rm = TRUE), .groups = "drop")
+
+# std
+comresult_std <- comresult %>% group_by(tag, dt_seed) %>%
+  summarise(tag = min(tag),
+            dt_seed = min(dt_seed),
+            per_main = sd(est_main_grn == 2, na.rm = FALSE),
+            per_sub = sd(est_sub_grn == 4, na.rm = FALSE),
+            sc_main = sd(sc_score_main, na.rm = TRUE),
+            sc_sub = sd(sc_score_sub, na.rm = TRUE),
+            ari_main = sd(ari_score_main, na.rm = TRUE),
+            ari_sub = sd(ari_score_sub, na.rm = TRUE),
+            MSE_main = sd(cdist_main, na.rm = TRUE),
+            MSE_sub = sd(cdist_sub, na.rm = TRUE), .groups = "drop")
+# comresult_std2 <- comresult_std %>% group_by(tag) %>%
+#   summarise(tag = min(tag),
+#             per_main = mean(per_main, na.rm = TRUE),
+#             per_sub = mean(per_sub, na.rm = TRUE),
+#             sc_main = mean(sc_main, na.rm = TRUE),
+#             sc_sub = mean(sc_sub, na.rm = TRUE),
+#             ari_main = mean(ari_main, na.rm = TRUE),
+#             ari_sub = mean(ari_sub, na.rm = TRUE),
+#             MSE_main = mean(MSE_main, na.rm = TRUE),
+#             MSE_sub = mean(MSE_sub, na.rm = TRUE), .groups = "drop")
+```
+
+
+```{r}
+# comresult_mean
+df <- read.csv("2024-02-26_n500_p8_q4_ss1_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_fminit.csv")
+n <- 500
+df <- df %>% mutate(bic_mean2 = fit_mean + penal/log(n))
+df <- df %>% mutate(bic_mean2 = bic_mean)
+
+df_report <- df %>% 
+  select(dt_seed, q_c_seed, l2, l3, mse, 
+         cdist, cdist_main, cdist_sub, sc, sc_main, sc_sub, 
+         ari, ari_main, ari_sub,
+         main_grn, sub_grn, fit_mean, penal, bic_sum, bic_mean2, tag) %>%
+  filter(l2 > 0 & l3 > 0) %>%
+  filter(tag == 'hier') %>%
+  group_by(dt_seed, q_c_seed, tag) %>% 
+  arrange(bic_mean2) %>%
+  filter(row_number() == 1) %>%
+  arrange(dt_seed, q_c_seed)
+df_report2 <- df_report %>%
+  group_by(dt_seed) %>%
+  summarise(per_main = sum(main_grn == 2)/n(),
+            per_sub = sum(sub_grn == 4)/n(),
+            # sc = mean(sc),
+            sc_main = mean(sc_main),
+            sc_sub = mean(sc_sub),
+            # ari = mean(ari),
+            ari_main = mean(ari_main),
+            ari_sub = mean(ari_sub),
+            # cdist = mean(cdist),
+            MSE_main = mean(cdist_main, na.rm = T),
+            MSE_sub = mean(cdist_sub, na.rm = T))
+df_report2$tag <- "proposed"
+df_report2 <- df_report2 %>%
+  select(colnames(comresult_mean))
+df_plot <- rbind(df_report2, comresult_mean) %>% select(-'dt_seed')
+```
+
+```{r}
+library(reshape2)
+df_plot_long <- melt(df_plot, id.vars = "tag")
+df_plot_long$tag <- factor(df_plot_long$tag, levels = c('proposed', 'FMR2', 'resiclust2', 'respclust2', 'FMR1', 'resiclust1', 'respclust1'))
+```
+
+
+
+
+
+
+
+
 
 ```{r}
 df_report <- comresult %>% group_by(tag, dt_seed) %>%

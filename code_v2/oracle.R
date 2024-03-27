@@ -2,12 +2,12 @@ library(dplyr)
 library(Matrix)
 library(flexmix)
 library(readr)
-source("sim.R")
-source("tools.R")
-source("func.R")
-# source("hierarchical-gene/code_v2/sim.R")
-# source("hierarchical-gene/code_v2/tools.R")
-# source("hierarchical-gene/code_v2/func.R")
+# source("sim.R")
+# source("tools.R")
+# source("func.R")
+source("hierarchical-gene/code_v2/sim.R")
+source("hierarchical-gene/code_v2/tools.R")
+source("hierarchical-gene/code_v2/func.R")
 library(argparse)
 
 parser <- ArgumentParser()
@@ -461,10 +461,10 @@ for(dt_seed in seq(9,99,10)){
   
   
   iter_max <- 200
-  l2_seq <- c(1,1.5,2)
-  l3_seq <- c(1,1.5, 2)
-  # l2_seq <- c(0.5,0.8,1,1.2)
-  # l3_seq <- c(0.5,0.8,1,1.2)
+  # l2_seq <- c(1,1.5,2)
+  # l3_seq <- c(1,1.5,2)
+  l2_seq <- c(0.5,0.8,1,1.2)
+  l3_seq <- c(0.5,0.8,1,1.2)
   # l2_seq <- c(1)
   # l3_seq <- c(1)
   
@@ -473,20 +473,22 @@ for(dt_seed in seq(9,99,10)){
   
   if(signal_size == 1 & K_up == 4){
     # l2_seq <- c(2.5,3,3.5)
-    # l3_seq <- c(3.5,4,4.5,5,6)
-    l2_seq <- c(7, 7.5, 8, 9)
-    l3_seq <- c(11, 12, 13)
+    # l3_seq <- c(2.5,3,3.5,4,4.5)
+    l2_seq <- c(0.5,0.8,1,1.2)
+    l3_seq <- c(0.5,0.8,1,1.2)
+    # l2_seq <- c(7, 7.5, 8, 9)
+    # l3_seq <- c(11, 12, 13)
   }else if(signal_size == 2 & K_up == 4){
-    # l2_seq <- c(5,6.5,7,7.5,8)
-    # l3_seq <- c(8.5,9,9.5,10)
+    l2_seq <- c(5,6.5,7,7.5,8)
+    l3_seq <- c(8.5,9,9.5,10)
     # l2_seq <- c(6.5,7,7.5,8) + 0.2
     # l3_seq <- c(7.5,8.5,9,9.5)
+    # l2_seq <- c(14, 15, 16, 17)
+    # l3_seq <- c(19, 20, 21)
+    # lambda_1 <- 0.6
+  }else{
     l2_seq <- c(14, 15, 16, 17)
     l3_seq <- c(19, 20, 21)
-    lambda_1 <- 0.6
-  }else{
-    l2_seq <- c(5,6.5,7,7.5,8)
-    l3_seq <- c(8,8.5,9,10)
   }
   
   

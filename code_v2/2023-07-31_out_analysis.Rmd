@@ -20,7 +20,7 @@ p <- 80
 q <- 40
 epsilon_sd <- 0.5
 epsilon_sd_init <- 0.5
-signal_size <- 1
+signal_size <- 2
 beta_vlen <- 20
 alpha_vlen <- 10
 rho_ratio <- 0.0
@@ -30,7 +30,7 @@ cotype <- 'En'
 K_up <- 4
 
 prefix <- "hierarchical-gene/code_v2/"
-prefix <- ""
+# prefix <- ""
 path_pre <- glue("{prefix}{Sys.Date()}_n{n}_p{p}_q{q}_b{balance}_ss{signal_size}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_epi{epsilon_sd_init}_rr{rho_ratio}_Kup{K_up}_ct{cotype}_oracle")
 # path_pre <- glue("2023-07-31_n{n}_p{p}_q{q}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_fminit")
 cmd <- glue("Rscript --verbose {prefix}oracle.R -n {n} -p {p} -q {q} -b {balance} -e {epsilon_sd} --epsilon_sd_init {epsilon_sd_init} --rho_ratio {rho_ratio} --signal_size {signal_size} --beta_vlen {beta_vlen} --alpha_vlen {alpha_vlen} --K_up {K_up} --cotype {cotype} --path {path_pre}.csv >> {path_pre}_log.out")
@@ -154,25 +154,41 @@ print(cmd)
 library(ggplot2)
 library(dplyr)
 # library(plotly)
-df <- read.csv("2024-02-26_n500_p8_q4_ss2_bl3_al2_eps0.5_epi0.5_rr0.2_Kup6_fminit.csv")
+
+# low
+df <- read.csv("2024-02-26_n500_p8_q4_ss1_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_fminit.csv")
+df <- read.csv("2024-02-26_n500_p8_q4_ss2_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_fminit.csv")
+df <- read.csv("2024-02-26_n500_p8_q4_ss1_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_fminit.csv")
+df <- read.csv("2024-02-26_n500_p8_q4_ss1_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_fminit.csv")
+
+df <- read.csv("2024-02-27_n500_p8_q4_b2_ss1_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_ctEn_fminit.csv")
+df <- read.csv("2024-02-27_n500_p8_q4_b2_ss1_bl3_al2_eps0.5_epi0.5_rr0.2_Kup6_ctEn_fminit.csv")
+df <- read.csv("2024-02-27_n500_p8_q4_b2_ss2_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_ctEn_fminit.csv")
+df <- read.csv("2024-02-27_n500_p8_q4_b2_ss2_bl3_al2_eps0.5_epi0.5_rr0.2_Kup6_ctEn_fminit.csv")
+
+df <- read.csv("2024-02-27_n500_p8_q4_b3_ss1_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_ctEn_fminit.csv")
+df <- read.csv("2024-02-27_n500_p8_q4_b3_ss1_bl3_al2_eps0.5_epi0.5_rr0.2_Kup6_ctEn_fminit.csv")
 df <- read.csv("2024-02-27_n500_p8_q4_b3_ss2_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_ctEn_fminit.csv")
-df <- read.csv("2024-02-28_n500_p8_q4_b3_ss2_bl3_al2_eps0.5_epi0.5_rr0.2_Kup4_ctAR3_fminit.csv")
-df <- read.csv("2024-03-04_n500_p80_q40_b1_ss2_bl3_al2_eps0.5_epi0.5_rr0.1_Kup4_ctEn_fminit.csv")
+df <- read.csv("2024-02-27_n500_p8_q4_b3_ss2_bl3_al2_eps0.5_epi0.5_rr0.2_Kup6_ctEn_fminit.csv")
+
+# high
 df <- read.csv("2024-03-06_n500_p80_q40_b1_ss1_bl3_al2_eps0.5_epi0.5_rr0.1_Kup4_ctEn_fminit.csv")
+df <- read.csv("2024-03-08_n500_p80_q40_b1_ss1_bl3_al2_eps0.5_epi0.5_rr0.1_Kup6_ctEn_fminit.csv")
+df <- read.csv("2024-03-06_n500_p80_q40_b1_ss2_bl3_al2_eps0.5_epi0.5_rr0.1_Kup4_ctEn_fminit.csv")
 df <- read.csv("2024-03-09_n500_p80_q40_b1_ss2_bl3_al2_eps0.5_epi0.5_rr0.1_Kup6_ctEn_fminit.csv")
+
+df <- read.csv("2024-03-10_n500_p80_q40_b2_ss1_bl3_al2_eps0.5_epi0.5_rr0.1_Kup4_ctEn_fminit.csv")
+df <- read.csv("2024-03-10_n500_p80_q40_b2_ss1_bl3_al2_eps0.5_epi0.5_rr0.1_Kup6_ctEn_fminit.csv")
+df <- read.csv("2024-03-10_n500_p80_q40_b2_ss2_bl3_al2_eps0.5_epi0.5_rr0.1_Kup4_ctEn_fminit.csv")
 df <- read.csv("2024-03-10_n500_p80_q40_b2_ss2_bl3_al2_eps0.5_epi0.5_rr0.1_Kup6_ctEn_fminit.csv")
+
+df <- read.csv("2024-03-11_n500_p80_q40_b3_ss1_bl3_al2_eps0.5_epi0.5_rr0.1_Kup4_ctEn_fminit.csv")
 df <- read.csv("2024-03-11_n500_p80_q40_b3_ss1_bl3_al2_eps0.5_epi0.5_rr0.1_Kup6_ctEn_fminit.csv")
 df <- read.csv("2024-03-12_n500_p80_q40_b3_ss2_bl3_al2_eps0.5_epi0.5_rr0.1_Kup4_ctEn_fminit.csv")
-df <- read.csv("2024-03-14_n500_p80_q40_b1_ss1_bl20_al10_eps0.5_epi0.5_rr0.1_Kup6_ctEn_fminit.csv")
-df <- read.csv("2024-03-15_n500_p80_q40_b1_ss2_bl20_al10_eps0.5_epi0.5_rr0.1_Kup6_ctEn_fminit.csv")
-# 以下方法过期，直接看 tag 列即可
-# df <- df %>% mutate(method = ifelse(q_c_seed < 100, 1, 0))
-# df$method <- ifelse(df$q_c_seed == 111, -1, df$method)
-# df$method <- factor(df$method, levels = c(-1, 0, 1), labels = c("random", "flexmix", "our_method"))
-# df %>% mutate(method = vec_case_when(q_c_seed < 100 ~ q_c_seed,
-#                        q_c_seed == 111 ~ -1,
-#                        q_c_seed == 999 ~ 0))
-# df$method <- factor(as.integer(df$q_c_seed %in% c(111, 999)), levels = c(0,1), labels = c("our method", "flemix or random"))
+df <- read.csv("2024-03-12_n500_p80_q40_b3_ss2_bl3_al2_eps0.5_epi0.5_rr0.1_Kup6_ctEn_fminit.csv")
+
+# df <- read.csv("2024-03-14_n500_p80_q40_b1_ss1_bl20_al10_eps0.5_epi0.5_rr0.1_Kup6_ctEn_fminit.csv")
+# df <- read.csv("2024-03-15_n500_p80_q40_b1_ss2_bl20_al10_eps0.5_epi0.5_rr0.1_Kup6_ctEn_fminit.csv")
 ```
 
 
@@ -190,28 +206,37 @@ df_report <- df %>%
   filter(tag == 'hier') %>%
   group_by(dt_seed, q_c_seed, tag) %>% 
   arrange(bic_mean2) %>%
-  filter(row_number() == 7) %>%
+  filter(row_number() == 1) %>%
   arrange(dt_seed, q_c_seed)
 df_report2 <- df_report %>%
   group_by(dt_seed) %>%
   summarise(per_main = sum(main_grn == 2)/n(),
             per_sub = sum(sub_grn == 4)/n(),
-            sc = mean(sc),
+            # sc = mean(sc),
             sc_main = mean(sc_main),
             sc_sub = mean(sc_sub),
-            ari = mean(ari),
+            # ari = mean(ari),
             ari_main = mean(ari_main),
             ari_sub = mean(ari_sub),
-            cdist = mean(cdist),
-            cdist_main = mean(cdist_main, na.rm = T),
-            cdist_sub = mean(cdist_sub, na.rm = T))
+            # cdist = mean(cdist),
+            MSE_main = mean(cdist_main, na.rm = T),
+            MSE_sub = mean(cdist_sub, na.rm = T))
+
+# library(reshape2)
+# df_tmp <- melt(df_report2, id.vars = 'dt_seed')
+# ggplot(df_tmp, aes(x = variable, y = value)) +
+  geom_boxplot()
 # df_report2
-df_result <- colMeans(df_report2, na.rm = T)
-df_result <- data.frame(t(df_result)) %>% select(-dt_seed) %>% round(3) %>%
-  select(per_main, per_sub, sc_main, sc_sub, 
-         ari_main, ari_sub, cdist_main, cdist_sub)
-df_result
-write.table(format(df_result, nsmall = 4), "clipboard", sep = "\t", row.names = FALSE, col.names = FALSE)
+df_result_mean <- colMeans(df_report2, na.rm = T)
+df_result_std <- apply(df_report2, 2, sd, na.rm = T)
+
+df_result_mean <- data.frame(t(df_result_mean)) %>% select(-dt_seed) %>% round(4) %>%
+  select(per_main, per_sub, sc_main, sc_sub, ari_main, ari_sub, MSE_main, MSE_sub)
+df_result_std <- data.frame(t(df_result_std)) %>% select(-dt_seed) %>% round(4) %>%
+  select(per_main, per_sub, sc_main, sc_sub, ari_main, ari_sub, MSE_main, MSE_sub)
+df_result_mean
+df_result_std
+# write.table(format(df_result, nsmall = 4), "clipboard", sep = "\t", row.names = FALSE, col.names = FALSE)
 ```
 
 ```{r}
