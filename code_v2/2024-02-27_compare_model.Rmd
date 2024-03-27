@@ -1066,16 +1066,16 @@ library(meantables)
 para_set <- expand.grid(list(balance = c(1,2,3),
                  signal_size = c(1,2),
                  K_up = c(4,6)))
-para_set <- expand.grid(list(balance = c(2,3),
-                 signal_size = c(1,2),
-                 K_up = c(4,6)))
+# para_set <- expand.grid(list(balance = c(2,3),
+#                  signal_size = c(1,2),
+#                  K_up = c(4,6)))
 ```
 
 
 ```{r}
 n <- 500
-p <- 8
-q <- 4
+p <- 80
+q <- 40
 epsilon_sd <- 0.5
 epsilon_sd_init <- 0.5
 sigma_est <- as.numeric(epsilon_sd_init)
