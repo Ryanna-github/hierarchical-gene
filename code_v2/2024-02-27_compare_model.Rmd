@@ -1096,7 +1096,7 @@ for(i in 1:nrow(para_set)){
   cotype_z <- "En"
   beta_nonzero <- c(-2, -2, 2, 2)*signal_size # 长度应和真实 group_num_sub 保持一致
   alpha_nonzero <- c(-3, -1, 1, 3)*signal_size
-  
+
   q_c_seed_max <- 10
   group_num_main <- 2                    
   group_num_sub <- 4    
@@ -1180,18 +1180,30 @@ for(i in 1:nrow(para_set)){
 
 ```{r}
 # 整理版本，从保存的实验 & 对比方法全数据画箱线图
-signal_size <- 2
+signal_size <- 1
 balance <- 3
-p <- 8
-q <- 4
+p <- 80
+q <- 40
 beta_vlen <- 3
 alpha_vlen <- 2
 K_up <- 6
 
+df_dict <- read.csv("summary_data/filedict.csv")
+dim_type <- ifelse(p == 8, "low", "high")
+path_prop <- df_dict[(df_dict$dim == dim_type) & (df_dict$balance == balance) &
+                       (df_dict$signal == signal_size) & (df_dict$K_up == K_up),]$file
 # 1. 读取各部分数据
-df_prop <- read.csv(glue("2024-02-26_n500_p{p}_q{q}_ss{signal_size}_bl{beta_vlen}_al{alpha_vlen}_eps0.5_epi0.5_rr0.2_Kup{K_up}_fminit.csv"))
+# df_prop <- read.csv(glue("2024-02-26_n500_p{p}_q{q}_ss{signal_size}_bl{beta_vlen}_al{alpha_vlen}_eps0.5_epi0.5_rr0.2_Kup{K_up}_fminit.csv"))
+# df_prop <- read.csv(glue("2024-02-27_n500_p{p}_q{q}_b{balance}_ss{signal_size}_bl{beta_vlen}_al{alpha_vlen}_eps0.5_epi0.5_rr0.2_Kup{K_up}_CtEn_fminit.csv"))
+
+df_prop <- read.csv(path_prop)
 df_comp <- read.csv(glue("comp_n{n}_p{p}_q{q}_b{balance}_ss{signal_size}_bl{beta_vlen}_al{alpha_vlen}_eps{epsilon_sd}_epi{epsilon_sd_init}_Kup{K_up}.csv"))
-df_orac <- read.csv("2024-03-26_n500_p8_q4_b1_ss1_bl3_al2_eps0.5_epi0.5_rr0_Kup4_ctEn_oracle.csv")
+if(p == 8){
+  df_orac <- read.csv(glue("2024-03-26_n500_p{p}_q{q}_b{balance}_ss{signal_size}_bl3_al2_eps0.5_epi0.5_rr0_Kup4_ctEn_oracle.csv"))
+}else{
+  df_orac <- read.csv(glue("2024-03-27_n500_p{p}_q{q}_b{balance}_ss{signal_size}_bl3_al2_eps0.5_epi0.5_rr0_Kup4_ctEn_oracle.csv"))
+}
+
 colnames_sum <- c('tag','dt_seed','per_main','per_sub',
                   'K_main', 'K_sub', 
                   'sc_main','sc_sub',
@@ -1204,17 +1216,18 @@ df_prop_tm <- df_prop %>%
   filter(l2 > 0 & l3 > 0 & tag == 'hier') %>%
   select(dt_seed, q_c_seed, l2, l3, cdist_main, cdist_sub, sc_main, sc_sub, 
          ari_main, ari_sub, main_grn, sub_grn, fit_mean, penal, bic_sum, bic_mean, tag) %>%
-  # group_by(dt_seed, q_c_seed, tag) %>% 
-  group_by(dt_seed, tag) %>% 
+  group_by(dt_seed, q_c_seed, tag) %>%
+  # group_by(dt_seed, tag) %>% 
   arrange(bic_mean) %>%
-  filter(row_number() == 1) %>%
+  filter(row_number() == 4) %>%
   arrange(dt_seed, q_c_seed) # 检查节点（此时为每个 dt_seed q_c_seed 组合的最佳结果）
 df_prop_tm <- df_prop_tm %>%
   group_by(dt_seed) %>%
-  summarise(per_main = as.numeric(main_grn == 2),
-            per_sub = as.numeric(sub_grn == 4),
-            # per_main = sum(main_grn == 2)/n(),
-            # per_sub = sum(sub_grn == 4)/n(),
+  summarise(
+            # per_main = as.numeric(main_grn == 2),
+            # per_sub = as.numeric(sub_grn == 4),
+            per_main = sum(main_grn == 2)/n(),
+            per_sub = sum(sub_grn == 4)/n(),
             K_main = mean(main_grn),
             K_sub = mean(sub_grn),
             sc_main = mean(sc_main),
@@ -1235,17 +1248,18 @@ df_orac_tm <- df_orac %>%
   select(dt_seed, q_c_seed, l2, l3, 
          cdist_main, cdist_sub, sc_main, sc_sub, 
          ari_main, ari_sub, main_grn, sub_grn, bic_sum, bic_mean, tag) %>%
-  # group_by(dt_seed, q_c_seed, tag) %>%
-  group_by(dt_seed, tag) %>%
+  group_by(dt_seed, q_c_seed, tag) %>%
+  # group_by(dt_seed, tag) %>%
   arrange(bic_mean) %>%
   filter(row_number() == 1) %>%
   arrange(dt_seed, q_c_seed) # 检查节点（此时为每个 dt_seed q_c_seed 组合的最佳结果）
 df_orac_tm <- df_orac_tm %>%
   group_by(dt_seed) %>%
-  summarise(per_main = as.numeric(main_grn == 2),
-            per_sub = as.numeric(sub_grn == 4),
-            # per_main = sum(main_grn == 2)/n(),
-            # per_sub = sum(sub_grn == 4)/n(),
+  summarise(
+            # per_main = as.numeric(main_grn == 2),
+            # per_sub = as.numeric(sub_grn == 4),
+            per_main = sum(main_grn == 2)/n(),
+            per_sub = sum(sub_grn == 4)/n(),
             K_main = mean(main_grn),
             K_sub = mean(sub_grn),
             sc_main = mean(sc_main),
@@ -1317,7 +1331,9 @@ get_btype_plot <- function(ss, K_up_plot, btype){
 
 ```{r}
 library(tidyverse)
-df <- read.csv("summary_data/lowxz_b23_mod.csv")
+# df <- read.csv("summary_data/lowxz_b23_mod.csv")
+df <- read.csv("summary_data/highxz_b23_mod.csv")
+
 df$method <- factor(df$method, levels = c("proposed", "oracle", "FMR2", "resiclust2","respclust2", "FMR1", "resiclust1", "respclust1"))
 df <- df %>%
   separate(SC_main, into = c("SC_main", "SC_main_std"), sep = "\\(", convert = TRUE) %>%
@@ -1339,7 +1355,7 @@ df
 
 
 ```{r}
-ss <- 2
+ss <- 1
 K_up_plot <- 4
 p1_list <- get_btype_plot(ss, K_up_plot,1)
 p2_list <- get_btype_plot(ss, K_up_plot,2)
